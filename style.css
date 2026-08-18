@@ -25,6 +25,61 @@ button {
   font-size: 0.9rem;
 }
 
+/* --- HP bar / weapon / message -------------------------------------------- */
+
+#hp-bar-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+#hp-bar {
+  width: 220px;
+  height: 18px;
+  background: #33333a;
+  border: 1px solid #55555c;
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+#hp-fill {
+  height: 100%;
+  width: 100%;
+  background: #c0392b;
+  transition: width 0.3s ease;
+}
+
+#hp-text {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  min-width: 70px;
+  text-align: left;
+}
+
+#weapon-slot {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+#message {
+  margin-top: 1.5rem;
+  min-height: 1.2rem;
+  font-size: 0.95rem;
+}
+
+.message--won {
+  color: #6fae52;
+  font-weight: bold;
+}
+
+.message--lost {
+  color: #e05a6e;
+  font-weight: bold;
+}
+
 /* --- Room / cards -------------------------------------------------------- */
 
 #room {
@@ -48,6 +103,21 @@ button {
   padding: 8px 0;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
   border-top: 8px solid #888;
+  cursor: pointer;
+  transition: transform 0.25s ease, opacity 0.25s ease, box-shadow 0.15s ease;
+}
+
+.card:hover {
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55);
+  transform: translateY(-3px);
+}
+
+/* Played by main.js right when a card is clicked; the room re-renders once
+   this transition has had time to finish (see CARD_ANIMATION_MS in main.js). */
+.card--resolved {
+  transform: translateY(24px);
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Suit color (matches normal playing-card convention) */
