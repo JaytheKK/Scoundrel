@@ -267,6 +267,13 @@ button:disabled {
   color: var(--text-muted);
 }
 
+/* Applied whenever the "Using weapon" toggle is off, so the equipped weapon
+   visibly looks "switched off" while you're fighting bare-handed. */
+.weapon-slot-inactive {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
 #weapon-status {
   font-size: 0.85rem;
   color: var(--text-muted);
@@ -326,4 +333,84 @@ button:disabled {
   pointer-events: none;
   cursor: default;
   transition: transform 0.38s ease, opacity 0.38s ease;
+}
+
+/* --- Victory / Defeat banner ------------------------------------------------
+   Original, simplistic design (angled banner shape via clip-path, flat
+   color + a soft pulsing glow) — not an image asset, so it's easy to
+   re-theme later just by editing colors below. --------------------------- */
+
+#gameover-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5rem;
+  z-index: 200;
+}
+
+#gameover-overlay.hidden {
+  display: none;
+}
+
+#gameover-banner {
+  --glow-color: 217, 164, 65; /* matches --accent, as r,g,b for use in rgba() */
+  padding: 1.4rem 4rem;
+  background: linear-gradient(180deg, #26221a, #17140f);
+  border: 1px solid rgb(var(--glow-color));
+  clip-path: polygon(6% 0%, 94% 0%, 100% 50%, 94% 100%, 6% 100%, 0% 50%);
+  animation: banner-in 0.45s ease, banner-glow 2.4s ease-in-out infinite 0.45s;
+}
+
+#gameover-overlay.gameover-lost #gameover-banner {
+  --glow-color: 192, 57, 43; /* matches --danger */
+}
+
+#gameover-text {
+  display: block;
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgb(var(--glow-color, 217, 164, 65));
+  text-shadow: 0 0 12px rgba(var(--glow-color, 217, 164, 65), 0.6);
+}
+
+#gameover-banner {
+  color: rgb(var(--glow-color));
+}
+
+@keyframes banner-in {
+  from {
+    opacity: 0;
+    transform: scale(0.75) translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes banner-glow {
+  0%, 100% {
+    box-shadow: 0 0 14px 2px rgba(var(--glow-color), 0.3);
+  }
+  50% {
+    box-shadow: 0 0 26px 6px rgba(var(--glow-color), 0.55);
+  }
+}
+
+#play-again-btn {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a1408;
+  font-weight: 600;
+}
+
+#play-again-btn:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }

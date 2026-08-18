@@ -25,6 +25,7 @@ function handleCardClick(cardId) {
       renderRoom();
       renderDeckCount();
       renderFleeButton();
+      renderGameOverBanner();
     });
     return;
   }
@@ -53,6 +54,7 @@ function resolveAndAnimate(cardId, options) {
     renderRoom();
     renderDeckCount();
     renderFleeButton();
+    renderGameOverBanner();
   }, CARD_ANIMATION_MS);
 }
 
@@ -73,9 +75,15 @@ document.getElementById('flee-btn').addEventListener('click', () => {
 
 document.getElementById('weapon-toggle').addEventListener('change', (event) => {
   state.useWeaponPreference = event.target.checked;
+  renderWeaponSlot();
 });
 
 document.getElementById('new-game-btn').addEventListener('click', () => {
+  initGame();
+  renderAll();
+});
+
+document.getElementById('play-again-btn').addEventListener('click', () => {
   initGame();
   renderAll();
 });

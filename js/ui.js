@@ -68,18 +68,26 @@ function renderWeaponSlot() {
     slot.className = 'card weapon-slot-empty';
     delete slot.dataset.suit;
     slot.innerHTML = '<div class="sword-icon">⚔</div>';
-    status.textContent = 'No weapon equipped';
-    return;
+  } else {
+    slot.className = 'card card--weapon';
+    slot.dataset.suit = state.equippedWeapon.suit;
+    fillCardFace(slot, state.equippedWeapon);
   }
 
-  slot.className = 'card card--weapon';
-  slot.dataset.suit = state.equippedWeapon.suit;
-  fillCardFace(slot, state.equippedWeapon);
+  // Grayed out whenever the toggle is off, so it's visually obvious you're
+  // fighting bare-handed right now regardless of what's equipped.
+  slot.classList.toggle('weapon-slot-inactive', !state.useWeaponPreference);
 
-  status.textContent =
-    state.weaponMaxMonster === null
-      ? 'Can defeat any monster'
-      : `Can only defeat monsters weaker than ${state.weaponMaxMonster}`;
+  if (!state.useWeaponPreference) {
+    status.textContent = 'Fighting bare-handed';
+  } else if (!state.equippedWeapon) {
+    status.textContent = 'No weapon equipped';
+  } else {
+    status.textContent =
+      state.weaponMaxMonster === null
+        ? 'Can defeat any monster'
+        : `Can only defeat monsters weaker than ${state.weaponMaxMonster}`;
+  }
 }
 
 function renderMessage(text) {
@@ -100,6 +108,24 @@ function renderFleeButton() {
       : '';
 }
 
+/** Shows/hides the full-screen Victory/Defeat banner based on state.gameOver
+ * + state.outcome. Safe to call after every state change. */
+function renderGameOverBanner() {
+  const overlay = document.getElementById('gameover-overlay');
+
+  if (!state.gameOver) {
+    overlay.classList.add('hidden');
+    overlay.classList.remove('gameover-won', 'gameover-lost');
+    return;
+  }
+
+  overlay.classList.remove('hidden');
+  overlay.classList.toggle('gameover-won', state.outcome === 'won');
+  overlay.classList.toggle('gameover-lost', state.outcome === 'lost');
+  document.getElementById('gameover-text').textContent =
+    state.outcome === 'won' ? 'Victory' : 'Defeat';
+}
+
 function renderAll() {
   renderHp();
   renderRoom();
@@ -107,6 +133,7 @@ function renderAll() {
   renderWeaponSlot();
   renderFleeButton();
   renderMessage('');
+  renderGameOverBanner();
 }
 
 // --- weapon-equip animation -------------------------------------------------
