@@ -50,12 +50,9 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     and status/message text in `var(--font-body)` (plain system font) —
     decorative faces hurt quick readability for things read during play.
   - `js/cards.js` — the 44 card definitions (data only)
-  - `js/monster-icons.js` — the `MONSTERS` lookup (rank 2-14 → `{name, icon}`),
-    one original line-art SVG per monster rank, shown instead of the suit
-    symbol on monster cards (see `fillCardFace()` in `js/ui.js`). Every icon
-    is `viewBox="0 0 100 100"` and draws with `currentColor` so it inherits
-    the card's color automatically — keep new/edited icons consistent with
-    that (no hardcoded colors inside the SVG).
+  - `js/monster-icons.js` — `MONSTER_NAMES`, a plain rank (2-14) → creature
+    name lookup used for the card tooltip (e.g. "7 of Clubs — Shadow
+    Assassin"). The actual artwork is separate — see "Monster artwork" below.
   - `js/state.js` — game state + rules logic (fight/equip/drink, room refill,
     win/lose). **No DOM code here** — keeps rules testable/reasoned about on
     their own, independent of rendering.
@@ -136,15 +133,39 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   the first one is needed), and reference it from that card's `overrides` in
   `cards.js` (e.g. an `effectId` matched to a lookup, or a directly imported
   handler). Don't pre-create 44 effect files "just in case."
-- Each card has an `image` field, currently `null` for all cards. When `null`,
-  `fillCardFace()` in `js/ui.js` draws a CSS placeholder (suit symbol + rank,
-  colored by type: green=monster, blue=weapon, red=potion). Once real artwork
-  (including pixel art) exists, set a card's `image` to a file path and the
-  renderer automatically shows that image instead — no other code changes
-  needed. `image-rendering: pixelated` is already set on `.card-image` in
-  `style.css` to keep future pixel-art sprites crisp.
+- Each card has an `image` field. When `null` (currently: weapons and
+  potions, which have no artwork yet), `fillCardFace()` in `js/ui.js` falls
+  back to a suit-symbol placeholder. Set a card's `image` to a file path and
+  the renderer automatically shows that image instead — no other code
+  changes needed.
 - `effect` is reserved and currently unused — the hook point for future
   special-ability cards (e.g. `onReveal`, `onResolve` callbacks).
+
+### Monster artwork
+
+- `images/monsters/<rank>.png` (2-14, one file per rank — both suits of a
+  given rank share the same monster and image) are transparent-background
+  black silhouette PNGs, assigned automatically in `makeCard()` in
+  `js/cards.js`. They came from a user-supplied sprite sheet
+  (`images/MonstersIcons.jpeg`, kept as the source reference) that was
+  cropped and alpha-masked with a Python/PIL script (see git history for
+  the exact script — it wasn't kept as a project file since it's a one-off
+  tool, not part of the running game).
+- **Known mismatch, already corrected for:** two of the sprite sheet's
+  printed labels don't match their artwork — the box labeled "Brutmutter
+  (Riesenspinne)" is visually a golem, and the box labeled "Spinnennetz" is
+  visually the giant spider. The rank assignment follows what's actually
+  drawn: rank 10 (Golem) uses the "Brutmutter" artwork, rank 12 (Brood
+  Mother) uses the "Spinnennetz" artwork. If more monster art is added
+  later from the same or a similar sheet, double-check the artwork against
+  `MONSTER_NAMES` in `js/monster-icons.js` rather than trusting a printed
+  label.
+- The card face shows only the artwork (or suit symbol) plus the card's
+  plain numeric value at the bottom (`.card-value-label`) — no rank text in
+  the middle of the card, and no J/Q/K/A letters anywhere on the card face
+  (11/12/13/14 instead). `card.label` (which still holds "J"/"Q"/"K"/"A")
+  is only used for `card.name` / log-message text like "Fought J of
+  Clubs...", not for the card face itself.
 
 ## Interaction design decisions
 
