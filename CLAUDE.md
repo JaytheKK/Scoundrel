@@ -193,26 +193,37 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   page background. `--edge-rgb` on `.card--monster` is a dark-ish purple by
   request, but keep it well short of near-black — that was tried once and
   read as "barely visible" rather than "gloomy".
-- **`--card-glow` and `--card-glow-inset` must stay separate tokens —
-  never combine an inset and non-inset shadow into one animated value.**
-  This caused a real bug: an earlier version of the aura pulse swapped
-  between a box-shadow list that included an inset shadow (rest state) and
-  one that didn't (peak state); browsers can't smoothly interpolate a
-  shadow list when a position's inset-ness changes, which showed up as a
-  visible white flash mid-animation. The fix (and the rule going forward):
-  any keyframe animating `box-shadow` must reference `var(--card-glow-inset)`
-  **unchanged** at every keyframe stop (see `card-aura-pulse` and
-  `card-potion-pulse`) and only vary the outer glow's own numbers. If you
-  add a new pulsing effect, follow the same pattern rather than
-  hand-writing a full box-shadow list per keyframe stop.
+- **Pulsing glows animate `opacity` on a `::after`, never `box-shadow`
+  directly.** Both `.card--aura::after` and `.card--potion::after` are an
+  absolutely-positioned, card-shaped layer (`inset: 0; border-radius:
+  inherit;`) holding one **fixed, pre-computed** peak-glow `box-shadow`;
+  the shared `card-glow-fade` keyframe only animates that layer's
+  `opacity` between 0 and 1. Two real bugs led here, in order: (1) an
+  earlier version animated `box-shadow` itself (varying blur/spread each
+  frame) — this forces a full repaint every frame, which is not
+  GPU-accelerated and looked janky/stuttery with several cards pulsing at
+  once; opacity is compositor-only and is always smooth regardless of how
+  many cards animate together. (2) before that, a version of the box-shadow
+  keyframe swapped between a shadow list that included an `inset` shadow
+  (rest state) and one that didn't (peak state) — browsers can't smoothly
+  interpolate a shadow list when a position's inset-ness changes, which
+  caused a visible white flash. The fixed-shadow-plus-opacity-fade pattern
+  sidesteps both problems at once, so **any new pulsing/glowing effect
+  should follow the same `::after` + opacity pattern** rather than
+  animating `box-shadow`'s own numbers.
+  `--card-glow` / `--card-glow-inset` (the *static*, unanimated resting
+  glow set per tier — see below) are unaffected by any of this; they still
+  render underneath the fading overlay at all times.
 - **The very strongest cards get a pulsing `.card--aura`, not just a
   bigger glow.** `hasAura(card)` in `js/ui.js` — true for monsters rank 11+
   (J/Q/K/A) and weapons rank 8+ (the 3 strongest) — adds `.card--aura`,
-  which flares the outer glow gently brighter and back via
-  `card-aura-pulse`, on top of the normal tier border/glow (not instead of
-  it). Keep this subtle (moderate glow numbers) — an earlier, stronger
-  version was reported as too intense. **Glow-only on purpose, no
-  `transform`/scale:** an earlier version also scaled the card up/down
+  whose `::after` flares the outer glow gently brighter and back on top of
+  the normal tier border/glow (not instead of it). Keep this subtle
+  (moderate glow numbers) — an earlier, stronger version was reported as
+  too intense, though it was later bumped back up ~10% after also being
+  reported as a bit weak once the flash bug was fixed — tune from the
+  current numbers, don't reset to either extreme. **Glow-only on purpose,
+  no `transform`/scale:** an earlier version also scaled the card up/down
   each pulse, which visibly dragged the bottom value label up and down
   each cycle (scale grows a box from its center, moving its content with
   it) — don't reintroduce a transform on `.card--aura` without checking
