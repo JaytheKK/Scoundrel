@@ -1,0 +1,17 @@
+body {
+  font-family: system-ui, sans-serif;
+  background: #1b1b1f;
+  color: #f0f0f0;
+  text-align: center;
+  padding: 2rem;
+}
+
+#debug-panel {
+  margin-top: 2rem;
+}
+
+button {
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
