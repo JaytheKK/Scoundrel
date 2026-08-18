@@ -715,12 +715,14 @@ button:disabled::before {
 
 /* --- aura: the very strongest cards get more than "just a glow" ---------
    J/Q/K/A monsters (rank 11+) and the 3 strongest weapons (rank 8+) get
-   .card--aura added in ui.js (hasAura()): the card breathes gently —
-   scaling up just slightly and flaring its outer glow a bit brighter —
-   instead of sitting at a single static glow. (An earlier version also
-   spun a rotating gradient ring behind the card; dropped — it wasn't
-   noticeable in practice.) This sits on top of the tier system above, not
-   instead of it (the tier border/glow still applies underneath).
+   .card--aura added in ui.js (hasAura()): the card's outer glow flares
+   gently brighter and back, instead of sitting at a single static glow.
+   (Two things were tried and dropped here: a rotating gradient ring,
+   which wasn't noticeable in practice; and scaling the card up/down,
+   which visibly dragged the value label at the bottom up and down since
+   scale grows the box from its center — glow-only avoids that entirely.)
+   This sits on top of the tier system above, not instead of it (the tier
+   border/glow still applies underneath).
    Important: --card-glow-inset is used **unchanged** at both 0% and 50%
    here (only the outer glow's numbers change) — mixing an inset and a
    non-inset shadow at the same box-shadow list position isn't smoothly
@@ -732,14 +734,15 @@ button:disabled::before {
   animation: card-aura-pulse 2.8s ease-in-out infinite;
 }
 
+/* No transform/scale here on purpose: scaling the whole card moves its
+   content (the value label visibly drifted up/down as the card grew and
+   shrank) — the pulse is glow-only now, so nothing inside the card moves. */
 @keyframes card-aura-pulse {
   0%,
   100% {
-    transform: scale(1);
     box-shadow: var(--card-glow), var(--card-glow-inset), 0 2px 6px rgba(0, 0, 0, 0.35);
   }
   50% {
-    transform: scale(1.02);
     box-shadow: 0 0 16px 3px rgba(var(--edge-rgb), 0.55), var(--card-glow-inset),
       0 2px 6px rgba(0, 0, 0, 0.35);
   }
