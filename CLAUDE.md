@@ -170,10 +170,31 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   `border-top` strip colored by type (monster/weapon/potion) — replaced by
   a full border whose width/saturation/glow scale with the card's strength
   tier (`cardTier(rank)` in `js/ui.js`, 1 weakest through 5 strongest; see
-  `.card--tier-N` in `style.css`), while the border's *color* still comes
-  from the type (`--monster-rgb`/`--weapon-rgb`/`--potion-rgb`). Apply this
-  same tier class to any new place a card is rendered (it's already done
-  for both room cards and the equipped weapon in the weapon slot).
+  `.card--tier-N` in `style.css`). Apply this same tier class to any new
+  place a card is rendered (it's already done for both room cards and the
+  equipped weapon in the weapon slot).
+- **Border/glow color is per-card, not just per-type.** Each card's
+  `--edge-rgb` (an "R, G, B" string used inside `rgba()`) can come from
+  three places, in increasing priority: the base `.card--monster` /
+  `.card--weapon` / `.card--potion` CSS class (a type default), a
+  tier-specific override like `.card--monster.card--tier-5` (see monsters
+  below), or — highest priority — an inline style set from `card.glowRgb`
+  (`js/cards.js`) via `applyGlowColor()` in `js/ui.js`. Weapons default to
+  white through `glowRgb`, which exists specifically so a *specific* weapon
+  can get its own glow color later (e.g. a fire weapon passing an orange
+  `glowRgb` through `makeCard`'s `overrides`) without touching the shared
+  tier system — this is the intended extension point once per-card effects
+  exist, not a one-off.
+- **Monsters get gloomier, not just brighter, at high tiers.** Their base
+  color is a dark purple (`--edge-rgb: 96, 48, 130` on `.card--monster`),
+  and tiers 4-5 specifically (`.card--monster.card--tier-4/5`, the only
+  tiers a monster can reach that a weapon/potion can't) override to
+  progressively darker/near-black purple *and* add an inward dark vignette
+  (an `inset` box-shadow layered into `--card-glow`) — a deliberate design
+  choice that strong monsters should feel ominous/oppressive rather than
+  simply "more colorful". If another card type ever reaches tier 4/5,
+  consider whether it deserves its own tier-4/5 treatment too rather than
+  reusing the monster darkening (which is monster-specific on purpose).
 
 ### Potion artwork
 
@@ -187,9 +208,25 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   border (`.card--potion` / `card-potion-pulse` in `style.css`): the glow
   breathes in and out continuously, on every potion regardless of tier —
   added because a static border (even a colored one) read as boring for a
-  healing item. If weapons ever get their own artwork, consider whether
-  they deserve a similar type-specific flourish instead of just reusing
-  the plain tier system, rather than assuming tier alone is always enough.
+  healing item.
+
+### Weapon artwork
+
+- `images/weapons/<rank>.png` (2-10, one file per rank) came from a
+  user-supplied sheet (`images/WeaponsIcons.jpeg`, kept as source
+  reference), cropped like the monster art (forced to black, alpha-masked).
+  That sheet had thin box-border-line fragments left behind by a naive crop
+  in some corners, so the crop script also keeps only the largest connected
+  shape per icon (via `scipy.ndimage.label`) and discards the rest — worth
+  reusing that step for any future sprite-sheet crop, not just re-cropping
+  tighter. Names are the sheet's own (e.g. "Mjölnir", "Excalibur"), in
+  `WEAPON_NAMES` in `js/weapon-icons.js`.
+- Weapons don't (yet) have their own type-specific flourish the way potions
+  get the life-pulse — they currently only get the shared tier system plus
+  their own glow color via `glowRgb` (see above). If weapons get a
+  distinguishing animation/effect later, add it the same way the potion
+  pulse was added: a new class + keyframes layered on top of, not
+  replacing, the tier system.
 
 ## Interaction design decisions
 
