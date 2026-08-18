@@ -70,6 +70,15 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   delta value through `state.js`. Any future action that changes `state.hp`
   gets the animation for free as long as it goes through that same
   before/after comparison in `main.js`.
+- **New Game / rules:** the top-left button is a hamburger icon (`#menu-btn`)
+  that opens `#menu-overlay` — a popup containing the New Game button and
+  the full written rules (kept in `#rules` in `index.html`; update that
+  text if a rule changes). `startNewGame()` in `js/main.js` is the single
+  shared entry point for starting/restarting a game — the menu's New Game
+  button, the game-over screen's Play Again button, and the empty-room
+  call-to-action (shown via `renderRoom()` in `js/ui.js` whenever
+  `state.room.length === 0`, e.g. before the first game) all call it, so
+  they can't drift out of sync with each other.
 - **Responsive sizing:** almost every size in `style.css` is in `rem`, not
   `px`, on purpose. The root `html` font-size scales by media-query
   breakpoint (16px phone / 18px tablet ≥640px / 22px small desktop / 24px
