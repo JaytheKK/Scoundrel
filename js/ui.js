@@ -32,9 +32,21 @@ function fillCardFace(el, card) {
   el.appendChild(value);
 }
 
+/** Strength tier (1 weakest - 5 strongest) for a card's rank, used to scale
+ * the border/glow treatment in style.css (.card--tier-N). Weapons/potions
+ * only go up to rank 10, so they naturally top out around tier 3 — only a
+ * monster can reach tier 4/5. */
+function cardTier(rank) {
+  if (rank >= 14) return 5;
+  if (rank >= 11) return 4;
+  if (rank >= 8) return 3;
+  if (rank >= 5) return 2;
+  return 1;
+}
+
 function renderCard(card) {
   const el = document.createElement('div');
-  el.className = `card card--${card.type}`;
+  el.className = `card card--${card.type} card--tier-${cardTier(card.rank)}`;
   el.dataset.suit = card.suit;
   el.dataset.id = card.id;
   const monsterName = card.type === 'monster' ? monsterNameFor(card.rank) : null;
@@ -108,7 +120,7 @@ function renderWeaponSlot() {
     delete slot.dataset.suit;
     slot.innerHTML = '<div class="sword-icon">⚔</div>';
   } else {
-    slot.className = 'card card--weapon';
+    slot.className = `card card--weapon card--tier-${cardTier(state.equippedWeapon.rank)}`;
     slot.dataset.suit = state.equippedWeapon.suit;
     fillCardFace(slot, state.equippedWeapon);
   }

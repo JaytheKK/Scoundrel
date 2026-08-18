@@ -45,6 +45,11 @@
   --monster: #4b6b3a;
   --weapon: #3a6b8c;
   --potion: #b3283d;
+  /* rgb components of the three colors above, for use in rgba()/glow effects
+     on the card border (see the .card--tier-N rules) */
+  --monster-rgb: 75, 107, 58;
+  --weapon-rgb: 58, 107, 140;
+  --potion-rgb: 179, 40, 61;
 
   --radius: 0.5rem;
 
@@ -548,7 +553,16 @@ button:disabled::before {
    above) rather than rem, so it can be tuned independently of general
    text/button scaling — it has its own hard constraint (4 must fit in one
    row, and the whole page must fit one screen with no scrolling). */
+/* Card strength is shown as a border treatment instead of the old flat
+   top color bar: --edge-rgb comes from the card's type (monster/weapon/
+   potion, see below), and --card-border-width / --card-border-alpha /
+   --card-glow come from its strength tier (.card--tier-1 weakest through
+   .card--tier-5 strongest, see further down) — a weak card gets a thin,
+   faint edge, a strong one gets a thick, saturated, glowing edge. */
 .card {
+  --card-border-width: 1px;
+  --card-border-alpha: 0.25;
+  --card-glow: 0 0 0 0 rgba(0, 0, 0, 0);
   width: calc(100px * var(--card-scale));
   height: calc(140px * var(--card-scale));
   border-radius: var(--radius);
@@ -559,16 +573,16 @@ button:disabled::before {
   align-items: center;
   justify-content: space-between;
   padding: calc(8px * var(--card-scale)) 0;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-top: calc(4px * var(--card-scale)) solid #888;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  border: var(--card-border-width) solid rgba(var(--edge-rgb, 26, 26, 26), var(--card-border-alpha));
+  box-shadow: var(--card-glow), 0 2px 6px rgba(0, 0, 0, 0.35);
   cursor: pointer;
   flex-shrink: 0;
-  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.15s ease;
+  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease,
+    border-color 0.2s ease, border-width 0.2s ease;
 }
 
 .card:hover {
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--card-glow), 0 4px 10px rgba(0, 0, 0, 0.45);
   transform: translateY(-3px);
 }
 
@@ -591,17 +605,61 @@ button:disabled::before {
   color: var(--card-text-red);
 }
 
-/* Type accent color (monster/weapon/potion), independent of card art */
+/* Type color (monster/weapon/potion), used for the border/glow below */
 .card--monster {
-  border-top-color: var(--monster);
+  --edge-rgb: var(--monster-rgb);
 }
 
 .card--weapon {
-  border-top-color: var(--weapon);
+  --edge-rgb: var(--weapon-rgb);
 }
 
 .card--potion {
-  border-top-color: var(--potion);
+  --edge-rgb: var(--potion-rgb);
+}
+
+/* --- strength tiers ---------------------------------------------------
+   Set via cardTier(rank) in ui.js: 2-4 -> tier 1 (weakest) ... 14 -> tier 5
+   (strongest — only the Ace/Cthulhu monster reaches it; weapons/potions
+   cap at 10, so they top out around tier 3). Each tier ramps up the border
+   width, how solid/saturated its color is, and how much it glows. */
+.card--tier-1 {
+  --card-border-width: 1px;
+  --card-border-alpha: 0.3;
+}
+
+.card--tier-2 {
+  --card-border-width: 1.5px;
+  --card-border-alpha: 0.5;
+}
+
+.card--tier-3 {
+  --card-border-width: 2px;
+  --card-border-alpha: 0.8;
+  --card-glow: 0 0 8px 0 rgba(var(--edge-rgb), 0.4);
+}
+
+.card--tier-4 {
+  --card-border-width: 2.5px;
+  --card-border-alpha: 1;
+  --card-glow: 0 0 14px 2px rgba(var(--edge-rgb), 0.55);
+}
+
+.card--tier-5 {
+  --card-border-width: 3px;
+  --card-border-alpha: 1;
+  --card-glow: 0 0 20px 3px rgba(var(--edge-rgb), 0.7);
+  animation: card-tier-5-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes card-tier-5-pulse {
+  0%,
+  100% {
+    box-shadow: var(--card-glow), 0 2px 6px rgba(0, 0, 0, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 28px 6px rgba(var(--edge-rgb), 0.85), 0 2px 6px rgba(0, 0, 0, 0.35);
+  }
 }
 
 .card-suit-symbol {
