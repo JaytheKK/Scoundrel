@@ -186,28 +186,36 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   tier system — this is the intended extension point once per-card effects
   exist, not a one-off.
 - **Monsters get gloomier at high tiers via an inward dark vignette, not a
-  darker edge color.** Their base color is a vivid purple (`--edge-rgb: 150,
-  60, 210` on `.card--monster`), and tiers 4-5 specifically
-  (`.card--monster.card--tier-4/5`, the only tiers a monster can reach that
-  a weapon/potion can't) get *more* saturated/electric, not darker — an
-  earlier version dimmed the color itself at high tiers for an "ominous"
-  feel, but that made the strongest monsters low-contrast and hard to see
-  against the dark page background, which is the opposite of what a
-  strength indicator should do. The gloomy/ominous read instead comes from
-  an `inset` dark shadow layered into `--card-glow`, so the card stays
-  bright and clearly visible while still feeling oppressive. Keep this
-  principle for any future "make it feel darker/eviler" request: add
-  darkness via an inset vignette, don't dim the actual glow color.
+  darker edge color** — `--card-glow-inset` (invisible by default, a real
+  `inset` shadow only on `.card--monster.card--tier-4/5`) is a **separate
+  token from `--card-glow`** (the outer glow) specifically so it stays
+  visible/legible rather than just dimming the whole color into the dark
+  page background. `--edge-rgb` on `.card--monster` is a dark-ish purple by
+  request, but keep it well short of near-black — that was tried once and
+  read as "barely visible" rather than "gloomy".
+- **`--card-glow` and `--card-glow-inset` must stay separate tokens —
+  never combine an inset and non-inset shadow into one animated value.**
+  This caused a real bug: an earlier version of the aura pulse swapped
+  between a box-shadow list that included an inset shadow (rest state) and
+  one that didn't (peak state); browsers can't smoothly interpolate a
+  shadow list when a position's inset-ness changes, which showed up as a
+  visible white flash mid-animation. The fix (and the rule going forward):
+  any keyframe animating `box-shadow` must reference `var(--card-glow-inset)`
+  **unchanged** at every keyframe stop (see `card-aura-pulse` and
+  `card-potion-pulse`) and only vary the outer glow's own numbers. If you
+  add a new pulsing effect, follow the same pattern rather than
+  hand-writing a full box-shadow list per keyframe stop.
 - **The very strongest cards get a pulsing `.card--aura`, not just a
   bigger glow.** `hasAura(card)` in `js/ui.js` — true for monsters rank 11+
   (J/Q/K/A) and weapons rank 8+ (the 3 strongest) — adds `.card--aura`,
-  which makes the whole card breathe — scaling up slightly and flaring its
-  shadow to a wider, brighter double glow — via `card-aura-pulse`, on top
-  of the normal tier border/glow (not instead of it). This was added
-  because a static glow, even a strong one, read as "boring". (A rotating
-  gradient ring behind the card, `card-aura-spin`, was tried too but wasn't
-  noticeable in practice and was removed — don't re-add spin-based effects
-  without checking they actually read at card scale.)
+  which makes the whole card breathe gently — a small scale bump and a
+  slightly brighter outer glow — via `card-aura-pulse`, on top of the
+  normal tier border/glow (not instead of it). Keep this subtle (small
+  scale delta, moderate glow numbers) — an earlier, stronger version of
+  this pulse was reported as too intense. (A rotating gradient ring behind
+  the card, `card-aura-spin`, was tried too but wasn't noticeable in
+  practice and was removed — don't re-add spin-based effects without
+  checking they actually read at card scale.)
 
 ### Potion artwork
 
