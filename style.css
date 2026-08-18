@@ -628,6 +628,21 @@ button:disabled::before {
   image-rendering: pixelated; /* keeps future pixel-art crisp */
 }
 
+/* One simple line-art SVG per monster rank (see js/monster-icons.js),
+   sized the same way the suit symbol/image slot is — scales with the card
+   via --card-scale, and inherits the card's text color since every icon
+   draws with stroke/fill="currentColor". */
+.card-monster-icon {
+  width: calc(40px * var(--card-scale));
+  height: calc(40px * var(--card-scale));
+}
+
+.card-monster-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 /* --- weapon slot / toggle -------------------------------------------------- */
 
 #weapon-area {

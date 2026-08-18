@@ -4,11 +4,13 @@
 // into state.js and then asks this file to re-render.
 // ---------------------------------------------------------------------------
 
-/** Fills a card-shaped element with a card's face (image or suit/rank
- * placeholder + type label). Shared by renderCard() and the weapon slot,
- * which displays the equipped weapon the same way. */
+/** Fills a card-shaped element with a card's face (image, monster icon, or
+ * suit/rank placeholder + type label). Shared by renderCard() and the
+ * weapon slot, which displays the equipped weapon the same way. */
 function fillCardFace(el, card) {
   el.innerHTML = '';
+
+  const monster = card.type === 'monster' ? monsterFor(card.rank) : null;
 
   if (card.image) {
     const img = document.createElement('img');
@@ -16,6 +18,11 @@ function fillCardFace(el, card) {
     img.src = card.image;
     img.alt = card.name;
     el.appendChild(img);
+  } else if (monster) {
+    const icon = document.createElement('div');
+    icon.className = 'card-monster-icon';
+    icon.innerHTML = monster.icon;
+    el.appendChild(icon);
   } else {
     const symbol = document.createElement('div');
     symbol.className = 'card-suit-symbol';
@@ -39,7 +46,8 @@ function renderCard(card) {
   el.className = `card card--${card.type}`;
   el.dataset.suit = card.suit;
   el.dataset.id = card.id;
-  el.title = card.name;
+  const monster = card.type === 'monster' ? monsterFor(card.rank) : null;
+  el.title = monster ? `${card.name} — ${monster.name}` : card.name;
   fillCardFace(el, card);
   return el;
 }
