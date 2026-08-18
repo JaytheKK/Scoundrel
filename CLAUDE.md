@@ -316,6 +316,108 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     below: a whole-card translate doesn't drag the bottom value label out
     of place the way a `transform: scale()` from the center would.
 
+## Shields (custom addition, not part of the original Scoundrel rules)
+
+- A third equippable item type on top of weapons/potions: 3 cards, ranks
+  3-5, added on top of the standard 44-card deck (`makeCard(SUITS.SHIELDS,
+  ...)` in `js/cards.js`) — the deck is 47 cards total, not 44. Shields use
+  their own pseudo-suit (`SUITS.SHIELDS = 'shields'`) purely so they flow
+  through the existing `makeCard()`/`renderCard()`/deck plumbing like every
+  other card; it isn't a real playing-card suit. Names/flavor text live in
+  `js/shield-icons.js` (`SHIELD_NAMES`/`SHIELD_DESCRIPTIONS`), mirroring
+  `js/weapon-icons.js`.
+- **Block + durability:** a shield's `rank` does double duty as both how
+  much damage it blocks per fight *and* its remaining durability — the same
+  "rank is current strength, baseRank is identity" split used for a
+  weakened monster (see `weakenMonster()`). Equipping a fresh shield sets
+  both to its starting value; every point of damage it blocks lowers `rank`
+  (and the `label`/`name` derived from it) by that same amount, and once
+  `rank` reaches 0 the shield shatters — `state.equippedShield` is cleared
+  and the shield slot goes back to empty. All of this lives in
+  `fightMonster()` in `js/state.js`, right after the existing weapon/
+  bare-handed damage calculation, so a shield only ever blocks damage that
+  actually gets through — it stacks with a weapon, never replaces it:
+  weapon (or bare hands, plus Berserker's flat reduction) reduces the
+  monster's damage first, and only whatever remains left over is what the
+  shield can absorb. E.g. a 3-block shield against a 5-damage hit that a
+  weapon already reduced to 2 blocks all 2 (shield drops to 1 durability,
+  player takes 0); the same shield against a full 5-damage bare-handed hit
+  blocks 3 and shatters, player still takes the remaining 2.
+- **Equip UI mirrors weapons exactly, deliberately** — a shield slot
+  (`#shield-slot-card`) sits immediately left of the weapon slot inside a
+  shared `#equipment-slots` row, same size/scale tokens
+  (`--weapon-slot-scale`), same "flies from the room into the slot"
+  animation on click (`animateShieldToSlot()` in `js/ui.js`, a near-exact
+  copy of `animateWeaponToSlot()`) and the same `renderShieldSlot()` /
+  `renderWeaponSlot()` pairing called together everywhere. Keep any future
+  weapon-slot UI change (sizing, animation timing, etc.) mirrored onto the
+  shield slot unless there's a specific reason not to, so the two equip
+  slots keep feeling like the same system. The empty slot's placeholder
+  icon is a plain letter "S" (`.shield-icon`), not an emoji shield — same
+  reasoning as the Weapon Effects badges below (an emoji shield glyph
+  didn't render reliably in testing).
+- Shields currently have **no weapon-style rolled effects** (Vampiric/
+  Electric/Sturdy) and no "using shield" toggle — a shield's block is
+  always applied automatically whenever one is equipped, there's no
+  bare-handed-equivalent opt-out the way weapons have `useWeaponPreference`.
+  Add one the same way the weapon toggle works if that's ever wanted.
+- **Block feedback: shake if it survives, shatter if it breaks.**
+  `fightMonster()` returns `shieldBlocked`/`shieldBroke` alongside its
+  message (mirroring `weakenedIds` for the Electric weapon effect), and
+  `applyResolve()` in `js/main.js` reacts to them the same way it reacts to
+  `weakenedIds` — fired directly, not routed through the room-card action
+  queue, since (like the Electric shake) this is feedback on a
+  persistent piece of UI, not a room card being removed.
+  - **Survives (`shieldBlocked` but not `shieldBroke`):** `renderShieldSlot()`
+    draws the shield's new, lower durability first, then
+    `animateShieldShake()` (`js/ui.js`) plays the same `.card--shake` wobble
+    used for an Electric-weakened monster on top of it. It explicitly
+    removes-then-re-adds the class (with a forced reflow in between) rather
+    than just adding it, so back-to-back hits each restart the shake —
+    `classList.add()` alone is a no-op if the class is already present and
+    wouldn't retrigger the CSS animation.
+  - **Breaks (`shieldBroke`):** `animateShieldShatter()` (`js/ui.js`) must
+    run **before** `renderShieldSlot()` — it clones the slot's *current*
+    card face (still showing the shield, since resolveCard() already
+    mutated `state` but nothing has re-rendered yet) into 6 pie-slice
+    shards (each clipped via an inline `clip-path` polygon computed from
+    its slice's angle, together reconstructing the whole card), flings them
+    outward with per-shard `--shatter-dx/dy/rot` custom properties and a
+    slight random rotation, hides the real slot for the ~650ms flight, then
+    calls `onDone()` — only then does the caller call `renderShieldSlot()`,
+    so the empty slot appears exactly as the shards finish fading. Calling
+    it in the other order would clip empty/blank shards instead of the
+    shield's artwork.
+    - Each shard clone has its `id` attribute stripped
+      (`shard.removeAttribute('id')`) — cloning `#shield-slot-card` six
+      times would otherwise leave 6 duplicate ids in the DOM for the
+      animation's duration, which risks `getElementById('shield-slot-card')`
+      calls elsewhere resolving to a shard instead of the real slot.
+- **"Used" state while damaged but not broken:** once an equipped shield's
+  `rank` drops below its `baseRank` (it took damage this fight but survived
+  — see the block logic above), `renderShieldSlot()` swaps its artwork to a
+  second, cracked version of the same shield — `shieldDamagedImageFor(baseRank)`
+  in `js/shield-icons.js`, pointing at `images/shields/<rank>-damaged.png`
+  (cropped from a second user-supplied sheet, `images/BrokenShieldIcons.jpeg`,
+  same layout/order as `images/ShieldIcons.jpeg` — see "Shield artwork"
+  below). Still keyed off `baseRank`, not `rank` — same identity-vs-current-
+  strength split as everywhere else, just swapping in a second art asset
+  instead of only changing the displayed number. Implemented by building a
+  shallow `{ ...shield, image: <damaged path> }` copy and passing *that* to
+  `fillCardFace()` rather than the real shield card object, so `state`
+  itself never holds a "damaged" image path — only the render call does.
+  (An earlier version also added a static crack-line overlay across the
+  whole card face on top of this artwork swap — deliberately dropped, not
+  wanted; if a similar overlay effect is ever requested again, don't assume
+  this is what was meant.)
+- The Shields gallery (`shields-btn` on `#start-screen`, sits between
+  Weapons and Monsters) follows the same `renderGallery()`/
+  `renderGalleryDetail()` pattern as Weapons/Monsters, with one deliberate
+  difference: its detail popup's strength line reads **"Block N"**, not
+  "Strength N" — a shield's number is a block/durability value, not an
+  attack or heal amount, so labeling it "Strength" would be misleading.
+  Keep that distinction if shields ever get more display surfaces.
+
 ### Monster artwork
 
 - `images/monsters/<rank>.png` (2-14, one file per rank — both suits of a
@@ -444,6 +546,30 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   pulse was added: a new class + keyframes layered on top of, not
   replacing, the tier system.
 
+### Shield artwork
+
+- `images/shields/<rank>.png` (3-5, one file per rank) came from a
+  user-supplied sheet (`images/ShieldIcons.jpeg`, kept as source reference:
+  left-to-right an oak-leaf kite shield, a round Viking-style shield, and a
+  heraldic lion-crest shield, assigned ranks 3/4/5 respectively), cropped
+  with the **champion-style contrast-stretch alpha** (`alpha = clip((darkness
+  − LOW) / (HIGH − LOW), 0, 1) × 255`, `LOW≈12, HIGH≈90`), not the plain
+  monster/weapon `alpha = 255 − min(R,G,B)` formula — the shield sheet is
+  thin line art like the champion sheet, not solid silhouette fills like
+  monsters/weapons, so it needed the same fix for faint anti-aliased lines
+  going near-invisible (see "Champion artwork" below for the full
+  explanation of why). A tiny-pixel-count floor (~8px) on connected
+  components dropped JPEG noise while keeping every real stroke, same as
+  the champion crop. Names are in `SHIELD_NAMES` in `js/shield-icons.js`.
+- `images/shields/<rank>-damaged.png` (3-5) is a second, cracked/battered
+  version of each shield (see "'Used' state while damaged but not broken"
+  above), cropped from `images/BrokenShieldIcons.jpeg` — a second
+  user-supplied sheet, same left-to-right layout/order as `ShieldIcons.jpeg`
+  so the same crop script (column-group splitting + the champion-style
+  contrast-stretch alpha) could be reused unchanged, just pointed at the
+  new source file and a `<rank>-damaged.png` output name instead of
+  `<rank>.png`.
+
 ### Champion artwork
 
 - `images/champions/<id>.png` (one file per champion, keyed by id rather
@@ -495,6 +621,344 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   (see "Champion portrait next to the HP bar" above). If a new champion is
   added before its artwork exists, leave its `image` as `null` — see
   "Portrait placeholder for missing artwork" above.
+
+## Champion Active Abilities (custom addition, not part of the original Scoundrel rules)
+
+- On top of the passive granted at champion-select (see "Champion-select
+  screen" above), every champion has a **mana-costed active ability** — the
+  mana resource itself (gaining it, spending it, the ring gauge, the
+  disabled look) is fully wired up for all four, and all four champions'
+  actual effects are now implemented (see `useAbility()` in `js/state.js`):
+  Paladin's and Berserker's live in `fightMonster()`, since they affect
+  incoming damage; Herbalist's is entirely self-contained inside
+  `useAbility()`, since it's a one-shot heal with no ongoing effect
+  elsewhere; Rogue's is the odd one out, needing a target — see below. Add
+  any future champion's ability the same way: gated on `state.champion`
+  inside `useAbility()` for the activation itself, plus wherever in
+  `js/state.js` the effect actually needs to apply.
+- **Rogue's ability — "Backstab":** the only one of the four that needs a
+  target, so it doesn't resolve instantly like the others — clicking
+  `#ability-btn` arms **targeting mode** instead of spending mana straight
+  away:
+  - `useAbility()` sets `state.rogueTargeting = true` and returns early,
+    skipping the `state.mana = 0` line entirely (that line moved below the
+    Rogue branch specifically so Rogue can opt out of it) — mana is only
+    actually spent once a monster is chosen. A second click of the ability
+    button while already armed is a no-op (`useAbility()` returns `null`);
+    the only way to arm it again is to finish or cancel the current one
+    first.
+  - While `state.rogueTargeting` is true, `renderRogueTargeting()`
+    (`js/ui.js`, called from `renderAll()` and after anything that changes
+    the flag) adds `.card--targetable` — a continuous wiggle, reusing
+    `.card--shake`'s translateX-only keyframe on a loop rather than
+    inventing a new one — to every monster card in the room
+    (`#room .card--monster`), and un-hides `#ability-cancel-btn`, a small
+    ✕ badge pinned to `#ability-wrap`'s top-right corner (styled from
+    scratch, overriding the generic `button` rule's rectangular-carved-
+    stone look — see its own comment in `style.css`). Clicking that badge
+    calls `cancelBackstab()`, which turns targeting back off **without**
+    spending any mana — the ability stays fully charged for later. This is
+    the same `#ability-wrap`-not-`#ability-btn` placement lesson as the
+    golden glow above: the ✕ needs to sit outside the button's own box, so
+    it can't live on the button itself.
+  - The `#room` click listener (`js/main.js`) checks
+    `state.rogueTargeting` first and, if set, routes the click to
+    `handleBackstabClick()` instead of the normal `handleCardClick()`.
+    Clicking a non-monster card while armed just shows a hint message and
+    changes nothing — only a monster is a valid target, and the ✕ badge
+    (not a stray card click) is the documented way to back out.
+    `handleBackstabClick()` still goes through the same
+    `enqueueRoomAction()` queue as every other room-card click, so it can't
+    interleave with an in-flight fight/equip/drink animation.
+  - `resolveBackstab(cardId)` (`js/state.js`) is what actually spends the
+    mana and turns targeting back off, then deals the hit via
+    `weakenMonster(card, 6)` — the same rank-reduction helper the Electric
+    weapon effect already used at amount 1 (generalized to take an
+    `amount` argument for this). Backstab **never removes a monster from
+    the room outright**, no matter how weak it already is —
+    `weakenMonster()`'s existing floor-at-1 behavior applies here exactly
+    like it does for Electric, so a monster at or below 6 just drops to
+    rank 1 and still needs to be fought/resolved normally afterward, same
+    as any other monster card. If an instant-kill-on-low-rank version is
+    ever wanted instead, that needs new logic (mirroring `resolveCard()`'s
+    room-refill/win-condition handling for an outright removal) — it
+    isn't what's implemented now.
+- **Herbalist's ability:** a flat one-shot heal — `useAbility()` heals
+  `min(3, maxHp - hp)` HP immediately, same clamped-at-max pattern as
+  `drinkPotion()`. Returns `{ message, healed }`, where `healed` is the
+  actual HP restored (0 if already at full HP) — the ability-button click
+  handler (`js/main.js`) reads that generic `healed` field (not a
+  Herbalist-specific check) to decide whether to play the usual HP-delta
+  float (`showHpDelta()`, the same one every other heal/damage source
+  uses) and `showAbilityHealBurst()`'s "+" particle flourish, the same
+  "state.js returns a flag, the UI reacts to the flag generically" pattern
+  `fightMonster()` already uses for `weakenedIds`/`shieldBlocked`. A future
+  healing ability should return `healed` the same way rather than
+  reinventing its own feedback path.
+  - **The particle burst:** `showAbilityHealBurst()` (`js/ui.js`) spawns
+    5-7 short-lived `.ability-heal-particle` "+" marks as children of
+    `#ability-wrap` (not `<body>` + `getBoundingClientRect()` like
+    `showCardDamage()` uses for room cards) — the ability button is a
+    permanent fixture `renderAll()` never tears down mid-animation, unlike
+    a room card, so there's no need for that workaround here. Each mark
+    gets a random angle/distance (as a % of `#ability-wrap`, so it scales
+    with the button at every breakpoint) and a small random animation
+    delay, so a burst never looks identical twice, then removes itself via
+    `setTimeout` once its `ability-heal-particle-float` animation finishes.
+- **Paladin's ability — "Blessing":** activating it sets
+  `state.paladinResistCharges = 3`. `fightMonster()` (`js/state.js`) then
+  reduces the next 3 hits that would deal any damage by 3 each (never below
+  0, and never counting a hit that was already fully stopped by the weapon
+  as one of the 3), decrementing the counter each time, applied right where
+  Berserker's passive flat reduction is (after the weapon/bare-handed damage
+  is known, before the shield block — a shield only ever blocks whatever's
+  still left over after this too; Berserker's own active ability, "Rage",
+  reuses this exact same spot too — see below). The counter hitting 0 is what ends the
+  effect; there's no separate timer or "3 more hits" any other way, so it
+  can span across fights, rooms, even a flee in between — only fights that
+  would otherwise deal damage burn a charge.
+  - **The golden "still active" glow** is `.ability-wrap--active` (a
+    pulsing `::after`, see the CSS for why it's opacity-only) toggled by
+    `renderAbilityActiveGlow()` (`js/ui.js`), purely off
+    `state.paladinResistCharges > 0` — no separate "is the buff active"
+    flag needed, the charge counter doubles as that flag. Called from
+    `renderAll()` and after anything that can change the counter: fighting
+    (`applyResolve()` in `js/main.js`) and activating the ability. A future
+    champion's own ongoing-effect indicator should extend this same
+    function rather than adding a parallel glow system.
+    - **Gotcha — this glow deliberately lives on `#ability-wrap`, not
+      `#ability-btn`:** `#ability-btn` is a real `<button>`, so it inherits
+      the generic `button { overflow: hidden; }` rule (used there to clip
+      that rule's own hover "sheen" sweep — see "buttons" further up in
+      `style.css`). An `::after` glow put on `#ability-btn` itself hits a
+      dead end either way: left as `overflow: hidden`, the glow's non-inset
+      `box-shadow` (which always paints outside its own box) gets silently
+      clipped away — it computes correctly (visible via `getComputedStyle`)
+      but never actually shows on screen. Overridden to
+      `overflow: visible` instead, the glow shows, but so does the
+      button's *own* hover sheen — normally invisible, parked off to the
+      left waiting to sweep across on hover — which now escapes its clip
+      too and reads as a stray bar sliding out from the button. Neither
+      option works, so the glow's `::after` was moved to `#ability-wrap`
+      instead: a plain `div` with no such baggage, sized/centered to match
+      the button (`--ability-size`) rather than `inset: 0` (which would
+      size it to the whole wrap, ring included). Any future glow/decoration
+      that needs to extend past a `<button>`'s own box should live on a
+      non-button ancestor the same way, not on the button itself.
+- **Berserker's ability — "Frenzy":** deliberately **not** another
+  damage-reduction counter — an earlier version ("Rage") reduced incoming
+  damage by 4 for 3 hits, the exact same mechanic as Paladin's Blessing
+  under different flavor text, which read as a reskin rather than a
+  distinct ability once actually played. Frenzy instead lifts a
+  *restriction* rather than reducing damage, so it occupies different
+  system space entirely:
+  - Activating it sets `state.berserkerFrenzyCharges = 3`.
+    `isWeaponUsableOn(card)` (`js/state.js`) then ignores
+    `weaponMaxMonster` (the "weapon can only be used again on a monster
+    weaker than the last one it defeated" degrade rule) entirely while
+    `berserkerFrenzyCharges > 0` — a fully degraded weapon can strike any
+    monster again, full stop.
+  - The charge ticks down on **every one of the next 3 weapon fights**,
+    whether or not the override was actually needed that particular fight
+    — a plain, predictable "next 3 weapon fights" counter. `fightMonster()`
+    still separately computes `frenzyOverrode` (from the pre-fight
+    `weaponMaxMonster` value, before it gets overwritten for the next
+    fight) purely to pick the right flavor text — "overpowered the
+    weapon's limit" when it was actually blocked, vs. a plainer "Frenzy is
+    active" when the swing would've been legal anyway — but `frenzyActive`
+    (just "was the weapon used while charges > 0") is what actually
+    decrements the counter.
+    - **Bug/gotcha, found via playtesting:** an earlier version *only*
+      decremented on a fight `frenzyOverrode` was true for (mirroring
+      Paladin's "only counts if there was actually damage to reduce"
+      rule), reasoning a charge shouldn't be "wasted" on a swing that was
+      already legal. This looked fine in isolated tests but broke in real
+      play: the very first frenzied kill of a strong monster sets
+      `weaponMaxMonster` (the ceiling) to that monster's high rank — same
+      formula as any other kill — which then makes the weapon legally
+      usable on almost everything for a long stretch afterward. The
+      restriction stops engaging, so the remaining charge(s) never get
+      spent, and the ability button/status line sit stuck showing e.g.
+      "1 left" indefinitely while the player keeps fighting freely — it
+      looks like the ability never expires. Reported by the player as "the
+      limit never goes away even though it still says 1 left" after
+      killing ~10 monsters. Fixed by making the charge unconditional (see
+      above) — **don't reintroduce an "only spend it when it mattered"
+      version of a fight-count-based charge** unless the countable event is
+      guaranteed to keep recurring at a steady rate; here it wasn't, because
+      using the ability changes the very condition (`weaponMaxMonster`)
+      that would trigger its own future use.
+  - The degrade ceiling (`weaponMaxMonster`) still updates normally after a
+    Frenzied swing (same Sturdy-aware formula as any other fight) — Frenzy
+    only lifts the restriction check for that one swing, it doesn't stop
+    the weapon from degrading. A later, non-Frenzied (or charge-exhausted)
+    swing still respects whatever ceiling that fight left behind.
+  - Same golden `.ability-wrap--active` glow as Paladin's Blessing —
+    `renderAbilityActiveGlow()` has an `||` branch for
+    `state.champion === 'berserker' && state.berserkerFrenzyCharges > 0` —
+    and the counter hitting 0 is what ends the effect, same "can span
+    fights/rooms/flees" behavior as Paladin's.
+  - `renderWeaponSlot()` (`js/ui.js`) also reflects Frenzy directly in
+    `#weapon-status`'s restriction line while active (`"Frenzy overrides
+    the degrade limit (N left)"` instead of the normal `"Can only defeat
+    monsters weaker than X"`), since that line would otherwise keep
+    claiming a restriction that doesn't currently apply. Called both from
+    the normal post-fight re-render and right after activating the ability
+    (`js/main.js`'s ability-button handler), so the status text updates
+    immediately on activation, not just after the next fight.
+  - **Lesson for future champion abilities:** if a new ability ends up
+    being "reduce/increase a number by X for N uses" in the same spot
+    another champion's ability already occupies, prefer lifting/granting a
+    *rule exception* instead (bypassing a restriction, changing what's
+    legal) so each champion's active ability is mechanically distinct, not
+    just reskinned flavor text over the same math.
+- **Mana cost per champion** — the numbers to tweak if these ever need
+  rebalancing — lives in one place: `ABILITY_MANA_COST` in
+  `js/ability-icons.js` (`abilityManaCostFor()` reads from it everywhere
+  else). Currently: Paladin 5, Herbalist 4, Rogue 3, Berserker 4.
+- **Ability name/description text** — the plain-language explanation shown
+  in both the rules screen and the info popup below — lives in one place
+  too: `ABILITY_DETAILS` in `js/ability-icons.js` (`abilityDetailsFor()`).
+  Keep this in sync with the actual mechanic whenever an ability's numbers
+  change (e.g. Blessing's "3" or Frenzy's "3 weapon fights") — same
+  "single source of truth, everything else reads from it" pattern as
+  `ABILITY_MANA_COST`.
+- **Rules screen:** `#rules`' Champions section (`index.html`) lists each
+  champion's passive **and** active ability together, one `<li>` per
+  champion — the passive on the first line (unchanged from before active
+  abilities existed), the active ability's name and effect on a second
+  line (`<br><em>Name</em> — effect...`). This text is written by hand to
+  match `ABILITY_DETAILS`, not generated from it (the rules screen is
+  static HTML, no JS render pass) — so a future ability change needs BOTH
+  `ABILITY_DETAILS` and this `<li>` updated together, the same
+  "don't let docs drift from the real mechanic" discipline the rest of the
+  rules text already follows for weapons/shields/etc.
+- **Ability info popup:** a small blue "i" badge, `#ability-info-btn`, is
+  pinned to `#ability-wrap`'s **bottom-right** corner (`#ability-cancel-btn`
+  — Rogue's Backstab ✕ — already owns the top-right corner, so the two
+  never collide; same "pin a small badge to the wrap, not the button
+  itself" placement pattern used throughout this section, just the
+  opposite corner). Hovering or focusing it reveals `#ability-info-popup`,
+  a small panel showing the current champion's active-ability name +
+  description (from `ABILITY_DETAILS` above). This one is pure CSS, no
+  click handler: `#ability-info-btn:hover + #ability-info-popup` /
+  `:focus + #ability-info-popup` (plus `#ability-info-popup:hover` so
+  moving the mouse from the badge into the popup itself doesn't instantly
+  close it) fades it in via opacity/visibility/transform, following the
+  same "don't animate layout-affecting properties" spirit as the rest of
+  the project's hover/pulse effects. `renderAbilityInfo()` (`js/ui.js`,
+  called from `renderAll()`) only fills in the popup's text and
+  shows/hides the badge itself (`.hidden` before any champion is picked)
+  — it doesn't need to be re-run after every action the way
+  `renderManaRing()`/`renderAbilityActiveGlow()` are, since the ability's
+  name/description never changes mid-game for a given champion.
+  - **Gotcha — the popup is anchored by its own right edge, not
+    centered:** `#ability-wrap` is the rightmost item in `#equipment-slots`
+    and sits close to the page's right edge on narrow screens. A popup
+    centered under/above the badge (`left: 50%; transform:
+    translateX(-50%)`) would risk overflowing off-screen there; anchoring
+    it with `right: 0` instead (so it only ever grows leftward from a
+    fixed point) keeps it fully on-screen regardless of where
+    `#ability-wrap` itself lands. Verified at both 1280×800 and a 375×812
+    mobile viewport — no off-screen overflow, no page-scroll overflow
+    (the popup is `position: absolute`, so it never affects layout/
+    `scrollHeight` either way). Any future hover popup pinned near a
+    page edge should anchor the same way rather than centering.
+- **Gaining mana:** `state.mana` (`js/state.js`) starts at 0 each game
+  (`initGame()`) and increases by 1 via `gainMana()` every time the room
+  changes — either a room clearing/refilling back up to 4 cards (called
+  from the room-refill branch in `resolveCard()`) or a successful flee
+  (called from `fleeRoom()`, only on the path that actually flees, not the
+  early-return "can't flee" messages). `gainMana()` clamps the result to
+  that champion's `ABILITY_MANA_COST` — mana doesn't keep climbing past the
+  cost, since nothing reads it past that point anyway (the ability is
+  simply usable, and stays usable, until spent).
+- **Spending mana:** `useAbility()` (`js/state.js`) is the only way
+  `state.mana` goes back to 0 — it requires `state.mana >= ABILITY_MANA_COST`
+  (returns `null`, changing nothing, otherwise) and is wired to a click on
+  `#ability-btn` in `js/main.js`.
+- **The mana ring** (`#mana-ring`, inside a new `#ability-wrap` that also
+  contains `#ability-btn`) is deliberately built to look like
+  `#champion-ability-bar`'s discrete filled/unfilled segments (see
+  "Champion-select screen" above) — same idea, just bent into a ring around
+  the ability button instead of a straight bar, and blue (`--mana-rgb` in
+  `style.css`) instead of green. `renderManaRing()` (`js/ui.js`) computes
+  one segment per point of `ABILITY_MANA_COST` (so 3-5 segments depending on
+  champion) as a single CSS `conic-gradient` — not one DOM element per
+  segment, since the segment count varies — with small angular gaps between
+  segments to read as discrete steps rather than one solid ring. The ring
+  sits *behind* the button (`z-index: 0` vs. the button's `1`) and is sized
+  bigger than it by `--ring-thickness` on every side, so the button's own
+  opaque circular background covers the ring's center and only its outer
+  rim shows — a plain CSS "sits behind + button covers the middle" trick
+  instead of a masked donut shape.
+  - **Gotcha (conic-gradient angles):** the segment loop must start at
+    `0deg` and only ever grow, never use a negative starting offset. CSS
+    `conic-gradient()`'s `0deg` already points straight up (12 o'clock) and
+    sweeps clockwise — unlike a math angle where `0deg` points right — so
+    there's no need to subtract 90° to "start at the top". An earlier
+    version started the loop at `-90deg` for that reason, which pushed
+    every stop into negative degrees; browsers clamp a stop position below
+    `0deg`, which silently cut off the last ~90° of the ring (it only ever
+    filled 3/4 of the way around, no matter how much mana was banked).
+    Keep every stop within `[0deg, 360deg]`.
+  - **Gotcha (hover lift must move the ring too):** the hover lift
+    (`translateY(-2px)`) is applied to `#ability-wrap`, the shared parent —
+    never to `#ability-btn` alone. `#mana-ring` and `#ability-btn` are two
+    separate absolutely-positioned children of that wrap; lifting only the
+    button used to slide it up away from a ring that stayed put, which
+    broke the "button covers the ring's center" illusion the instant you
+    hovered — you'd briefly see the ring's full circle, not just its rim,
+    in the gap the button left behind. Since `.ability-btn--disabled`
+    lives on the button but the hover rule needs to live on the wrap,
+    `renderManaRing()` mirrors that disabled state onto the wrap too as
+    `.ability-wrap--disabled`, so `#ability-wrap:hover:not(.ability-wrap--disabled)`
+    can gate the lift on readiness without a `:has()` selector. Any future
+    hover/lift effect on this button+ring pair should stay on the wrap for
+    the same reason.
+- **Disabled look:** `renderManaRing()` also toggles `.ability-btn--disabled`
+  (grayscale + dimmed, mirroring `.weapon-slot-inactive`) on `#ability-btn`
+  whenever `state.mana < ABILITY_MANA_COST` — the button looks and acts
+  normal (full color, hover lift) the instant enough mana is collected, and
+  stays that way until actually used, per the "usable any time once ready"
+  requirement (mana isn't spent just by *having* enough, only by clicking).
+- `renderManaRing()` is called from `renderAll()` (new game) and after
+  every action that can change `state.mana`: room clear/flee (via
+  `applyResolve()`/the flee button handler in `js/main.js`) and using the
+  ability itself.
+- `#ability-btn` is a circular button that sits immediately **right of the
+  weapon slot**, inside the same `#equipment-slots` row as the shield and
+  weapon slots (order: shield, weapon, ability) — deliberately circular
+  rather than another card shape, so it reads as a distinct "ability"
+  affordance instead of a third equip slot. It's sized off the same
+  `--card-scale`/`--weapon-slot-scale` tokens the other two slots use, so
+  it scales in step with them at every breakpoint (see "Responsive sizing"
+  above) — any future resize of the equip slots should keep the ability
+  button in that same proportion.
+- `renderAbilityButton()` (`js/ui.js`, called from `renderAll()`, same
+  pattern as `renderChampionBadge()`) fills `#ability-icon` with the
+  current champion's icon from `abilityIconFor()` in `js/ability-icons.js`
+  — a plain id → image-path lookup mirroring `champion-icons.js`.
+- Artwork lives at `images/abilities/<championId>.png`, cropped from a
+  user-supplied 1x4 sprite sheet (`images/AbilitiesIcons.jpeg`, kept as the
+  source reference: left to right, a radiant sunburst for Paladin, a
+  heart+cross for Herbalist, a dagger for Rogue, a clenched fist for
+  Berserker — the same order as `CHAMPIONS` in `js/champion-icons.js`).
+  Cropped with the same contrast-stretch alpha as the champion portraits
+  (see "Champion artwork" below) since this is thin line art, not a solid
+  silhouette fill. Unlike the champion portrait sheet, this sheet's four
+  icons were **not drawn at a consistent size** (the sunburst and fist are
+  visually much bigger than the dagger) — the crop step scaled each icon so
+  its longest side fills the same fraction of a shared square canvas before
+  centering it on that canvas, specifically so the button doesn't look like
+  it's showing a smaller icon for some champions than others. Apply the
+  same normalize-then-center-on-a-shared-canvas step to any future icon
+  sheet whose entries aren't already a consistent size.
+- Add a new champion's icon the same way the gallery/portrait art is kept
+  in sync (see "Keep the gallery in sync with the card/champion data"
+  above): add an entry to `ABILITY_ICONS` in `js/ability-icons.js` and
+  supply `images/abilities/<id>.png`, or leave it unmapped (falls back to
+  no icon shown) if the art isn't ready yet.
 
 ## Interaction design decisions
 

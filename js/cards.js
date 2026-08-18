@@ -1,15 +1,19 @@
 // ---------------------------------------------------------------------------
 // Scoundrel — card definitions
 //
-// Every one of the 44 base cards is listed individually below via makeCard().
-// This is intentional: it makes it easy to later customize, replace, or add
-// special-effect cards one at a time (e.g. give a single card a unique
-// `effect` hook) without touching a generation loop.
+// Every one of the 44 base cards, plus 3 custom shield cards on top (see
+// "Shields" further down — not part of the original Scoundrel deck), is
+// listed individually below via makeCard(). This is intentional: it makes
+// it easy to later customize, replace, or add special-effect cards one at a
+// time (e.g. give a single card a unique `effect` hook) without touching a
+// generation loop.
 //
 // Card shape:
 // {
 //   id:       unique string, e.g. "clubs-7"
-//   suit:     'clubs' | 'spades' | 'diamonds' | 'hearts'
+//   suit:     'clubs' | 'spades' | 'diamonds' | 'hearts' | 'shields'
+//             ('shields' is a custom addition on top of the standard 44-card
+//             deck, not a real playing-card suit — see "Shields" below.)
 //   rank:     2-14 (11=J, 12=Q, 13=K, 14=A). This is the card's CURRENT
 //             strength — some card effects can change it at runtime (e.g.
 //             the Electric weapon effect lowers a monster's rank). Always
@@ -21,7 +25,7 @@
 //             rank was lowered by an effect still shows as the same
 //             creature (e.g. a weakened Skeleton stays a Skeleton).
 //   label:    display text for the rank, e.g. "7", "J", "A"
-//   type:     'monster' | 'weapon' | 'potion'
+//   type:     'monster' | 'weapon' | 'potion' | 'shield'
 //   name:     human-readable name, e.g. "7 of Clubs"
 //   image:    path to card artwork, or null to fall back to the CSS
 //             placeholder. Swap this later (e.g. to a pixel-art sprite)
@@ -38,6 +42,11 @@ const SUITS = {
   SPADES: 'spades',
   DIAMONDS: 'diamonds',
   HEARTS: 'hearts',
+  // Custom addition on top of the standard 44-card deck — see "Shields"
+  // below. Not a real playing-card suit, just reuses the same suit/type
+  // plumbing so shield cards flow through makeCard()/renderCard() etc. like
+  // every other card.
+  SHIELDS: 'shields',
 };
 
 const SUIT_SYMBOLS = {
@@ -45,6 +54,7 @@ const SUIT_SYMBOLS = {
   spades: '♠',
   diamonds: '♦',
   hearts: '♥',
+  shields: '⛨',
 };
 
 // Plain numeric labels only (2-14) — no J/Q/K/A anywhere, per project
@@ -59,6 +69,7 @@ const RANK_LABELS = {
 function suitToType(suit) {
   if (suit === SUITS.CLUBS || suit === SUITS.SPADES) return 'monster';
   if (suit === SUITS.DIAMONDS) return 'weapon';
+  if (suit === SUITS.SHIELDS) return 'shield';
   return 'potion'; // hearts
 }
 
@@ -86,12 +97,13 @@ function makeCard(suit, rank, overrides = {}) {
     // js/weapon-icons.js for the name that goes with each rank.
     image: `images/${type}s/${rank}.png`,
     // The card border/glow color (see .card--tier-N in style.css), as
-    // "R, G, B" for use inside rgba(). Weapons default to white; monsters
-    // and potions get their color from the type-based CSS classes instead
-    // (.card--monster / .card--potion) and leave this null. This is what
-    // lets a *specific* card carry its own glow later — e.g. a fire weapon
-    // could override this to an orange glowRgb via `overrides` once
-    // per-card effects exist — without touching the shared tier system.
+    // "R, G, B" for use inside rgba(). Weapons default to white; monsters,
+    // potions, and shields get their color from the type-based CSS classes
+    // instead (.card--monster / .card--potion / .card--shield) and leave
+    // this null. This is what lets a *specific* card carry its own glow
+    // later — e.g. a fire weapon could override this to an orange glowRgb
+    // via `overrides` once per-card effects exist — without touching the
+    // shared tier system.
     glowRgb: type === 'weapon' ? '255, 255, 255' : null,
     effect: null,
     ...overrides,
@@ -151,10 +163,18 @@ const CARD_LIST = [
   makeCard(SUITS.HEARTS, 8),
   makeCard(SUITS.HEARTS, 9),
   makeCard(SUITS.HEARTS, 10),
+
+  // --- Shields (custom addition, not part of the standard 44-card deck —
+  // see js/state.js for the (currently unimplemented) equip mechanic and
+  // js/shield-icons.js for names/descriptions) ---
+  makeCard(SUITS.SHIELDS, 3),
+  makeCard(SUITS.SHIELDS, 4),
+  makeCard(SUITS.SHIELDS, 5),
 ];
 
-/** Returns a fresh copy of the 44-card deck (shallow-copied cards), so
- * runtime state never mutates the master CARD_LIST. */
+/** Returns a fresh copy of the 47-card deck (44 standard cards + 3 custom
+ * shield cards, shallow-copied), so runtime state never mutates the master
+ * CARD_LIST. */
 function getFreshDeck() {
   return CARD_LIST.map((card) => ({ ...card }));
 }

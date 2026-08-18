@@ -62,6 +62,53 @@ function runNextQueuedAction() {
   );
 }
 
+/** Handles a room-card click while Rogue's Backstab targeting mode
+ * (state.rogueTargeting) is active — routed here instead of
+ * handleCardClick() by the #room click listener further down. Only a
+ * monster is a valid target; clicking anything else just shows a hint and
+ * changes nothing (the ✕ badge, not a stray card click, is the way to back
+ * out — see the #ability-cancel-btn handler further down). Goes through
+ * the same action queue as every other room-card click (see
+ * enqueueRoomAction() above) so it can't interleave with an in-flight
+ * fight/equip/drink animation. */
+function handleBackstabClick(cardId) {
+  const card = state.room.find((c) => c.id === cardId);
+  if (!card) return;
+
+  if (card.type !== 'monster') {
+    renderMessage('Choose a monster to backstab, or click ✕ to cancel.');
+    return;
+  }
+
+  enqueueRoomAction((registerSpeedUp, onFinished) => {
+    const cardEl = document.querySelector(`.card[data-id="${cardId}"]`);
+    const result = resolveBackstab(cardId);
+    if (!result) {
+      onFinished();
+      return;
+    }
+
+    renderMessage(result.message);
+    renderManaRing();
+    renderRogueTargeting(); // clears the wiggle/✕ badge — targeting just ended
+    if (cardEl) {
+      showCardDamage(cardEl, -6);
+      cardEl.classList.add('card--shake');
+    }
+
+    // Same "let the shake play out on the still-live element before
+    // renderRoom() replaces it with a fresh one showing the new number" idea
+    // as the Electric weapon effect's weakenedIds feedback in applyResolve().
+    const fadeTimer = speedableTimeout(() => {
+      renderRoom();
+      renderDeckCount();
+      renderFleeButton();
+      onFinished();
+    }, CARD_ANIMATION_MS);
+    registerSpeedUp(fadeTimer.speedUp);
+  });
+}
+
 function handleCardClick(cardId) {
   if (state.gameOver) return;
   // Validate against the room now, at click time — a click on a card that's
@@ -80,6 +127,22 @@ function handleCardClick(cardId) {
     // Weapons fly into the weapon slot instead of fading down like other cards.
     if (card.type === 'weapon') {
       const ctl = animateWeaponToSlot(cardEl, () => {
+        applyResolve(cardId, {});
+        renderRoom();
+        renderDeckCount();
+        renderFleeButton();
+        renderGameOverBanner();
+        onFinished();
+      });
+      registerSpeedUp(ctl.speedUp);
+      return;
+    }
+
+    // Shields fly into the shield slot the same way weapons fly into theirs
+    // (see equipShield()/fightMonster() in js/state.js for the actual
+    // block/durability logic).
+    if (card.type === 'shield') {
+      const ctl = animateShieldToSlot(cardEl, () => {
         applyResolve(cardId, {});
         renderRoom();
         renderDeckCount();
@@ -110,8 +173,24 @@ function applyResolve(cardId, options) {
   renderHp();
   showHpDelta(state.hp - hpBefore);
   renderWeaponSlot();
+
+  // Shield block feedback: a broken shield needs its shatter animation
+  // played BEFORE renderShieldSlot() draws the now-empty slot (the shards
+  // are clones of the slot's current, pre-render card face — see
+  // animateShieldShatter() in js/ui.js) — renderShieldSlot() only runs
+  // once the shards are done flying. A surviving shield just re-renders
+  // immediately (showing its lowered durability) and shakes on top of it.
+  if (result.shieldBroke) {
+    animateShieldShatter(() => renderShieldSlot());
+  } else {
+    renderShieldSlot();
+    if (result.shieldBlocked) animateShieldShake();
+  }
+
   renderMessage(result.message);
   renderChampionAbilityBar({ animateHeal: !!result.paladinCycleComplete });
+  renderManaRing(); // a room-clear (see resolveCard() in js/state.js) may have granted mana
+  renderAbilityActiveGlow(); // a fight may have burned a Paladin/Berserker charge
 
   // Electric weapon effect: play a "-1" + shake on each monster it weakened,
   // while their card elements are still the ones actually in the DOM.
@@ -234,6 +313,15 @@ document.getElementById('room').addEventListener('click', (event) => {
   }
   const cardEl = event.target.closest('.card');
   if (!cardEl) return;
+
+  // Rogue's Backstab targeting mode intercepts every room-card click while
+  // active — see handleBackstabClick() above and useAbility()/
+  // cancelBackstab()/resolveBackstab() in js/state.js.
+  if (state.rogueTargeting) {
+    handleBackstabClick(cardEl.dataset.id);
+    return;
+  }
+
   handleCardClick(cardEl.dataset.id);
 });
 
@@ -249,9 +337,52 @@ document.getElementById('flee-btn').addEventListener('click', () => {
   if (!result) return;
   renderMessage(result.message);
   renderRoom();
+  renderRogueTargeting(); // new room's monsters need the wiggle too, if still armed
   renderDeckCount();
   renderFleeButton();
   renderChampionAbilityBar();
+  renderManaRing(); // a successful flee (see fleeRoom() in js/state.js) grants mana
+});
+
+// Champion active ability — see useAbility() in js/state.js. Only usable
+// once renderManaRing() has removed .ability-btn--disabled (enough mana
+// collected); useAbility() itself re-checks this and returns null otherwise,
+// so a stale/disabled click here is silently a no-op either way.
+document.getElementById('ability-btn').addEventListener('click', () => {
+  const hpBefore = state.hp;
+  const result = useAbility();
+  if (!result) return;
+  renderMessage(result.message);
+  renderManaRing();
+  renderAbilityActiveGlow(); // e.g. Paladin's blessing just turned on
+  renderWeaponSlot(); // Berserker's Frenzy changes the weapon-status line immediately
+
+  // Herbalist (or any future ability that heals): same before/after HP-delta
+  // feedback every other heal already gets, plus a little "+" particle burst
+  // around the button itself — see useAbility()'s `healed` return value.
+  if (state.hp !== hpBefore) {
+    renderHp();
+    showHpDelta(state.hp - hpBefore);
+  }
+  if (result.healed > 0) {
+    showAbilityHealBurst();
+  }
+
+  // Rogue's Backstab just armed itself (targeting: true) — wiggle every
+  // monster in the room and show the ✕ cancel badge.
+  if (result.targeting) {
+    renderRogueTargeting();
+  }
+});
+
+// The ✕ badge next to the ability button — the only way to back out of
+// Rogue's Backstab targeting mode (see useAbility() in js/state.js) without
+// spending the mana it cost to arm it.
+document.getElementById('ability-cancel-btn').addEventListener('click', () => {
+  const result = cancelBackstab();
+  if (!result) return;
+  renderMessage(result.message);
+  renderRogueTargeting();
 });
 
 document.getElementById('weapon-toggle').addEventListener('change', (event) => {
@@ -265,6 +396,15 @@ document.getElementById('weapon-toggle').addEventListener('change', (event) => {
 document.getElementById('new-game-btn').addEventListener('click', openChampionSelect);
 document.getElementById('play-again-btn').addEventListener('click', openChampionSelect);
 document.getElementById('start-new-game-btn').addEventListener('click', openChampionSelect);
+
+document.getElementById('gameover-menu-btn').addEventListener('click', () => {
+  // Leaving via the win/lose banner doesn't reset state.gameOver, so the
+  // banner itself must be hidden explicitly here — otherwise it stays
+  // stacked on top of the start screen (showStartScreen() only toggles
+  // #start-screen/#game-screen, it doesn't touch #gameover-overlay).
+  document.getElementById('gameover-overlay').classList.add('hidden');
+  showStartScreen();
+});
 
 document.getElementById('back-to-menu-btn').addEventListener('click', () => {
   closeMenu();
@@ -309,6 +449,7 @@ function closeGallery() {
 document.getElementById('champions-btn').addEventListener('click', () => openGallery('champions'));
 document.getElementById('weapons-btn').addEventListener('click', () => openGallery('weapons'));
 document.getElementById('monsters-btn').addEventListener('click', () => openGallery('monsters'));
+document.getElementById('shields-btn').addEventListener('click', () => openGallery('shields'));
 document.getElementById('anleitung-btn').addEventListener('click', () => openMenu(false));
 
 document.getElementById('gallery-close-btn').addEventListener('click', closeGallery);

@@ -52,6 +52,8 @@
      class-level fallback for a weapon card that somehow has none. */
   --weapon-rgb: 255, 255, 255;
   --potion-rgb: 179, 40, 61;
+  --shield-rgb: 122, 147, 168;
+  --mana-rgb: 61, 133, 224;
 
   --radius: 0.5rem;
 
@@ -951,6 +953,39 @@ button:disabled::before {
   animation: hp-float-down 1.1s ease-out forwards;
 }
 
+/* Herbalist's ability heal burst — a handful of these "+" marks spawned by
+   showAbilityHealBurst() (js/ui.js) at random positions around
+   #ability-btn, each fading up and out on its own short timer. `left`/`top`
+   are set per-mark (inline, as a % of #ability-wrap) rather than fixed
+   here, so every mark ends up scattered instead of stacked in one spot. */
+.ability-heal-particle {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  color: var(--success);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  z-index: 2;
+  animation: ability-heal-particle-float 0.75s ease-out forwards;
+}
+
+@keyframes ability-heal-particle-float {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% - 0.9rem)) scale(0.9);
+  }
+}
+
 /* Capped to 2 lines (with ellipsis) so a long fight/flee message can never
    push the page taller and cause scrolling — height stays predictable. */
 #message {
@@ -1080,6 +1115,61 @@ button:disabled::before {
   animation: card-shake 0.3s ease-in-out;
 }
 
+/* Rogue's Backstab targeting mode: every monster in the room wiggles
+   continuously (renderRogueTargeting() in js/ui.js toggles this class on
+   #room .card--monster while state.rogueTargeting is true) so it's obvious
+   a target needs to be picked. Reuses card-shake's translateX-only
+   approach (never rotate/scale — see that keyframe's own comment for why:
+   it keeps the bottom value label from drifting), just looped instead of
+   playing once. */
+@keyframes card-target-wiggle {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+
+.card--targetable {
+  animation: card-target-wiggle 0.5s ease-in-out infinite;
+}
+
+/* Shield shatter: played by animateShieldShatter() (js/ui.js) when a shield
+   breaks. A fixed-position container sits exactly over the (now-hidden)
+   shield slot; each .shield-shard is a full clone of the slot clipped to
+   one pie slice via clip-path (set inline, per-shard, in JS) so together
+   they reconstruct the whole card, then fly outward and fade — the
+   --shatter-* custom properties (also set inline per shard) are each
+   shard's own direction/rotation, computed from its slice's angle. */
+.shield-shatter-container {
+  position: fixed;
+  z-index: 80;
+  pointer-events: none;
+}
+
+.shield-shard {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  animation: shield-shard-fly 0.55s cubic-bezier(0.3, 0.6, 0.4, 1) forwards;
+}
+
+@keyframes shield-shard-fly {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--shatter-dx), var(--shatter-dy)) rotate(var(--shatter-rot));
+    opacity: 0;
+  }
+}
+
 /* Suit color (matches normal playing-card convention) */
 .card[data-suit='clubs'],
 .card[data-suit='spades'] {
@@ -1110,6 +1200,10 @@ button:disabled::before {
 
 .card--potion {
   --edge-rgb: var(--potion-rgb);
+}
+
+.card--shield {
+  --edge-rgb: var(--shield-rgb);
 }
 
 /* --- strength tiers ---------------------------------------------------
@@ -1269,7 +1363,7 @@ button:disabled::before {
   height: 100%;
 }
 
-/* --- weapon slot / toggle -------------------------------------------------- */
+/* --- weapon/shield slots / toggle ------------------------------------------- */
 
 #weapon-area {
   display: flex;
@@ -1278,46 +1372,340 @@ button:disabled::before {
   gap: calc(0.3rem + 0.3rem * var(--card-scale));
 }
 
-/* The slot reuses .card sizing/layout, but at a smaller scale than room
-   cards (--weapon-slot-scale on top of --card-scale) — it's a supporting
-   element, not the main focus, so shrinking it a bit saves vertical space.
-   When empty it's a plain dashed outline with a sword icon; when filled it
-   looks like a normal card (see fillCardFace() in ui.js, which reuses the
-   same card-face markup/classes, overridden smaller below). */
-#weapon-slot-card {
+/* Shield slot sits to the left of the weapon slot, same size, same gap idea
+   as the rest of the page's sizing. Shields currently have no gameplay
+   effect (see equipShield() in js/state.js) — this is purely the equip
+   animation + display, functionality is a planned follow-up. */
+#equipment-slots {
+  display: flex;
+  align-items: center;
+  gap: calc(0.3rem + 0.3rem * var(--card-scale));
+}
+
+/* Both slots reuse .card sizing/layout, but at a smaller scale than room
+   cards (--weapon-slot-scale on top of --card-scale) — they're supporting
+   elements, not the main focus, so shrinking them a bit saves space. When
+   empty each is a plain dashed outline with an icon; when filled it looks
+   like a normal card (see fillCardFace() in ui.js, which reuses the same
+   card-face markup/classes, overridden smaller below). */
+#weapon-slot-card,
+#shield-slot-card {
   width: calc(100px * var(--card-scale) * var(--weapon-slot-scale));
   height: calc(140px * var(--card-scale) * var(--weapon-slot-scale));
   padding: calc(8px * var(--card-scale) * var(--weapon-slot-scale)) 0;
   border-top-width: calc(4px * var(--card-scale) * var(--weapon-slot-scale));
 }
 
-#weapon-slot-card .card-suit-symbol {
+#weapon-slot-card .card-suit-symbol,
+#shield-slot-card .card-suit-symbol {
   font-size: calc(33.6px * var(--card-scale) * var(--weapon-slot-scale));
 }
 
-#weapon-slot-card .card-value-label {
+#weapon-slot-card .card-value-label,
+#shield-slot-card .card-value-label {
   font-size: calc(22px * var(--card-scale) * var(--weapon-slot-scale));
 }
 
-#weapon-slot-card .card-image {
+#weapon-slot-card .card-image,
+#shield-slot-card .card-image {
   height: calc(78px * var(--card-scale) * var(--weapon-slot-scale));
 }
 
-.weapon-slot-empty {
+.weapon-slot-empty,
+.shield-slot-empty {
   background: transparent;
   border: 2px dashed var(--border);
   box-shadow: none;
   cursor: default;
 }
 
-.weapon-slot-empty:hover {
+.weapon-slot-empty:hover,
+.shield-slot-empty:hover {
   box-shadow: none;
   transform: none;
 }
 
-.sword-icon {
+.sword-icon,
+.shield-icon {
   font-size: calc(36.8px * var(--card-scale) * var(--weapon-slot-scale));
   color: var(--text-muted);
+}
+
+/* Champion active-ability button — sits to the right of the weapon slot,
+   inside #equipment-slots. Deliberately circular rather than another card
+   shape, so it reads as a distinct "ability" affordance instead of a third
+   equip slot. #ability-wrap exists purely to size/position the circular
+   mana-ring gauge (#mana-ring, see below) relative to the button without
+   disturbing #equipment-slots' own flex layout — --ability-size/
+   --ring-thickness are custom properties set here and read by both the
+   button and the ring (custom properties inherit to descendants), so the
+   two always stay concentric. Everything is still driven off the same
+   --card-scale/--weapon-slot-scale tokens the weapon/shield slots use, so
+   the whole group scales together at every breakpoint. Icon artwork is
+   filled in by renderAbilityButton() (js/ui.js) from js/ability-icons.js;
+   the mana ring by renderManaRing() (js/ui.js) — see "Champion Active
+   Abilities" in CLAUDE.md. The ability's actual gameplay effect is still a
+   planned follow-up — only the mana-gating/reset plumbing exists so far. */
+#ability-wrap {
+  --ability-size: calc(100px * var(--card-scale) * var(--weapon-slot-scale));
+  --ring-thickness: calc(10px * var(--card-scale) * var(--weapon-slot-scale));
+  position: relative;
+  width: calc(var(--ability-size) + 2 * var(--ring-thickness));
+  height: calc(var(--ability-size) + 2 * var(--ring-thickness));
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+/* The hover lift is applied to the whole wrap, not just #ability-btn —
+   #mana-ring and #ability-btn are two separate absolutely-positioned
+   children, so transforming the button alone used to slide it up away from
+   a ring that stayed put, briefly exposing the ring's full circle (not
+   just its rim) in the gap left behind. Moving the shared parent instead
+   keeps the button centered on the ring at every point of the lift, so the
+   button-covers-the-center illusion holds throughout the hover animation,
+   not just at rest. renderManaRing() (js/ui.js) mirrors #ability-btn's
+   .ability-btn--disabled onto the wrap as .ability-wrap--disabled so this
+   selector can gate the lift on ability-readiness without a :has(). */
+#ability-wrap:hover:not(.ability-wrap--disabled) {
+  transform: translateY(-2px);
+}
+
+/* Sized to fill #ability-wrap (button + ring-thickness on every side) and
+   painted with a segmented conic-gradient by renderManaRing() — sitting
+   behind the button (z-index 0 vs. the button's 1), so only the ring's
+   outer rim ever shows past the button's own opaque circular background,
+   like a washer. The constant glow reads as "this is a resource gauge",
+   matching the pulsing glows used elsewhere for cards (see CLAUDE.md's
+   "Pulsing glows" note) without needing per-segment box-shadows, which a
+   single gradient background can't do. */
+#mana-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  z-index: 0;
+  filter: drop-shadow(0 0 0.25rem rgba(var(--mana-rgb), 0.55));
+}
+
+#ability-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: var(--ability-size);
+  height: var(--ability-size);
+  z-index: 1;
+  border-radius: 50%;
+  background: var(--card-bg);
+  border: calc(2px * var(--card-scale) * var(--weapon-slot-scale)) solid var(--accent);
+  padding: calc(14px * var(--card-scale) * var(--weapon-slot-scale));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.25s ease, opacity 0.25s ease;
+}
+
+/* Only the glow lives here — the actual lift is #ability-wrap's (see
+   above), so the ring rises together with the button instead of the button
+   sliding off on its own. */
+#ability-wrap:hover:not(.ability-wrap--disabled) #ability-btn {
+  box-shadow: 0 0 0.6rem rgba(217, 164, 65, 0.5);
+}
+
+/* Not enough mana yet to use the ability — same grayscale-and-dim treatment
+   as .weapon-slot-inactive below, and not clickable-looking.
+   renderManaRing() (js/ui.js) toggles this class off again the instant mana
+   reaches the champion's ABILITY_MANA_COST. */
+#ability-btn.ability-btn--disabled {
+  filter: grayscale(1);
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Rogue's Backstab cancel badge — a small ✕ pinned to #ability-wrap's
+   top-right corner (not #ability-btn itself, same reasoning as the golden
+   glow above: keep anything that needs to sit outside a real <button>'s
+   own box off of that button). Shown only while state.rogueTargeting is
+   true (toggled by renderRogueTargeting() in js/ui.js) as the one way to
+   back out of targeting mode without spending mana. Every property here is
+   overridden from the generic `button` rule further up in this file
+   (padding, size, shape, color, hover) since that rule's carved-stone
+   rectangular-button look doesn't fit a tiny round badge. */
+#ability-cancel-btn {
+  position: absolute;
+  top: -0.3rem;
+  right: -0.3rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  background: var(--danger);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+#ability-cancel-btn.hidden {
+  display: none;
+}
+
+#ability-cancel-btn:hover:not(:disabled) {
+  transform: none;
+  background: #d64a3a;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+#ability-cancel-btn::before {
+  content: none;
+}
+
+/* Ability info badge — a small blue "i" circle pinned to #ability-wrap's
+   bottom-right corner (mirrors #ability-cancel-btn's placement/reasoning
+   above, just the opposite corner so the two never collide: Backstab's ✕
+   only shows during targeting, this "i" is always available). A plain div,
+   not a <button> — it's a hover/focus target, not something you click to
+   trigger an action, so it deliberately skips the generic `button` rule's
+   carved-stone look and hover-lift entirely. Colored with --mana-rgb (the
+   same blue as the mana ring) since it's specifically explaining the
+   mana-costed ability, not a generic "help" affordance. */
+#ability-info-btn {
+  position: absolute;
+  bottom: -0.3rem;
+  right: -0.3rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  background: rgb(var(--mana-rgb));
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-style: italic;
+  font-size: 0.7rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  cursor: help;
+  z-index: 3;
+  user-select: none;
+}
+
+#ability-info-btn.hidden {
+  display: none;
+}
+
+#ability-info-btn:hover,
+#ability-info-btn:focus {
+  background: #4f95ef;
+  outline: none;
+}
+
+/* The popup itself: hidden by default (opacity/visibility, not display, so
+   the fade transition can run), shown by the adjacent-sibling hover/focus
+   selector below. Anchored by its own right edge (not centered via
+   left: 50%) because #ability-wrap is the rightmost item in #equipment-slots
+   and sits close to the right edge of the page on narrow screens — a
+   centered popup would risk overflowing off-screen there, but one that only
+   grows leftward from a fixed right edge stays on-screen regardless of
+   #ability-wrap's own position. Positioned above the wrap (bottom: 100%),
+   not below, since #equipment-slots already sits low on the page. */
+#ability-info-popup {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  right: 0;
+  width: max-content;
+  max-width: min(13rem, 60vw);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  padding: 0.5rem 0.65rem;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--text);
+  text-align: left;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  pointer-events: none;
+  z-index: 50;
+}
+
+#ability-info-name {
+  font-family: var(--font-ui);
+  color: var(--accent);
+  margin-bottom: 0.2rem;
+  font-size: 0.8rem;
+}
+
+/* :hover/:focus on the badge shows the popup; :hover on the popup itself
+   keeps it open too, so moving the mouse from the badge into the popup
+   (e.g. to read a longer description) doesn't immediately close it. */
+#ability-info-btn:hover + #ability-info-popup,
+#ability-info-btn:focus + #ability-info-popup,
+#ability-info-popup:hover {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Golden "still active" pulse — shown while a champion's active ability has
+   an ongoing effect running (currently just Paladin's 3-hit damage
+   resistance, see paladinResistCharges in js/state.js and
+   renderAbilityActiveGlow() in js/ui.js; add a future champion's own
+   ongoing-effect flag to that function's condition the same way). Follows
+   the codebase's standing "animate opacity on a ::after, never box-shadow
+   directly" rule for pulsing glows (see CLAUDE.md's "Pulsing glows" note
+   under Monster artwork) — a fixed peak-glow box-shadow lives on the
+   pseudo-element and only its opacity animates, so the pulse stays
+   compositor-only/smooth instead of forcing a repaint every frame.
+   Deliberately lives on #ability-wrap, not #ability-btn: #ability-btn is a
+   real <button>, and the generic `button` selector (further up in this
+   file) sets `overflow: hidden` on every button to clip its own hover
+   "sheen" sweep. Putting the glow's ::after there too meant it either got
+   silently clipped (with the default hidden), or — the first attempted
+   fix — overriding that button's `overflow: visible` also un-clipped its
+   sheen sweep, which then showed up as a stray bar sliding out from the
+   button on hover. #ability-wrap is a plain div with no such baggage, so
+   the glow sits there instead, sized/centered to match the button
+   (--ability-size, inherited from #ability-wrap itself) rather than using
+   `inset: 0` (which would size it to the whole wrap, ring included). */
+.ability-wrap--active::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--ability-size);
+  height: var(--ability-size);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  box-shadow: 0 0 0.9rem rgba(217, 164, 65, 0.9), 0 0 1.5rem rgba(217, 164, 65, 0.55);
+  opacity: 0;
+  animation: ability-active-glow 1.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes ability-active-glow {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+
+.ability-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 /* Applied whenever the "Using weapon" toggle is off, so the equipped weapon

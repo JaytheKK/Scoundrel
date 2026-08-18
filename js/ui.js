@@ -61,6 +61,7 @@ function flavorNameFor(card) {
   if (card.type === 'monster') return monsterNameFor(card.baseRank);
   if (card.type === 'potion') return potionNameFor(card.baseRank);
   if (card.type === 'weapon') return weaponNameFor(card.baseRank);
+  if (card.type === 'shield') return shieldNameFor(card.baseRank);
   return null;
 }
 
@@ -145,6 +146,146 @@ function renderChampionBadge() {
   const champ = championById(state.champion);
   fillPortrait(badge, champ && champ.image, champ && champ.name, champ ? champ.name.charAt(0) : '?');
   badge.title = champ ? `${champ.name} — ${champ.description}` : '';
+}
+
+/** Fills #ability-btn with the current champion's active-ability icon (see
+ * js/ability-icons.js). Called from renderAll(), same pattern as
+ * renderChampionBadge(). This just keeps the icon in sync with whichever
+ * champion startNewGame() picked — the button's enabled/disabled look and
+ * mana ring are renderManaRing()'s job, below. */
+function renderAbilityButton() {
+  const icon = document.getElementById('ability-icon');
+  const champ = championById(state.champion);
+  const src = champ ? abilityIconFor(champ.id) : null;
+  if (src) {
+    icon.src = src;
+    icon.alt = champ.name;
+  } else {
+    icon.removeAttribute('src');
+    icon.alt = '';
+  }
+  document.getElementById('ability-btn').title = champ
+    ? `${champ.name}'s ability (${abilityManaCostFor(champ.id)} mana)`
+    : '';
+}
+
+/** Fills the #ability-info-btn hover popup with the current champion's
+ * active-ability name/description (js/ability-icons.js's ABILITY_DETAILS),
+ * and hides the whole badge before any champion is picked (nothing to
+ * explain yet). Called from renderAll(), same pattern as
+ * renderAbilityButton() right above it — this just keeps the popup's text
+ * in sync with whichever champion is active; showing/hiding the popup
+ * itself on hover/focus is pure CSS (see #ability-info-popup in
+ * style.css), no JS needed for that part. */
+function renderAbilityInfo() {
+  const btn = document.getElementById('ability-info-btn');
+  const details = state.champion ? abilityDetailsFor(state.champion) : null;
+  btn.classList.toggle('hidden', !details);
+  document.getElementById('ability-info-name').textContent = details ? details.name : '';
+  document.getElementById('ability-info-text').textContent = details ? details.description : '';
+}
+
+/** Returns { total, filled } describing the current champion's active-
+ * ability mana gauge (total = ABILITY_MANA_COST, filled = state.mana,
+ * already clamped by gainMana() in js/state.js), or null before a champion
+ * is picked. Mirrors championAbilityProgress()'s shape above, just for the
+ * mana ring instead of the passive-progress bar. */
+function abilityManaProgress() {
+  if (!state.champion) return null;
+  return { total: abilityManaCostFor(state.champion), filled: state.mana };
+}
+
+/** Paints #mana-ring's segmented, blue conic-gradient gauge around
+ * #ability-btn and toggles the disabled/greyed-out look
+ * (.ability-btn--disabled / .ability-wrap--disabled, see style.css) until
+ * enough mana is filled — both classes are kept in sync since style.css's
+ * hover-lift is scoped to #ability-wrap (so the ring rises together with
+ * the button instead of the button sliding off it alone) but still needs
+ * to know whether the ability is actually usable. Mirrors
+ * renderChampionAbilityBar()'s discrete filled/unfilled segments — same
+ * idea, just bent into a ring instead of a straight bar, and blue (mana)
+ * instead of green (passive progress). A single conic-gradient (computed
+ * here, not one DOM element per segment) is used because the segment count
+ * varies by champion (3-5, see ABILITY_MANA_COST). Called from renderAll()
+ * and after every mana-changing action (room clear, flee, ability use). */
+function renderManaRing() {
+  const wrap = document.getElementById('ability-wrap');
+  const ring = document.getElementById('mana-ring');
+  const btn = document.getElementById('ability-btn');
+  const progress = abilityManaProgress();
+
+  if (!progress || progress.total <= 0) {
+    ring.style.background = 'none';
+    btn.classList.add('ability-btn--disabled');
+    wrap.classList.add('ability-wrap--disabled');
+    return;
+  }
+
+  const { total, filled } = progress;
+  const segAngle = 360 / total;
+  const gap = Math.min(6, segAngle * 0.25);
+  // conic-gradient's own 0deg already points straight up (12 o'clock) and
+  // sweeps clockwise, unlike a math angle where 0deg points right — an
+  // earlier version started this loop at -90deg to "start at the top",
+  // which was redundant AND pushed every stop into negative degrees.
+  // Negative stop positions get clamped by the browser, which silently cut
+  // the last ~90deg off the ring (it only ever reached 3/4 of the way
+  // around). Stops must stay within [0deg, 360deg] — start at 0 instead,
+  // and the ring already starts at the top for free. The tiny leading
+  // transparent sliver keeps the seam between the last and first segment
+  // the same width as every other inter-segment gap.
+  const stops = [`transparent 0deg ${gap / 2}deg`];
+  let angle = 0;
+  for (let i = 0; i < total; i++) {
+    const start = angle + gap / 2;
+    const end = angle + segAngle - gap / 2;
+    const color = i < filled ? 'rgb(var(--mana-rgb))' : 'rgba(255, 255, 255, 0.08)';
+    stops.push(`${color} ${start}deg ${end}deg`);
+    stops.push(`transparent ${end}deg ${angle + segAngle}deg`);
+    angle += segAngle;
+  }
+  ring.style.background = `conic-gradient(${stops.join(', ')})`;
+
+  const disabled = filled < total;
+  btn.classList.toggle('ability-btn--disabled', disabled);
+  wrap.classList.toggle('ability-wrap--disabled', disabled);
+}
+
+/** Toggles #ability-wrap's pulsing golden .ability-wrap--active glow (see
+ * style.css) while the current champion's active ability has an ongoing
+ * effect running — Paladin's paladinResistCharges (counts down as he takes
+ * reduced-damage hits) or Berserker's berserkerFrenzyCharges (counts down
+ * as his weapon ignores its degrade limit, see fightMonster() in
+ * js/state.js) — either way the glow disappears the instant its counter
+ * hits 0. Lives on #ability-wrap rather than #ability-btn itself — see the
+ * comment on .ability-wrap--active::after in style.css for why (short
+ * version: #ability-btn is a real <button> and clips its own glow, or its
+ * own hover sheen leaks out, depending on which way that gets fixed). A
+ * future champion with its own ongoing-effect state should add another `||`
+ * branch here the same way rather than a whole parallel function. Called
+ * from renderAll() and after every action that can change an ongoing-effect
+ * counter (currently: fighting a monster, via applyResolve() in js/main.js,
+ * and activating the ability itself). */
+function renderAbilityActiveGlow() {
+  const active =
+    (state.champion === 'paladin' && state.paladinResistCharges > 0) ||
+    (state.champion === 'berserker' && state.berserkerFrenzyCharges > 0);
+  document.getElementById('ability-wrap').classList.toggle('ability-wrap--active', active);
+}
+
+/** Reflects Rogue's Backstab targeting mode (state.rogueTargeting) in the
+ * room and on the ability button: every monster currently in #room gets
+ * .card--targetable (a continuous wiggle, see style.css) so it's obvious a
+ * target needs to be picked, and #ability-cancel-btn (the ✕ badge) is
+ * shown/hidden to match. Called from renderAll() and after anything that
+ * can change state.rogueTargeting: arming it (the ability-button click
+ * handler), canceling it, and resolving a Backstab — all in js/main.js. */
+function renderRogueTargeting() {
+  const targeting = !!state.rogueTargeting;
+  document.querySelectorAll('#room .card--monster').forEach((el) => {
+    el.classList.toggle('card--targetable', targeting);
+  });
+  document.getElementById('ability-cancel-btn').classList.toggle('hidden', !targeting);
 }
 
 /** Returns { total, filled, label } describing the current champion's
@@ -278,6 +419,37 @@ function showCardDamage(cardEl, delta) {
   setTimeout(() => el.remove(), HP_FLOAT_MS);
 }
 
+// Keep in sync with the animation-duration on .ability-heal-particle in style.css.
+const ABILITY_HEAL_PARTICLE_MS = 750;
+
+/** Spawns a handful of small "+" marks scattered randomly around
+ * #ability-btn and fading up/out over ABILITY_HEAL_PARTICLE_MS — a quick,
+ * silly little "heal burst" played whenever using the ability actually
+ * restores HP (currently just Herbalist's, see useAbility()'s `healed`
+ * return value in js/state.js). Appended as children of #ability-wrap
+ * (which is already `position: relative`) rather than <body> +
+ * getBoundingClientRect like showCardDamage() — unlike a room card, the
+ * ability button is a permanent fixture that renderAll() never tears down
+ * mid-animation, so there's no need for that workaround here. */
+function showAbilityHealBurst() {
+  const wrap = document.getElementById('ability-wrap');
+  const count = 5 + Math.floor(Math.random() * 3); // 5-7 marks
+  for (let i = 0; i < count; i++) {
+    const mark = document.createElement('span');
+    mark.className = 'ability-heal-particle';
+    mark.textContent = '+';
+    // Scattered in a ring around the button, at a random angle/distance so
+    // every burst looks a little different rather than a fixed pattern.
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 45 + Math.random() * 35; // % of #ability-wrap's own size
+    mark.style.left = `${50 + Math.cos(angle) * distance}%`;
+    mark.style.top = `${50 + Math.sin(angle) * distance}%`;
+    mark.style.animationDelay = `${Math.random() * 150}ms`;
+    wrap.appendChild(mark);
+    setTimeout(() => mark.remove(), ABILITY_HEAL_PARTICLE_MS + 150);
+  }
+}
+
 function renderWeaponSlot() {
   const slot = document.getElementById('weapon-slot-card');
   const status = document.getElementById('weapon-status');
@@ -304,12 +476,47 @@ function renderWeaponSlot() {
   } else if (!state.equippedWeapon) {
     status.textContent = 'No weapon equipped';
   } else {
+    // Berserker's Frenzy (see fightMonster()/isWeaponUsableOn() in
+    // js/state.js) lifts the degrade restriction entirely while active —
+    // reflect that here too, so this line doesn't keep claiming a
+    // restriction that currently doesn't apply.
+    const frenzied = state.champion === 'berserker' && state.berserkerFrenzyCharges > 0;
     const restriction =
-      state.weaponMaxMonster === null
-        ? 'Can defeat any monster'
-        : `Can only defeat monsters weaker than ${state.weaponMaxMonster}`;
+      frenzied
+        ? `Frenzy overrides the degrade limit (${state.berserkerFrenzyCharges} left)`
+        : state.weaponMaxMonster === null
+          ? 'Can defeat any monster'
+          : `Can only defeat monsters weaker than ${state.weaponMaxMonster}`;
     const effect = state.equippedWeapon.effect && WEAPON_EFFECTS[state.equippedWeapon.effect];
     status.textContent = effect ? `${restriction} — ${effect.name}: ${effect.description}` : restriction;
+  }
+}
+
+/** Mirrors renderWeaponSlot() for the shield slot — shields don't have a
+ * status line or toggle to keep in sync (no "using shield" preference),
+ * just the slot's own display. Once the equipped shield has taken damage
+ * (rank < baseRank — it's still equipped, so rank is always > 0 here; a
+ * shield that hits 0 unequips itself, see fightMonster() in js/state.js)
+ * this also swaps in its "used"/cracked artwork (see shieldDamagedImageFor()
+ * in js/shield-icons.js) instead of the pristine artwork. */
+function renderShieldSlot() {
+  const slot = document.getElementById('shield-slot-card');
+
+  if (!state.equippedShield) {
+    slot.className = 'card shield-slot-empty';
+    slot.style.removeProperty('--edge-rgb');
+    delete slot.dataset.suit;
+    slot.innerHTML = '<div class="shield-icon">S</div>';
+  } else {
+    const shield = state.equippedShield;
+    const isDamaged = shield.rank < shield.baseRank;
+    slot.className = `card card--shield card--tier-${cardTier(shield.rank)}`;
+    slot.dataset.suit = shield.suit;
+    applyGlowColor(slot, shield);
+    const displayCard = isDamaged
+      ? { ...shield, image: shieldDamagedImageFor(shield.baseRank) || shield.image }
+      : shield;
+    fillCardFace(slot, displayCard);
   }
 }
 
@@ -413,10 +620,11 @@ function buildGalleryItem(kind, image, name, key, rankLabel) {
   return item;
 }
 
-/** Fills #gallery-overlay for one of 'champions' / 'weapons' / 'monsters'.
- * Weapons/Monsters list every rank's artwork + flavor name (same data as
- * the card tooltips, see flavorNameFor() above); Champions lists the fixed
- * CHAMPIONS roster (js/champion-icons.js) instead of a rank range. */
+/** Fills #gallery-overlay for one of 'champions' / 'weapons' / 'monsters' /
+ * 'shields'. Weapons/Monsters/Shields list every rank's artwork + flavor
+ * name (same data as the card tooltips, see flavorNameFor() above);
+ * Champions lists the fixed CHAMPIONS roster (js/champion-icons.js) instead
+ * of a rank range. */
 function renderGallery(kind) {
   const title = document.getElementById('gallery-title');
   const grid = document.getElementById('gallery-grid');
@@ -437,6 +645,13 @@ function renderGallery(kind) {
         buildGalleryItem('monsters', `images/monsters/${rank}.png`, monsterNameFor(rank), rank)
       );
     }
+  } else if (kind === 'shields') {
+    title.textContent = 'Shields';
+    for (let rank = 3; rank <= 5; rank++) {
+      grid.appendChild(
+        buildGalleryItem('shields', `images/shields/${rank}.png`, shieldNameFor(rank), rank)
+      );
+    }
   } else {
     title.textContent = 'Champions';
     CHAMPIONS.forEach((champ) => {
@@ -445,11 +660,11 @@ function renderGallery(kind) {
   }
 }
 
-/** Fills #gallery-detail-overlay for one weapon/monster/champion tile
+/** Fills #gallery-detail-overlay for one weapon/monster/shield/champion tile
  * clicked in the gallery (see openGalleryDetail() in main.js) — portrait,
- * name, and either "Strength N" + a flavor blurb (weapons/monsters) or the
- * champion's passive-ability text. `key` is a rank number for weapons/
- * monsters, or a champion id string for champions. */
+ * name, and either "Strength N" + a flavor blurb (weapons/monsters/shields)
+ * or the champion's passive-ability text. `key` is a rank number for
+ * weapons/monsters/shields, or a champion id string for champions. */
 function renderGalleryDetail(kind, key) {
   let image, name, description, subtitle;
 
@@ -463,6 +678,14 @@ function renderGalleryDetail(kind, key) {
     name = monsterNameFor(key);
     description = monsterDescriptionFor(key);
     subtitle = `Strength ${RANK_LABELS[key]}`;
+  } else if (kind === 'shields') {
+    image = `images/shields/${key}.png`;
+    name = shieldNameFor(key);
+    description = shieldDescriptionFor(key);
+    // Shields block damage rather than dealing/healing it, so their number
+    // is labeled "Block" here instead of "Strength" (unlike weapons/
+    // monsters) — see js/shield-icons.js.
+    subtitle = `Block ${RANK_LABELS[key]}`;
   } else {
     const champ = championById(key);
     image = champ ? champ.image : null;
@@ -519,11 +742,17 @@ function renderChampionSelect() {
 
 function renderAll() {
   renderChampionBadge();
+  renderAbilityButton();
+  renderAbilityInfo();
+  renderManaRing();
+  renderAbilityActiveGlow();
   renderChampionAbilityBar();
   renderHp();
   renderRoom();
+  renderRogueTargeting(); // after renderRoom() — it needs the fresh #room card elements
   renderDeckCount();
   renderWeaponSlot();
+  renderShieldSlot();
   renderFleeButton();
   renderMessage('');
   renderGameOverBanner();
@@ -647,6 +876,121 @@ function animateWeaponToSlot(cardEl, onDone) {
       onDone();
     }
   );
+}
+
+/** Same idea as animateWeaponToSlot(), but flies a clone of `cardEl` into the
+ * shield slot instead — used when a shield card is clicked (see
+ * js/main.js). Shares WEAPON_FLY_MS so both slots' equip animations feel
+ * identical. */
+function animateShieldToSlot(cardEl, onDone) {
+  const slot = document.getElementById('shield-slot-card');
+  const startRect = cardEl.getBoundingClientRect();
+  const endRect = slot.getBoundingClientRect();
+
+  const clone = cardEl.cloneNode(true);
+  clone.classList.add('weapon-flying');
+  clone.style.left = `${startRect.left}px`;
+  clone.style.top = `${startRect.top}px`;
+  clone.style.width = `${startRect.width}px`;
+  clone.style.height = `${startRect.height}px`;
+  document.body.appendChild(clone);
+
+  cardEl.style.visibility = 'hidden';
+
+  const dx = endRect.left + (endRect.width - startRect.width) / 2 - startRect.left;
+  const dy = endRect.top + (endRect.height - startRect.height) / 2 - startRect.top;
+  const scale = endRect.width / startRect.width;
+
+  return animateTransform(
+    clone,
+    { transform: `translate(${dx}px, ${dy}px) scale(${scale})`, opacity: '0.4' },
+    WEAPON_FLY_MS,
+    'ease',
+    () => {
+      clone.remove();
+      onDone();
+    }
+  );
+}
+
+// --- shield-block feedback ---------------------------------------------------
+// Two different reactions when a shield absorbs damage (js/state.js
+// fightMonster()), depending on whether it survives: a small shake if it's
+// still standing (reuses .card--shake, same wobble as a monster weakened by
+// the Electric weapon effect), or a full shatter if the hit broke it.
+
+/** Plays the shield slot's "took damage but survived" shake. Called after
+ * renderShieldSlot() has already drawn the shield's new (lower) durability,
+ * so the shake plays on top of the up-to-date card face. The animation
+ * itself ends back at rest (see @keyframes card-shake in style.css, no
+ * `infinite`), so there's nothing to clean up afterwards. */
+function animateShieldShake() {
+  const slot = document.getElementById('shield-slot-card');
+  // Restart the animation even if it's still mid-shake from a previous hit
+  // (classList.add alone wouldn't retrigger a CSS animation that's already
+  // applied) by removing and re-adding on the next frame.
+  slot.classList.remove('card--shake');
+  void slot.offsetWidth; // force reflow so the removal actually takes effect
+  slot.classList.add('card--shake');
+}
+
+const SHIELD_SHATTER_MS = 650;
+const SHIELD_SHATTER_SHARDS = 6;
+
+/** Plays the shield slot's "broke" shatter: clones the slot's current card
+ * face (before it's overwritten by renderShieldSlot() showing the now-empty
+ * slot) into several pie-slice shards that fly outward and fade, then calls
+ * `onDone()` once they're gone so the caller can re-render the slot to its
+ * real (empty) state underneath. Must be called BEFORE renderShieldSlot()
+ * so the shards still show the shield's artwork, not a blank placeholder. */
+function animateShieldShatter(onDone) {
+  const slot = document.getElementById('shield-slot-card');
+  const rect = slot.getBoundingClientRect();
+
+  const container = document.createElement('div');
+  container.className = 'shield-shatter-container';
+  container.style.left = `${rect.left}px`;
+  container.style.top = `${rect.top}px`;
+  container.style.width = `${rect.width}px`;
+  container.style.height = `${rect.height}px`;
+
+  const angleStep = (2 * Math.PI) / SHIELD_SHATTER_SHARDS;
+  for (let i = 0; i < SHIELD_SHATTER_SHARDS; i++) {
+    const shard = slot.cloneNode(true);
+    shard.removeAttribute('id'); // avoid duplicate #shield-slot-card ids while shards are in the DOM
+    shard.classList.add('shield-shard');
+
+    // Clip this shard to one pie slice of the card, from the center out —
+    // together all slices reconstruct the whole card face. The radius
+    // overshoots 50% so slices still cover the card's corners.
+    const a0 = i * angleStep - Math.PI / 2;
+    const a1 = (i + 1) * angleStep - Math.PI / 2;
+    const r = 80;
+    const x0 = (50 + r * Math.cos(a0)).toFixed(1);
+    const y0 = (50 + r * Math.sin(a0)).toFixed(1);
+    const x1 = (50 + r * Math.cos(a1)).toFixed(1);
+    const y1 = (50 + r * Math.sin(a1)).toFixed(1);
+    shard.style.clipPath = `polygon(50% 50%, ${x0}% ${y0}%, ${x1}% ${y1}%)`;
+
+    // Fly outward along this slice's own bisector, with a bit of random
+    // spin per shard so the break doesn't look too mechanically even.
+    const mid = (a0 + a1) / 2;
+    shard.style.setProperty('--shatter-dx', `${(Math.cos(mid) * 55).toFixed(1)}px`);
+    shard.style.setProperty('--shatter-dy', `${(Math.sin(mid) * 55).toFixed(1)}px`);
+    shard.style.setProperty('--shatter-rot', `${(Math.random() * 70 - 35).toFixed(1)}deg`);
+    shard.style.animationDelay = `${i * 12}ms`;
+
+    container.appendChild(shard);
+  }
+
+  document.body.appendChild(container);
+  slot.style.visibility = 'hidden';
+
+  setTimeout(() => {
+    container.remove();
+    slot.style.visibility = '';
+    onDone();
+  }, SHIELD_SHATTER_MS);
 }
 
 // --- weapon-attack animation -------------------------------------------------
