@@ -133,13 +133,50 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   the first one is needed), and reference it from that card's `overrides` in
   `cards.js` (e.g. an `effectId` matched to a lookup, or a directly imported
   handler). Don't pre-create 44 effect files "just in case."
-- Each card has an `image` field. When `null` (currently: weapons and
-  potions, which have no artwork yet), `fillCardFace()` in `js/ui.js` falls
-  back to a suit-symbol placeholder. Set a card's `image` to a file path and
-  the renderer automatically shows that image instead — no other code
-  changes needed.
-- `effect` is reserved and currently unused — the hook point for future
-  special-ability cards (e.g. `onReveal`, `onResolve` callbacks).
+- Each card has an `image` field. When `null` (nothing currently sets it to
+  null — every card gets artwork automatically, see the artwork sections
+  below), `fillCardFace()` in `js/ui.js` falls back to a suit-symbol
+  placeholder. Set a card's `image` to a file path and the renderer
+  automatically shows that image instead — no other code changes needed.
+- `rank` is a card's CURRENT strength; `baseRank` (added alongside it,
+  never changes after creation) is its identity. Some effects can lower a
+  monster's `rank` at runtime (see Weapon Effects below) — artwork and
+  flavor-name lookups must always use `baseRank`, everything gameplay-facing
+  (damage math, the displayed number, tier/aura) must always use `rank`.
+  Don't key art/name lookups off `rank` or a weakened monster will show the
+  wrong creature.
+- `effect` holds a weapon-effect id (`'vampiric'`/`'electric'`/`'sturdy'`,
+  or `null`) — see "Weapon Effects" below. This is a *type-wide*, randomly
+  rolled effect (any of the 9 weapon cards can get one), which is a
+  different pattern from a specific named card having a fixed unique
+  ability: for the latter (e.g. a one-of-a-kind legendary item), give
+  **that card** its own file under `js/effects/` (create the folder when
+  the first one is needed) and reference it from that card's `overrides`
+  in `cards.js`, rather than reusing the `effect` string field.
+
+## Weapon Effects (custom addition, not part of the original Scoundrel rules)
+
+- Every weapon card has a 25% chance of getting one of three effects,
+  re-rolled at the start of every game — `rollWeaponEffects()` in
+  `js/weapon-effects.js`, called once from `initGame()` in `js/state.js`.
+  `WEAPON_EFFECTS` in that same file holds each effect's name/icon/
+  description (used for the card's corner badge, tooltip, and
+  `#weapon-status`); the actual gameplay logic lives in `fightMonster()` in
+  `js/state.js` since it needs `state`.
+  - **Vampiric** — heals 1 HP whenever the weapon defeats a monster.
+  - **Electric** — every *other* monster currently in `state.room` loses 1
+    strength (via `weakenMonster()`, floor of 1) whenever the weapon is
+    used in a fight. Only `rank` (and the `label`/`name` derived from it)
+    changes — `baseRank` and `image` don't, so the monster stays visually
+    and nominally the same creature, just weaker.
+  - **Sturdy** — `state.weaponMaxMonster` (the "can only defeat monsters
+    weaker than X" ceiling) can drop by at most 2 per fight instead of
+    dropping straight to the defeated monster's value.
+- Badge icons are plain letters (V/E/S), not emoji — an emoji shield
+  (🛡) didn't render on every system/font tested, while a plain letter
+  always does. Keep this in mind if adding more effects later: prefer a
+  letter/simple-glyph badge over an emoji unless you've verified it
+  renders broadly.
 
 ### Monster artwork
 
