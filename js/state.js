@@ -15,6 +15,7 @@ const state = {
                               // otherwise the weapon may only be used on a
                               // monster with rank < this value
   potionUsedThisRoom: false, // only the first potion consumed per room heals
+  fledLastRoom: false,       // can't flee two rooms in a row
   gameOver: false,
   outcome: null,              // 'won' | 'lost' | null
 };
@@ -36,14 +37,26 @@ function initGame() {
   state.equippedWeapon = null;
   state.weaponMaxMonster = null;
   state.potionUsedThisRoom = false;
+  state.fledLastRoom = false;
   state.gameOver = false;
   state.outcome = null;
 }
 
-function fightMonster(card) {
-  const weaponUsable =
-    state.equippedWeapon &&
-    (state.weaponMaxMonster === null || card.rank < state.weaponMaxMonster);
+/** Whether the equipped weapon may currently be used against this monster
+ * (ignoring player choice — just whether the rules allow it at all). */
+function isWeaponUsableOn(card) {
+  return (
+    !!state.equippedWeapon &&
+    (state.weaponMaxMonster === null || card.rank < state.weaponMaxMonster)
+  );
+}
+
+/** @param useWeapon - player's choice, only relevant if the weapon is legal
+ * to use here in the first place (see isWeaponUsableOn). Defaults to true
+ * (use the weapon whenever legal) so callers that don't offer a choice keep
+ * working as before. */
+function fightMonster(card, useWeapon = true) {
+  const weaponUsable = useWeapon && isWeaponUsableOn(card);
 
   let damage;
   if (weaponUsable) {
@@ -79,9 +92,11 @@ function drinkPotion(card) {
  * Resolves one card from the room by id: applies its effect, removes it from
  * the room, refills the room once only one card remains (classic Scoundrel
  * room-cycle), and checks win/lose conditions.
+ * @param options.useWeapon - only relevant for monster cards with a legal
+ *   weapon available; see fightMonster().
  * Returns a { message } result, or null if the card wasn't found / game over.
  */
-function resolveCard(cardId) {
+function resolveCard(cardId, options = {}) {
   if (state.gameOver) return null;
 
   const idx = state.room.findIndex((c) => c.id === cardId);
@@ -89,7 +104,7 @@ function resolveCard(cardId) {
   const [card] = state.room.splice(idx, 1);
 
   let result;
-  if (card.type === 'monster') result = fightMonster(card);
+  if (card.type === 'monster') result = fightMonster(card, options.useWeapon);
   else if (card.type === 'weapon') result = equipWeapon(card);
   else result = drinkPotion(card);
 
@@ -104,6 +119,7 @@ function resolveCard(cardId) {
     const drawn = state.deck.splice(0, Math.min(3, state.deck.length));
     state.room.push(...drawn);
     state.potionUsedThisRoom = false; // new room = first potion heals again
+    state.fledLastRoom = false; // completing a room normally resets the flee restriction
   }
 
   if (state.room.length === 0 && state.deck.length === 0) {
@@ -113,4 +129,27 @@ function resolveCard(cardId) {
   }
 
   return result;
+}
+
+/**
+ * Flees the current room: only allowed on a full, untouched room (4 cards),
+ * and not twice in a row. All 4 room cards go to the bottom of the deck and
+ * a new room is dealt.
+ */
+function fleeRoom() {
+  if (state.gameOver) return null;
+
+  if (state.room.length !== 4) {
+    return { message: "You can only flee a full room, before fighting anything in it." };
+  }
+  if (state.fledLastRoom) {
+    return { message: "You can't flee two rooms in a row." };
+  }
+
+  state.deck.push(...state.room);
+  state.room = state.deck.splice(0, Math.min(4, state.deck.length));
+  state.fledLastRoom = true;
+  state.potionUsedThisRoom = false;
+
+  return { message: 'You fled the room — it was sent to the bottom of the deck.' };
 }

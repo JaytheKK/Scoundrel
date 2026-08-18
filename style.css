@@ -1,10 +1,90 @@
+/* ---------------------------------------------------------------------------
+   Design tokens — simplistic, flat, dark theme with one warm accent color.
+   Change values here to re-theme the whole game.
+--------------------------------------------------------------------------- */
+:root {
+  --bg: #16161a;
+  --surface: #1e1e23;
+  --surface-hover: #28282e;
+  --border: #3a3a42;
+  --text: #f0f0f0;
+  --text-muted: #9a9aa4;
+  --accent: #d9a441;
+  --accent-hover: #e6b75d;
+  --danger: #c0392b;
+  --success: #6fae52;
+
+  --card-bg: #f5f2e9;
+  --card-text: #1a1a1a;
+  --card-text-red: #b3283d;
+  --monster: #4b6b3a;
+  --weapon: #3a6b8c;
+  --potion: #b3283d;
+
+  --radius: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   font-family: system-ui, sans-serif;
-  background: #1b1b1f;
-  color: #f0f0f0;
+  background: var(--bg);
+  color: var(--text);
   text-align: center;
-  padding: 2rem;
+  padding: 2rem 1rem;
 }
+
+h1 {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* --- buttons (shared, flat & simple) -------------------------------------- */
+
+button {
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 0.55rem 1.2rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.08s ease, opacity 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+#new-game-btn {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a1408;
+  font-weight: 600;
+}
+
+#new-game-btn:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+#flee-btn {
+  margin-top: 2rem;
+}
+
+/* --- controls / deck count -------------------------------------------------- */
 
 #controls {
   display: flex;
@@ -14,14 +94,8 @@ body {
   margin-top: 1rem;
 }
 
-button {
-  font-size: 1rem;
-  padding: 0.5rem 1rem;
-  cursor: pointer;
-}
-
 #deck-count {
-  opacity: 0.8;
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 
@@ -37,23 +111,23 @@ button {
 
 #hp-bar {
   width: 220px;
-  height: 18px;
-  background: #33333a;
-  border: 1px solid #55555c;
-  border-radius: 9px;
+  height: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
   overflow: hidden;
 }
 
 #hp-fill {
   height: 100%;
   width: 100%;
-  background: #c0392b;
+  background: var(--danger);
   transition: width 0.3s ease;
 }
 
 #hp-text {
   font-size: 0.9rem;
-  opacity: 0.9;
+  color: var(--text-muted);
   min-width: 70px;
   text-align: left;
 }
@@ -61,7 +135,7 @@ button {
 #weapon-slot {
   margin-top: 0.75rem;
   font-size: 0.9rem;
-  opacity: 0.85;
+  color: var(--text-muted);
 }
 
 #message {
@@ -71,13 +145,13 @@ button {
 }
 
 .message--won {
-  color: #6fae52;
-  font-weight: bold;
+  color: var(--success);
+  font-weight: 600;
 }
 
 .message--lost {
-  color: #e05a6e;
-  font-weight: bold;
+  color: var(--danger);
+  font-weight: 600;
 }
 
 /* --- Room / cards -------------------------------------------------------- */
@@ -93,22 +167,23 @@ button {
 .card {
   width: 100px;
   height: 140px;
-  border-radius: 10px;
-  background: #f5f2e9;
-  color: #1a1a1a;
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  color: var(--card-text);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
   padding: 8px 0;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
-  border-top: 8px solid #888;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-top: 4px solid #888;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
   cursor: pointer;
-  transition: transform 0.25s ease, opacity 0.25s ease, box-shadow 0.15s ease;
+  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.15s ease;
 }
 
 .card:hover {
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
   transform: translateY(-3px);
 }
 
@@ -123,42 +198,42 @@ button {
 /* Suit color (matches normal playing-card convention) */
 .card[data-suit='clubs'],
 .card[data-suit='spades'] {
-  color: #1a1a1a;
+  color: var(--card-text);
 }
 
 .card[data-suit='diamonds'],
 .card[data-suit='hearts'] {
-  color: #b3283d;
+  color: var(--card-text-red);
 }
 
 /* Type accent color (monster/weapon/potion), independent of card art */
 .card--monster {
-  border-top-color: #4b6b3a;
+  border-top-color: var(--monster);
 }
 
 .card--weapon {
-  border-top-color: #3a6b8c;
+  border-top-color: var(--weapon);
 }
 
 .card--potion {
-  border-top-color: #b3283d;
+  border-top-color: var(--potion);
 }
 
 .card-suit-symbol {
-  font-size: 2.2rem;
+  font-size: 2.1rem;
   line-height: 1;
 }
 
 .card-rank {
-  font-size: 1.4rem;
-  font-weight: bold;
+  font-size: 1.3rem;
+  font-weight: 600;
 }
 
 .card-type-label {
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  opacity: 0.65;
+  opacity: 0.6;
 }
 
 .card-image {
@@ -166,4 +241,43 @@ button {
   height: 64px;
   object-fit: contain;
   image-rendering: pixelated; /* keeps future pixel-art crisp */
+}
+
+/* --- fight-choice modal ---------------------------------------------------- */
+
+#modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+#modal-overlay.hidden {
+  display: none;
+}
+
+#modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: min(320px, 90vw);
+}
+
+#modal-text {
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+}
+
+#modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.modal-btn {
+  width: 100%;
 }

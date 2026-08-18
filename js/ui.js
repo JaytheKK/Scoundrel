@@ -73,10 +73,62 @@ function renderMessage(text) {
   el.classList.toggle('message--lost', state.outcome === 'lost');
 }
 
+function renderFleeButton() {
+  const btn = document.getElementById('flee-btn');
+  const canFlee = !state.gameOver && state.room.length === 4 && !state.fledLastRoom;
+  btn.disabled = !canFlee;
+  btn.title = state.fledLastRoom
+    ? "Can't flee two rooms in a row"
+    : state.room.length !== 4
+      ? 'Can only flee a full, untouched room'
+      : '';
+}
+
 function renderAll() {
   renderHp();
   renderRoom();
   renderDeckCount();
   renderWeaponSlot();
+  renderFleeButton();
   renderMessage('');
+}
+
+// --- fight-choice modal ---------------------------------------------------
+
+/** Shows a small modal asking the player to fight a monster with their
+ * equipped weapon or bare-handed, previewing the damage of each option.
+ * Calls onChoice(useWeapon: boolean) once the player picks. */
+function showFightChoice(card, onChoice) {
+  const overlay = document.getElementById('modal-overlay');
+  const text = document.getElementById('modal-text');
+  const actions = document.getElementById('modal-actions');
+
+  const weaponDamage = Math.max(card.rank - state.equippedWeapon.rank, 0);
+
+  text.textContent = `${card.name} (strength ${card.rank}) — how do you want to fight?`;
+  actions.innerHTML = '';
+
+  const weaponBtn = document.createElement('button');
+  weaponBtn.className = 'modal-btn';
+  weaponBtn.textContent = `${state.equippedWeapon.name} — ${weaponDamage} dmg`;
+  weaponBtn.addEventListener('click', () => {
+    hideFightChoice();
+    onChoice(true);
+  });
+
+  const bareBtn = document.createElement('button');
+  bareBtn.className = 'modal-btn';
+  bareBtn.textContent = `Bare hands — ${card.rank} dmg`;
+  bareBtn.addEventListener('click', () => {
+    hideFightChoice();
+    onChoice(false);
+  });
+
+  actions.appendChild(weaponBtn);
+  actions.appendChild(bareBtn);
+  overlay.classList.remove('hidden');
+}
+
+function hideFightChoice() {
+  document.getElementById('modal-overlay').classList.add('hidden');
 }

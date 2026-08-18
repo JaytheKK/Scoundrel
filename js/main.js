@@ -9,11 +9,26 @@ const CARD_ANIMATION_MS = 280;
 function handleCardClick(cardId) {
   if (state.gameOver) return;
 
+  const card = state.room.find((c) => c.id === cardId);
+  if (!card) return;
+
+  // If the equipped weapon is legal to use on this monster, let the player
+  // choose bare hands vs. weapon (using it changes the weapon's restriction
+  // for later monsters, so it's a real choice).
+  if (card.type === 'monster' && isWeaponUsableOn(card)) {
+    showFightChoice(card, (useWeapon) => resolveAndAnimate(cardId, { useWeapon }));
+    return;
+  }
+
+  resolveAndAnimate(cardId);
+}
+
+function resolveAndAnimate(cardId, options) {
   // Play the "resolve" animation on the clicked card immediately...
   const cardEl = document.querySelector(`.card[data-id="${cardId}"]`);
   if (cardEl) cardEl.classList.add('card--resolved');
 
-  const result = resolveCard(cardId);
+  const result = resolveCard(cardId, options);
   if (!result) return;
 
   renderHp();
@@ -25,6 +40,7 @@ function handleCardClick(cardId) {
   setTimeout(() => {
     renderRoom();
     renderDeckCount();
+    renderFleeButton();
   }, CARD_ANIMATION_MS);
 }
 
@@ -32,6 +48,15 @@ document.getElementById('room').addEventListener('click', (event) => {
   const cardEl = event.target.closest('.card');
   if (!cardEl) return;
   handleCardClick(cardEl.dataset.id);
+});
+
+document.getElementById('flee-btn').addEventListener('click', () => {
+  const result = fleeRoom();
+  if (!result) return;
+  renderMessage(result.message);
+  renderRoom();
+  renderDeckCount();
+  renderFleeButton();
 });
 
 document.getElementById('new-game-btn').addEventListener('click', () => {
