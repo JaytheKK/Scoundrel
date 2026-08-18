@@ -7,38 +7,53 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Scoundrel</h1>
-
-  <div id="controls">
-    <button id="menu-btn" aria-label="Open menu">
-      <span class="hamburger-icon"><span></span><span></span><span></span></span>
-    </button>
-    <span id="deck-count">Deck: 0 cards left</span>
+  <div id="start-screen">
+    <h1 id="start-logo">Scoundrel</h1>
+    <p id="start-tagline">A dungeon-crawling card game</p>
+    <button id="start-new-game-btn">New Game</button>
+    <div id="start-nav">
+      <button id="champions-btn">Champions</button>
+      <button id="weapons-btn">Weapons</button>
+      <button id="monsters-btn">Monsters</button>
+      <button id="anleitung-btn">Anleitung</button>
+    </div>
   </div>
 
-  <div id="hp-bar-wrapper">
-    <div id="hp-bar-container">
-      <div id="hp-bar"><div id="hp-fill"></div></div>
-      <div id="hp-float-container"></div>
+  <div id="game-screen" class="hidden">
+    <h1>Scoundrel</h1>
+
+    <div id="controls">
+      <button id="menu-btn" aria-label="Open menu">
+        <span class="hamburger-icon"><span></span><span></span><span></span></span>
+      </button>
+      <span id="deck-count">Deck: 0 cards left</span>
     </div>
-    <span id="hp-text">20 / 20 HP</span>
-  </div>
 
-  <div id="room"></div>
-
-  <button id="flee-btn">Flee Room</button>
-
-  <p id="message"></p>
-
-  <div id="weapon-area">
-    <div id="weapon-slot-card" class="card weapon-slot-empty">
-      <div class="sword-icon">⚔</div>
+    <div id="hp-bar-wrapper">
+      <div id="champion-badge"></div>
+      <div id="hp-bar-container">
+        <div id="hp-bar"><div id="hp-fill"></div></div>
+        <div id="hp-float-container"></div>
+      </div>
+      <span id="hp-text">20 / 20 HP</span>
     </div>
-    <p id="weapon-status">No weapon equipped</p>
-    <label class="toggle-wrapper" for="weapon-toggle">
-      <input type="checkbox" id="weapon-toggle" checked>
-      <span>Using weapon</span>
-    </label>
+
+    <div id="room"></div>
+
+    <button id="flee-btn">Flee Room</button>
+
+    <p id="message"></p>
+
+    <div id="weapon-area">
+      <div id="weapon-slot-card" class="card weapon-slot-empty">
+        <div class="sword-icon">⚔</div>
+      </div>
+      <p id="weapon-status">No weapon equipped</p>
+      <label class="toggle-wrapper" for="weapon-toggle">
+        <input type="checkbox" id="weapon-toggle" checked>
+        <span>Using weapon</span>
+      </label>
+    </div>
   </div>
 
   <div id="menu-overlay" class="hidden">
@@ -46,6 +61,7 @@
       <button id="menu-close-btn" aria-label="Close menu">✕</button>
       <h2 id="menu-title">Scoundrel</h2>
       <button id="new-game-btn">New Game</button>
+      <button id="back-to-menu-btn">Main Menu</button>
 
       <div id="rules">
         <h3>The Dungeon Deck</h3>
@@ -72,6 +88,15 @@
           <li><strong>S — Sturdy</strong>: this weapon's usable strength can never drop by more than 2 per fight, instead of dropping straight to the defeated monster's value.</li>
         </ul>
 
+        <h3>Champions</h3>
+        <p>Before each game you pick a champion, who grants one passive ability for that whole run:</p>
+        <ul>
+          <li><strong>Paladin</strong>: every 5 monsters you defeat, heal 3 HP.</li>
+          <li><strong>Herbalist</strong>: you can drink two potions per room instead of just one.</li>
+          <li><strong>Rogue</strong>: you may flee two rooms in a row instead of just one.</li>
+          <li><strong>Berserker</strong>: fighting bare-handed, you take 2 less damage from every monster.</li>
+        </ul>
+
         <h3>Fleeing a Room</h3>
         <p>"Flee Room" sends the entire room to the bottom of the deck and deals a fresh one. You can only flee a full, untouched room of 4 cards, and never two rooms in a row.</p>
 
@@ -88,11 +113,38 @@
     <button id="play-again-btn">Play Again</button>
   </div>
 
+  <div id="gallery-overlay" class="hidden">
+    <div id="gallery-panel">
+      <button id="gallery-close-btn" aria-label="Close">✕</button>
+      <h2 id="gallery-title">Gallery</h2>
+      <div id="gallery-grid"></div>
+    </div>
+  </div>
+
+  <div id="gallery-detail-overlay" class="hidden">
+    <div id="gallery-detail-panel">
+      <button id="gallery-detail-close-btn" aria-label="Close">✕</button>
+      <div id="gallery-detail-image"></div>
+      <h2 id="gallery-detail-title"></h2>
+      <p id="gallery-detail-rank"></p>
+      <p id="gallery-detail-text"></p>
+    </div>
+  </div>
+
+  <div id="champion-select-overlay" class="hidden">
+    <div id="champion-select-panel">
+      <button id="champion-select-close-btn" aria-label="Close">✕</button>
+      <h2 id="champion-select-title">Choose your Champion</h2>
+      <div id="champion-select-grid"></div>
+    </div>
+  </div>
+
   <script src="js/cards.js"></script>
   <script src="js/monster-icons.js"></script>
   <script src="js/potion-icons.js"></script>
   <script src="js/weapon-icons.js"></script>
   <script src="js/weapon-effects.js"></script>
+  <script src="js/champion-icons.js"></script>
   <script src="js/state.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>

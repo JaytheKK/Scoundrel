@@ -14,10 +14,24 @@ const state = {
   weaponMaxMonster: null,    // null = fresh weapon (no restriction yet);
                               // otherwise the weapon may only be used on a
                               // monster with rank < this value
-  potionUsedThisRoom: false, // only the first potion consumed per room heals
-  fledLastRoom: false,       // can't flee two rooms in a row
+  potionsDrunkThisRoom: 0,   // how many potions actually healed this room so
+                              // far — normally only the first does (see
+                              // drinkPotion()), but the Herbalist champion
+                              // raises that cap to two
+  fleeStreak: 0,              // consecutive rooms fled in a row — normally
+                              // capped at 1 (see fleeRoom()), but the Rogue
+                              // champion raises that cap to two
   gameOver: false,
   outcome: null,              // 'won' | 'lost' | null
+
+  // Chosen once per game on the champion-select screen (see
+  // openChampionSelect() in js/main.js) — an id from CHAMPIONS (js/
+  // champion-icons.js), or null before a champion has ever been picked.
+  // Each passive is applied inline, gated on this id, in fightMonster()/
+  // drinkPotion()/fleeRoom() below.
+  champion: null,
+  monstersDefeated: 0,       // total monsters fought this game — drives the
+                              // Paladin champion's "every 5th kill" heal
 
   // UI preference, not reset by initGame(): whether fighting a monster should
   // use the equipped weapon (when legal) or go bare-handed. Controlled by the
@@ -35,17 +49,23 @@ function shuffle(cards) {
   return result;
 }
 
-function initGame() {
+/** @param championId - id of the champion picked on the champion-select
+ * screen (see js/champion-icons.js), or undefined/null to start without one
+ * (kept optional so callers/tests that don't care about champions still
+ * work). */
+function initGame(championId = null) {
   state.hp = state.maxHp;
   state.deck = shuffle(getFreshDeck());
   rollWeaponEffects(state.deck); // 25% chance per weapon, re-rolled every game
   state.room = state.deck.splice(0, 4);
   state.equippedWeapon = null;
   state.weaponMaxMonster = null;
-  state.potionUsedThisRoom = false;
-  state.fledLastRoom = false;
+  state.potionsDrunkThisRoom = 0;
+  state.fleeStreak = 0;
   state.gameOver = false;
   state.outcome = null;
+  state.champion = championId;
+  state.monstersDefeated = 0;
 }
 
 /** Whether the equipped weapon may currently be used against this monster
@@ -101,9 +121,27 @@ function fightMonster(card, useWeapon = true) {
     }
   } else {
     damage = card.rank;
+    // Berserker champion: 2 less damage from every monster fought
+    // bare-handed (never below 0).
+    if (state.champion === 'berserker') damage = Math.max(damage - 2, 0);
   }
 
   state.hp = Math.max(state.hp - damage, 0);
+
+  // Paladin champion: every 5th monster defeated this game heals 3 HP.
+  // Counted here (rather than in resolveCard) since this is the one place
+  // both weapon and bare-handed fights funnel through, and a monster is
+  // always "defeated" once its card resolves — there's no monster HP to
+  // track separately.
+  let paladinHeal = 0;
+  if (state.champion === 'paladin') {
+    state.monstersDefeated += 1;
+    if (state.monstersDefeated % 5 === 0) {
+      const hpBefore = state.hp;
+      state.hp = Math.min(state.hp + 3, state.maxHp);
+      paladinHeal = state.hp - hpBefore;
+    }
+  }
 
   let message;
   const how = weaponUsable ? ` with your ${weapon.name}` : ' bare-handed';
@@ -114,6 +152,9 @@ function fightMonster(card, useWeapon = true) {
     message = `Fought ${card.name}${how} — took ${damage} damage. Electric surge weakened the other monsters!`;
   } else {
     message = `Fought ${card.name}${how} — took ${damage} damage.`;
+  }
+  if (paladinHeal > 0) {
+    message += ` Paladin's faith healed ${paladinHeal} HP.`;
   }
 
   return { message, weakenedIds };
@@ -126,12 +167,15 @@ function equipWeapon(card) {
 }
 
 function drinkPotion(card) {
-  if (state.potionUsedThisRoom) {
+  // Normally only the first potion in a room heals; the Herbalist champion
+  // raises that cap to two.
+  const maxHealingPotions = state.champion === 'herbalist' ? 2 : 1;
+  if (state.potionsDrunkThisRoom >= maxHealingPotions) {
     return { message: `Drank ${card.name} — already healed this room, no effect.` };
   }
   const healed = Math.min(card.rank, state.maxHp - state.hp);
   state.hp += healed;
-  state.potionUsedThisRoom = true;
+  state.potionsDrunkThisRoom += 1;
   return { message: `Drank ${card.name} — healed ${healed} HP.` };
 }
 
@@ -165,8 +209,8 @@ function resolveCard(cardId, options = {}) {
   if (state.room.length === 1 && state.deck.length > 0) {
     const drawn = state.deck.splice(0, Math.min(3, state.deck.length));
     state.room.push(...drawn);
-    state.potionUsedThisRoom = false; // new room = first potion heals again
-    state.fledLastRoom = false; // completing a room normally resets the flee restriction
+    state.potionsDrunkThisRoom = 0; // new room = potion(s) can heal again
+    state.fleeStreak = 0; // completing a room normally resets the flee streak
   }
 
   if (state.room.length === 0 && state.deck.length === 0) {
@@ -189,14 +233,24 @@ function fleeRoom() {
   if (state.room.length !== 4) {
     return { message: "You can only flee a full room, before fighting anything in it." };
   }
-  if (state.fledLastRoom) {
-    return { message: "You can't flee two rooms in a row." };
+
+  // Normally you can't flee two rooms in a row; the Rogue champion raises
+  // that cap to two rooms in a row (i.e. a third flee back-to-back is
+  // still disallowed).
+  const maxFleeStreak = state.champion === 'rogue' ? 2 : 1;
+  if (state.fleeStreak >= maxFleeStreak) {
+    return {
+      message:
+        maxFleeStreak > 1
+          ? "You can't flee three rooms in a row."
+          : "You can't flee two rooms in a row.",
+    };
   }
 
   state.deck.push(...state.room);
   state.room = state.deck.splice(0, Math.min(4, state.deck.length));
-  state.fledLastRoom = true;
-  state.potionUsedThisRoom = false;
+  state.fleeStreak += 1;
+  state.potionsDrunkThisRoom = 0;
 
   return { message: 'You fled the room — it was sent to the bottom of the deck.' };
 }

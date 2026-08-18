@@ -220,7 +220,8 @@ button:disabled::before {
 
 #new-game-btn,
 #play-again-btn,
-#room-start-btn {
+#room-start-btn,
+#start-new-game-btn {
   background: linear-gradient(180deg, var(--accent-hover), var(--accent));
   border-color: var(--accent);
   color: #1a1408;
@@ -230,7 +231,8 @@ button:disabled::before {
 
 #new-game-btn:hover:not(:disabled),
 #play-again-btn:hover:not(:disabled),
-#room-start-btn:hover:not(:disabled) {
+#room-start-btn:hover:not(:disabled),
+#start-new-game-btn:hover:not(:disabled) {
   background: linear-gradient(180deg, #f0cd7a, var(--accent-hover));
   border-color: #f0cd7a;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35),
@@ -280,9 +282,16 @@ button:disabled::before {
   background: var(--accent);
 }
 
-/* --- menu popup (New Game + rules) ----------------------------------------- */
+/* --- menu popup (New Game + rules) -----------------------------------------
+   #gallery-overlay (Champions/Weapons/Monsters galleries, see further down)
+   and #champion-select-overlay (the "pick a champion" screen shown whenever
+   a new game starts) share this exact chrome — same dimmed backdrop, panel,
+   close button, and title treatment — so they're styled via the same
+   selectors rather than duplicated. Only their inner content differs. */
 
-#menu-overlay {
+#menu-overlay,
+#gallery-overlay,
+#champion-select-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.65);
@@ -294,11 +303,15 @@ button:disabled::before {
   overflow-y: auto;
 }
 
-#menu-overlay.hidden {
+#menu-overlay.hidden,
+#gallery-overlay.hidden,
+#champion-select-overlay.hidden {
   display: none;
 }
 
-#menu-panel {
+#menu-panel,
+#gallery-panel,
+#champion-select-panel {
   position: relative;
   background: linear-gradient(180deg, var(--surface), #17171b);
   border: 1px solid var(--border);
@@ -309,6 +322,12 @@ button:disabled::before {
   max-height: 85vh;
   overflow-y: auto;
   animation: menu-in 0.25s ease;
+}
+
+/* Champion-select gets a bit more room than the menu/gallery panels since
+   its tiles carry a full description line, not just a name + rank. */
+#champion-select-panel {
+  width: min(38rem, 100%);
 }
 
 @keyframes menu-in {
@@ -322,7 +341,9 @@ button:disabled::before {
   }
 }
 
-#menu-close-btn {
+#menu-close-btn,
+#gallery-close-btn,
+#champion-select-close-btn {
   position: absolute;
   top: 0.6rem;
   right: 0.6rem;
@@ -330,7 +351,9 @@ button:disabled::before {
   font-size: 0.9rem;
 }
 
-#menu-title {
+#menu-title,
+#gallery-title,
+#champion-select-title {
   font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.6rem;
@@ -338,10 +361,19 @@ button:disabled::before {
   text-align: center;
 }
 
-#menu-panel #new-game-btn {
+#menu-panel #new-game-btn,
+#menu-panel #back-to-menu-btn {
   display: block;
   width: 100%;
-  margin: 0 0 1.5rem;
+  margin: 0 0 0.6rem;
+}
+
+#menu-panel #new-game-btn.hidden {
+  display: none;
+}
+
+#menu-panel #back-to-menu-btn {
+  margin-bottom: 1.5rem;
 }
 
 #rules {
@@ -377,6 +409,289 @@ button:disabled::before {
   color: var(--text);
 }
 
+/* --- main/start screen ------------------------------------------------------
+   Shown on page load instead of the game screen (#game-screen, wrapping
+   everything that used to be body's direct children) — startNewGame() in
+   main.js swaps to #game-screen; the hamburger menu's "Main Menu" button
+   (#back-to-menu-btn) swaps back. Both screens are direct children of body,
+   which is still the flex column doing the centering — only one is ever in
+   flow at a time since the other gets display:none via .hidden. */
+
+#start-screen,
+#game-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--stack-gap);
+}
+
+#start-screen.hidden,
+#game-screen.hidden {
+  display: none;
+}
+
+#start-screen {
+  gap: calc(var(--stack-gap) * 1.5);
+}
+
+#start-logo {
+  font-size: 3.2rem;
+  color: var(--accent);
+  text-shadow: 0 0 24px rgba(217, 164, 65, 0.35);
+}
+
+#start-tagline {
+  font-family: var(--font-ui);
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  margin: -0.75rem 0 0;
+}
+
+#start-new-game-btn {
+  font-size: 1.2rem;
+  padding: 0.7rem 2.2rem;
+}
+
+#start-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+/* --- gallery popup (Champions/Weapons/Monsters, opened from the start
+   screen) — reuses #menu-overlay/#menu-panel chrome, see above. ----------- */
+
+#gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: 0.75rem;
+}
+
+/* Light card-colored background (not --surface-hover) is deliberate: the
+   monster/weapon artwork itself is a solid black silhouette (see the
+   "Monster/Weapon artwork" sections in CLAUDE.md) meant to sit on the
+   cream .card background it normally appears on — on a dark background it
+   would be nearly invisible. */
+.gallery-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.5rem;
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.15s ease, border-color 0.2s ease;
+}
+
+.gallery-item:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+
+.gallery-item-portrait {
+  width: 100%;
+  max-width: 3.6rem;
+  height: 3.6rem;
+}
+
+.gallery-item-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Fallback for anything without artwork yet (currently every Champion —
+   see js/champion-icons.js/fillPortrait() in js/ui.js). A plain letter
+   monogram rather than an emoji glyph: an earlier emoji badge (🛡) didn't
+   render on every system/font tested, so letters are the safer default
+   here too. Reuses the weapon slot's dashed-outline look
+   (.weapon-slot-empty) so an "art not ready yet" placeholder reads
+   consistently across the whole game. */
+.portrait-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  color: var(--text-muted);
+}
+
+/* Fixed to a 2-line-tall box (not just line-clamped) regardless of whether
+   the name actually wraps ("Wolf" vs "Armored Skeleton") so every tile's
+   rank number lines up at the same height, both within a grid row and
+   across rows — matters because #gallery-grid's rows can end up different
+   heights depending on which names in that row wrapped. */
+.gallery-item-name {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(0.68rem * 1.25 * 2);
+  font-size: 0.68rem;
+  line-height: 1.25;
+  color: var(--card-text);
+  text-align: center;
+}
+
+.gallery-item-rank {
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--card-text);
+  opacity: 0.85;
+}
+
+/* --- gallery item detail popup (opened by clicking a weapon/monster tile) -
+   Sits on top of #gallery-overlay (z-index 300), so it needs a higher one
+   of its own — everything else reuses the exact same dimmed-backdrop +
+   panel + close-button chrome as #menu-overlay/#gallery-overlay, just with
+   its own selectors since it isn't in that shared group (its panel is
+   narrower and has image/rank rows the other two don't). */
+#gallery-detail-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 310;
+  padding: 1.5rem;
+}
+
+#gallery-detail-overlay.hidden {
+  display: none;
+}
+
+#gallery-detail-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(180deg, var(--surface), #17171b);
+  border: 1px solid var(--border);
+  box-shadow: 0 0 0 1px rgba(217, 164, 65, 0.15), 0 10px 30px rgba(0, 0, 0, 0.6);
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: min(20rem, 100%);
+  animation: menu-in 0.25s ease;
+}
+
+#gallery-detail-close-btn {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.9rem;
+}
+
+/* A div now (was a plain <img>), filled by fillPortrait() in js/ui.js so it
+   can fall back to a .portrait-placeholder when there's no artwork yet
+   (currently every Champion). */
+#gallery-detail-image {
+  width: 7rem;
+  height: 7rem;
+  padding: 0.5rem;
+  border-radius: var(--radius);
+  background: var(--card-bg);
+}
+
+#gallery-detail-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+#gallery-detail-image .portrait-placeholder {
+  border: none;
+  font-size: 2.4rem;
+}
+
+#gallery-detail-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.3rem;
+  margin: 0;
+  text-align: center;
+}
+
+#gallery-detail-rank {
+  font-family: var(--font-ui);
+  color: var(--accent);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+#gallery-detail-text {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  text-align: center;
+  margin: 0;
+}
+
+/* --- champion-select screen (shown whenever a new game starts) ------------
+   Sits inside #champion-select-panel, which reuses the shared #menu-overlay/
+   #gallery-overlay chrome (see above). Each tile shows its full ability text
+   inline rather than opening a separate detail popup (only 4 champions
+   exist), and clicking one starts the game immediately — see the delegated
+   click handler in main.js. */
+
+#champion-select-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.9rem;
+}
+
+.champion-select-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 1rem 0.75rem;
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.15s ease, border-color 0.2s ease;
+}
+
+.champion-select-item:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+
+.champion-select-portrait {
+  width: 5rem;
+  height: 5rem;
+}
+
+.champion-select-portrait .portrait-placeholder {
+  font-size: 2rem;
+}
+
+.champion-select-name {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--card-text);
+}
+
+.champion-select-desc {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--card-text);
+  opacity: 0.75;
+  text-align: center;
+}
+
 /* --- empty room state (before the first game / after the dungeon ends) ---- */
 
 #room-empty {
@@ -402,6 +717,38 @@ button:disabled::before {
   gap: 0.75rem;
 }
 
+/* The champion portrait sits left of the bar, inside the same flex row/gap
+   as the bar and the "20 / 20 HP" text — #hp-bar's width below is shortened
+   by exactly this badge's width plus one gap (1.75rem + 0.75rem = 2.5rem,
+   13.75rem -> 11.25rem) so the whole badge+bar group takes up the same
+   total width the bar alone used to. Filled via fillPortrait() (js/ui.js),
+   same null-image fallback pattern as everywhere else — see
+   renderChampionBadge() in js/ui.js. */
+#champion-badge {
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  box-shadow: 0 0 0 1px rgba(217, 164, 65, 0.18);
+}
+
+#champion-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#champion-badge .portrait-placeholder {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 50%;
+  font-size: 0.9rem;
+}
+
 /* Positioning anchor for the floating +N / -N numbers (#hp-float-container),
    which need to sit centered above the bar regardless of its own size. */
 #hp-bar-container {
@@ -410,9 +757,10 @@ button:disabled::before {
 
 /* Carved-stone recessed look: dark inset well with a thin gold hairline
    ring, so the bar reads as part of the dungeon UI rather than a plain web
-   progress bar. */
+   progress bar. Width shortened to make room for #champion-badge — see the
+   comment there. */
 #hp-bar {
-  width: 13.75rem;
+  width: 11.25rem;
   height: 0.875rem;
   background: linear-gradient(180deg, #0c0c0f, #1c1c21);
   border: 1px solid var(--border);
@@ -1110,5 +1458,18 @@ button:disabled::before {
 
   #message {
     font-size: 0.75rem;
+  }
+
+  #start-logo {
+    font-size: 1.8rem;
+  }
+
+  #start-tagline {
+    margin-top: 0;
+  }
+
+  #start-new-game-btn {
+    font-size: 0.95rem;
+    padding: 0.4rem 1.4rem;
   }
 }

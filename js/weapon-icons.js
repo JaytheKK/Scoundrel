@@ -21,3 +21,22 @@ const WEAPON_NAMES = {
 function weaponNameFor(rank) {
   return WEAPON_NAMES[rank] || null;
 }
+
+// Short flavor blurb shown in the Weapons gallery's detail popup (see
+// openGalleryDetail() in js/main.js) — not used anywhere else (card
+// tooltips only show the name, not this).
+const WEAPON_DESCRIPTIONS = {
+  2: 'A crude, splintering club — barely better than bare fists.',
+  3: 'A rusted blade, dulled by age and countless battles.',
+  4: 'A long-reaching weapon, simple but effective.',
+  5: 'A reliable blade, well balanced for any fight.',
+  6: 'A heavy axe that cleaves through armor.',
+  7: 'A broadsword wreathed in eternal flame.',
+  8: 'A cursed blade that hungers for battle.',
+  9: 'A legendary hammer said to summon thunder.',
+  10: 'The legendary blade of kings.',
+};
+
+function weaponDescriptionFor(rank) {
+  return WEAPON_DESCRIPTIONS[rank] || null;
+}
