@@ -70,7 +70,7 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   `cards.js` (e.g. an `effectId` matched to a lookup, or a directly imported
   handler). Don't pre-create 44 effect files "just in case."
 - Each card has an `image` field, currently `null` for all cards. When `null`,
-  `renderCard()` in `game.js` draws a CSS placeholder (suit symbol + rank,
+  `fillCardFace()` in `js/ui.js` draws a CSS placeholder (suit symbol + rank,
   colored by type: green=monster, blue=weapon, red=potion). Once real artwork
   (including pixel art) exists, set a card's `image` to a file path and the
   renderer automatically shows that image instead — no other code changes
@@ -78,6 +78,21 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   `style.css` to keep future pixel-art sprites crisp.
 - `effect` is reserved and currently unused — the hook point for future
   special-ability cards (e.g. `onReveal`, `onResolve` callbacks).
+
+## Interaction design decisions
+
+- **No modal dialogs for in-game choices.** An earlier version used a popup
+  to ask "fight with weapon or bare-handed?" on every monster — this was
+  explicitly rejected as too interruptive. Instead: a persistent **weapon
+  slot** (`#weapon-slot-card` in `index.html`, styled like a card — dashed
+  outline + sword icon when empty) always shows the current weapon and its
+  restriction, and a **"Using weapon" toggle** (`state.useWeaponPreference`)
+  controls whether fights auto-use the weapon (when legal) or go
+  bare-handed. Keep this pattern — prefer persistent, always-visible controls
+  over per-action popups — for future mechanics too, unless told otherwise.
+- Clicking a weapon card animates it flying from the room into the weapon
+  slot (`animateWeaponToSlot()` in `js/ui.js`, a cloned/positioned element,
+  not a real drag interaction).
 
 ## Local dev / preview
 
