@@ -42,6 +42,13 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
 - Files (loaded in this order from `index.html`):
   - `index.html` — page structure
   - `style.css` — styling
+  - `fonts/` — self-hosted woff2 fonts (Metamorphous, MedievalSharp), both
+    SIL Open Font License — free for commercial use, see
+    `fonts/LICENSE-fonts.txt`. Use `var(--font-display)` (Metamorphous) for
+    dramatic one-off text (title, win/lose banner) and `var(--font-ui)`
+    (MedievalSharp) for buttons/UI chrome. Keep card numbers, HP/deck counts,
+    and status/message text in `var(--font-body)` (plain system font) —
+    decorative faces hurt quick readability for things read during play.
   - `js/cards.js` — the 44 card definitions (data only)
   - `js/state.js` — game state + rules logic (fight/equip/drink, room refill,
     win/lose). **No DOM code here** — keeps rules testable/reasoned about on
