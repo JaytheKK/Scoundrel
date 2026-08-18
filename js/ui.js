@@ -4,12 +4,11 @@
 // into state.js and then asks this file to re-render.
 // ---------------------------------------------------------------------------
 
-function renderCard(card) {
-  const el = document.createElement('div');
-  el.className = `card card--${card.type}`;
-  el.dataset.suit = card.suit;
-  el.dataset.id = card.id;
-  el.title = card.name;
+/** Fills a card-shaped element with a card's face (image or suit/rank
+ * placeholder + type label). Shared by renderCard() and the weapon slot,
+ * which displays the equipped weapon the same way. */
+function fillCardFace(el, card) {
+  el.innerHTML = '';
 
   if (card.image) {
     const img = document.createElement('img');
@@ -33,7 +32,15 @@ function renderCard(card) {
   typeLabel.className = 'card-type-label';
   typeLabel.textContent = card.type;
   el.appendChild(typeLabel);
+}
 
+function renderCard(card) {
+  const el = document.createElement('div');
+  el.className = `card card--${card.type}`;
+  el.dataset.suit = card.suit;
+  el.dataset.id = card.id;
+  el.title = card.name;
+  fillCardFace(el, card);
   return el;
 }
 
@@ -54,16 +61,25 @@ function renderHp() {
 }
 
 function renderWeaponSlot() {
-  const el = document.getElementById('weapon-slot');
+  const slot = document.getElementById('weapon-slot-card');
+  const status = document.getElementById('weapon-status');
+
   if (!state.equippedWeapon) {
-    el.textContent = 'Weapon: none';
+    slot.className = 'card weapon-slot-empty';
+    delete slot.dataset.suit;
+    slot.innerHTML = '<div class="sword-icon">⚔</div>';
+    status.textContent = 'No weapon equipped';
     return;
   }
-  const restriction =
+
+  slot.className = 'card card--weapon';
+  slot.dataset.suit = state.equippedWeapon.suit;
+  fillCardFace(slot, state.equippedWeapon);
+
+  status.textContent =
     state.weaponMaxMonster === null
-      ? 'fresh — usable on any monster'
-      : `usable on monsters weaker than ${state.weaponMaxMonster}`;
-  el.textContent = `Weapon: ${state.equippedWeapon.name} (${restriction})`;
+      ? 'Can defeat any monster'
+      : `Can only defeat monsters weaker than ${state.weaponMaxMonster}`;
 }
 
 function renderMessage(text) {
@@ -93,42 +109,39 @@ function renderAll() {
   renderMessage('');
 }
 
-// --- fight-choice modal ---------------------------------------------------
+// --- weapon-equip animation -------------------------------------------------
 
-/** Shows a small modal asking the player to fight a monster with their
- * equipped weapon or bare-handed, previewing the damage of each option.
- * Calls onChoice(useWeapon: boolean) once the player picks. */
-function showFightChoice(card, onChoice) {
-  const overlay = document.getElementById('modal-overlay');
-  const text = document.getElementById('modal-text');
-  const actions = document.getElementById('modal-actions');
+// Keep in sync with the transition duration set on .weapon-flying in style.css.
+const WEAPON_FLY_MS = 380;
 
-  const weaponDamage = Math.max(card.rank - state.equippedWeapon.rank, 0);
+/** Animates a clone of `cardEl` flying from its current position into the
+ * weapon slot, then calls onDone(). The original card is hidden immediately
+ * so nothing appears duplicated during the flight. */
+function animateWeaponToSlot(cardEl, onDone) {
+  const slot = document.getElementById('weapon-slot-card');
+  const startRect = cardEl.getBoundingClientRect();
+  const endRect = slot.getBoundingClientRect();
 
-  text.textContent = `${card.name} (strength ${card.rank}) — how do you want to fight?`;
-  actions.innerHTML = '';
+  const clone = cardEl.cloneNode(true);
+  clone.classList.add('weapon-flying');
+  clone.style.left = `${startRect.left}px`;
+  clone.style.top = `${startRect.top}px`;
+  clone.style.width = `${startRect.width}px`;
+  clone.style.height = `${startRect.height}px`;
+  document.body.appendChild(clone);
 
-  const weaponBtn = document.createElement('button');
-  weaponBtn.className = 'modal-btn';
-  weaponBtn.textContent = `${state.equippedWeapon.name} — ${weaponDamage} dmg`;
-  weaponBtn.addEventListener('click', () => {
-    hideFightChoice();
-    onChoice(true);
+  cardEl.style.visibility = 'hidden';
+
+  requestAnimationFrame(() => {
+    const dx = endRect.left + (endRect.width - startRect.width) / 2 - startRect.left;
+    const dy = endRect.top + (endRect.height - startRect.height) / 2 - startRect.top;
+    const scale = endRect.width / startRect.width;
+    clone.style.transform = `translate(${dx}px, ${dy}px) scale(${scale})`;
+    clone.style.opacity = '0.4';
   });
 
-  const bareBtn = document.createElement('button');
-  bareBtn.className = 'modal-btn';
-  bareBtn.textContent = `Bare hands — ${card.rank} dmg`;
-  bareBtn.addEventListener('click', () => {
-    hideFightChoice();
-    onChoice(false);
-  });
-
-  actions.appendChild(weaponBtn);
-  actions.appendChild(bareBtn);
-  overlay.classList.remove('hidden');
-}
-
-function hideFightChoice() {
-  document.getElementById('modal-overlay').classList.add('hidden');
+  setTimeout(() => {
+    clone.remove();
+    onDone();
+  }, WEAPON_FLY_MS);
 }

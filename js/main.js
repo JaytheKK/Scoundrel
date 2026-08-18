@@ -12,15 +12,27 @@ function handleCardClick(cardId) {
   const card = state.room.find((c) => c.id === cardId);
   if (!card) return;
 
-  // If the equipped weapon is legal to use on this monster, let the player
-  // choose bare hands vs. weapon (using it changes the weapon's restriction
-  // for later monsters, so it's a real choice).
-  if (card.type === 'monster' && isWeaponUsableOn(card)) {
-    showFightChoice(card, (useWeapon) => resolveAndAnimate(cardId, { useWeapon }));
+  // Weapons fly into the weapon slot instead of fading down like other cards.
+  if (card.type === 'weapon') {
+    const cardEl = document.querySelector(`.card[data-id="${cardId}"]`);
+    if (!cardEl) return;
+    animateWeaponToSlot(cardEl, () => {
+      const result = resolveCard(cardId);
+      if (!result) return;
+      renderHp();
+      renderWeaponSlot();
+      renderMessage(result.message);
+      renderRoom();
+      renderDeckCount();
+      renderFleeButton();
+    });
     return;
   }
 
-  resolveAndAnimate(cardId);
+  // Monsters use the equipped weapon automatically whenever the "Using
+  // weapon" toggle is on and the weapon is legal to use on them; no per-fight
+  // prompt.
+  resolveAndAnimate(cardId, { useWeapon: state.useWeaponPreference });
 }
 
 function resolveAndAnimate(cardId, options) {
@@ -57,6 +69,10 @@ document.getElementById('flee-btn').addEventListener('click', () => {
   renderRoom();
   renderDeckCount();
   renderFleeButton();
+});
+
+document.getElementById('weapon-toggle').addEventListener('change', (event) => {
+  state.useWeaponPreference = event.target.checked;
 });
 
 document.getElementById('new-game-btn').addEventListener('click', () => {

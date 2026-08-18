@@ -18,6 +18,11 @@ const state = {
   fledLastRoom: false,       // can't flee two rooms in a row
   gameOver: false,
   outcome: null,              // 'won' | 'lost' | null
+
+  // UI preference, not reset by initGame(): whether fighting a monster should
+  // use the equipped weapon (when legal) or go bare-handed. Controlled by the
+  // "Using weapon" toggle.
+  useWeaponPreference: true,
 };
 
 /** Fisher–Yates shuffle, returns a new shuffled array (does not mutate input). */

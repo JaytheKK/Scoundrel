@@ -19,19 +19,21 @@
     <span id="hp-text">20 / 20 HP</span>
   </div>
 
-  <div id="weapon-slot">Weapon: none</div>
-
   <div id="room"></div>
 
   <button id="flee-btn">Flee Room</button>
 
   <p id="message"></p>
 
-  <div id="modal-overlay" class="hidden">
-    <div id="modal">
-      <p id="modal-text"></p>
-      <div id="modal-actions"></div>
+  <div id="weapon-area">
+    <div id="weapon-slot-card" class="card weapon-slot-empty">
+      <div class="sword-icon">⚔</div>
     </div>
+    <p id="weapon-status">No weapon equipped</p>
+    <label class="toggle-wrapper" for="weapon-toggle">
+      <input type="checkbox" id="weapon-toggle" checked>
+      <span>Using weapon</span>
+    </label>
   </div>
 
   <script src="js/cards.js"></script>
