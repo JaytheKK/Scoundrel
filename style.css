@@ -706,45 +706,16 @@ button:disabled::before {
 
 /* --- aura: the very strongest cards get more than "just a glow" ---------
    J/Q/K/A monsters (rank 11+) and the 3 strongest weapons (rank 8+) get
-   .card--aura added in ui.js (hasAura()): a rotating conic-gradient ring
-   glowing around the card (::before, blurred, spinning), plus the card
-   itself breathing — scaling up slightly and flaring its shadow — instead
-   of a single static glow. This sits on top of the tier system above, not
+   .card--aura added in ui.js (hasAura()): the card breathes — scaling up
+   slightly and flaring its shadow to a wider, brighter double glow —
+   instead of sitting at a single static glow. (An earlier version also
+   spun a rotating gradient ring behind the card; dropped — it wasn't
+   noticeable in practice.) This sits on top of the tier system above, not
    instead of it (the tier border/glow still applies underneath). */
 .card--aura {
   position: relative;
   isolation: isolate;
   animation: card-aura-pulse 2.4s ease-in-out infinite;
-}
-
-.card--aura::before {
-  content: '';
-  position: absolute;
-  inset: calc(-7px * var(--card-scale));
-  border-radius: calc(var(--radius) + 6px * var(--card-scale));
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    rgba(var(--edge-rgb), 0.95) 55deg,
-    transparent 130deg,
-    transparent 230deg,
-    rgba(var(--edge-rgb), 0.95) 305deg,
-    transparent 360deg
-  );
-  filter: blur(calc(5px * var(--card-scale)));
-  opacity: 0.85;
-  z-index: -1;
-  pointer-events: none;
-  animation: card-aura-spin 3.2s linear infinite;
-}
-
-@keyframes card-aura-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 @keyframes card-aura-pulse {
