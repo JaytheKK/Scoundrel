@@ -46,11 +46,39 @@
   --weapon: #3a6b8c;
   --potion: #b3283d;
 
-  --radius: 8px;
+  --radius: 0.5rem;
 
   --font-body: system-ui, sans-serif;
   --font-display: 'Metamorphous', serif;
   --font-ui: 'MedievalSharp', cursive;
+}
+
+/* ---------------------------------------------------------------------------
+   Responsive scaling — almost everything below is sized in rem, so bumping
+   the root font-size scales the whole game (cards, buttons, spacing, text)
+   together. Phone stays at the original 1x size; tablet is an in-between
+   step; desktop reaches a full 1.5x (24px / 16px) as requested.
+--------------------------------------------------------------------------- */
+html {
+  font-size: 16px; /* phone (default) */
+}
+
+@media (min-width: 640px) {
+  html {
+    font-size: 18px; /* tablet, e.g. iPad portrait */
+  }
+}
+
+@media (min-width: 1024px) {
+  html {
+    font-size: 22px; /* small/mid desktop */
+  }
+}
+
+@media (min-width: 1280px) {
+  html {
+    font-size: 24px; /* desktop — 1.5x the original 16px */
+  }
 }
 
 * {
@@ -120,9 +148,10 @@ button:disabled {
 
 #controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
+  gap: 0.75rem 1rem;
   margin-top: 1rem;
 }
 
@@ -142,11 +171,11 @@ button:disabled {
 }
 
 #hp-bar {
-  width: 220px;
-  height: 14px;
+  width: 13.75rem;
+  height: 0.875rem;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: 0.4375rem;
   overflow: hidden;
 }
 
@@ -160,7 +189,7 @@ button:disabled {
 #hp-text {
   font-size: 0.9rem;
   color: var(--text-muted);
-  min-width: 70px;
+  min-width: 4.375rem;
   text-align: left;
 }
 
@@ -191,8 +220,8 @@ button:disabled {
 }
 
 .card {
-  width: 100px;
-  height: 140px;
+  width: 6.25rem;
+  height: 8.75rem;
   border-radius: var(--radius);
   background: var(--card-bg);
   color: var(--card-text);
@@ -200,9 +229,9 @@ button:disabled {
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 0;
+  padding: 0.5rem 0;
   border: 1px solid rgba(0, 0, 0, 0.1);
-  border-top: 4px solid #888;
+  border-top: 0.25rem solid #888;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
   cursor: pointer;
   transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.15s ease;
@@ -264,7 +293,7 @@ button:disabled {
 
 .card-image {
   width: 100%;
-  height: 64px;
+  height: 4rem;
   object-fit: contain;
   image-rendering: pixelated; /* keeps future pixel-art crisp */
 }
@@ -325,12 +354,12 @@ button:disabled {
 
 .toggle-wrapper input[type='checkbox'] {
   appearance: none;
-  width: 38px;
-  height: 21px;
+  width: 2.375rem;
+  height: 1.3125rem;
   margin: 0;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 11px;
+  border-radius: 0.6875rem;
   position: relative;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
@@ -339,10 +368,10 @@ button:disabled {
 .toggle-wrapper input[type='checkbox']::before {
   content: '';
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 15px;
-  height: 15px;
+  top: 0.125rem;
+  left: 0.125rem;
+  width: 0.9375rem;
+  height: 0.9375rem;
   border-radius: 50%;
   background: var(--text-muted);
   transition: transform 0.15s ease, background 0.15s ease;
@@ -354,7 +383,7 @@ button:disabled {
 }
 
 .toggle-wrapper input[type='checkbox']:checked::before {
-  transform: translateX(17px);
+  transform: translateX(1.0625rem);
   background: #1a1408;
 }
 
