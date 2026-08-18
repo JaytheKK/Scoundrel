@@ -185,16 +185,30 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   `glowRgb` through `makeCard`'s `overrides`) without touching the shared
   tier system — this is the intended extension point once per-card effects
   exist, not a one-off.
-- **Monsters get gloomier, not just brighter, at high tiers.** Their base
-  color is a dark purple (`--edge-rgb: 96, 48, 130` on `.card--monster`),
-  and tiers 4-5 specifically (`.card--monster.card--tier-4/5`, the only
-  tiers a monster can reach that a weapon/potion can't) override to
-  progressively darker/near-black purple *and* add an inward dark vignette
-  (an `inset` box-shadow layered into `--card-glow`) — a deliberate design
-  choice that strong monsters should feel ominous/oppressive rather than
-  simply "more colorful". If another card type ever reaches tier 4/5,
-  consider whether it deserves its own tier-4/5 treatment too rather than
-  reusing the monster darkening (which is monster-specific on purpose).
+- **Monsters get gloomier at high tiers via an inward dark vignette, not a
+  darker edge color.** Their base color is a vivid purple (`--edge-rgb: 150,
+  60, 210` on `.card--monster`), and tiers 4-5 specifically
+  (`.card--monster.card--tier-4/5`, the only tiers a monster can reach that
+  a weapon/potion can't) get *more* saturated/electric, not darker — an
+  earlier version dimmed the color itself at high tiers for an "ominous"
+  feel, but that made the strongest monsters low-contrast and hard to see
+  against the dark page background, which is the opposite of what a
+  strength indicator should do. The gloomy/ominous read instead comes from
+  an `inset` dark shadow layered into `--card-glow`, so the card stays
+  bright and clearly visible while still feeling oppressive. Keep this
+  principle for any future "make it feel darker/eviler" request: add
+  darkness via an inset vignette, don't dim the actual glow color.
+- **The very strongest cards get a pulsing `.card--aura`, not just a
+  bigger glow.** `hasAura(card)` in `js/ui.js` — true for monsters rank 11+
+  (J/Q/K/A) and weapons rank 8+ (the 3 strongest) — adds `.card--aura`,
+  which layers a rotating conic-gradient glow ring (`::before`, blurred,
+  spinning via `card-aura-spin`) plus the whole card breathing — scaling up
+  slightly and flaring its shadow — via `card-aura-pulse`, on top of the
+  normal tier border/glow (not instead of it). This was added because a
+  static glow, even a strong one, read as "boring" — if a future request
+  asks for an even-more-special treatment (e.g. a one-of-a-kind card),
+  prefer layering another animated flourish the same way rather than
+  just cranking up blur/alpha further.
 
 ### Potion artwork
 
