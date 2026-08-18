@@ -56,8 +56,26 @@ function renderDeckCount() {
 
 function renderHp() {
   const pct = Math.max(0, Math.min(100, (state.hp / state.maxHp) * 100));
-  document.getElementById('hp-fill').style.width = `${pct}%`;
+  const fill = document.getElementById('hp-fill');
+  fill.style.width = `${pct}%`;
   document.getElementById('hp-text').textContent = `${state.hp} / ${state.maxHp} HP`;
+  // Low-health pulse, purely a style hint (see .hp-bar--low in style.css).
+  document.getElementById('hp-bar').classList.toggle('hp-bar--low', pct > 0 && pct <= 25);
+}
+
+// Keep in sync with the animation-duration on .hp-float in style.css.
+const HP_FLOAT_MS = 1100;
+
+/** Shows a floating "+N" (green, drifts up) or "-N" (red, drifts down) over
+ * the HP bar — called whenever state.hp actually changed. */
+function showHpDelta(delta) {
+  if (!delta) return;
+  const container = document.getElementById('hp-float-container');
+  const el = document.createElement('span');
+  el.className = `hp-float ${delta > 0 ? 'hp-float--heal' : 'hp-float--damage'}`;
+  el.textContent = delta > 0 ? `+${delta}` : `${delta}`;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), HP_FLOAT_MS);
 }
 
 function renderWeaponSlot() {

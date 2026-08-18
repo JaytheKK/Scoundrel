@@ -17,9 +17,11 @@ function handleCardClick(cardId) {
     const cardEl = document.querySelector(`.card[data-id="${cardId}"]`);
     if (!cardEl) return;
     animateWeaponToSlot(cardEl, () => {
+      const hpBefore = state.hp;
       const result = resolveCard(cardId);
       if (!result) return;
       renderHp();
+      showHpDelta(state.hp - hpBefore);
       renderWeaponSlot();
       renderMessage(result.message);
       renderRoom();
@@ -41,10 +43,12 @@ function resolveAndAnimate(cardId, options) {
   const cardEl = document.querySelector(`.card[data-id="${cardId}"]`);
   if (cardEl) cardEl.classList.add('card--resolved');
 
+  const hpBefore = state.hp;
   const result = resolveCard(cardId, options);
   if (!result) return;
 
   renderHp();
+  showHpDelta(state.hp - hpBefore);
   renderWeaponSlot();
   renderMessage(result.message);
 

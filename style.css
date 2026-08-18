@@ -252,20 +252,47 @@ button:disabled::before {
   gap: 0.75rem;
 }
 
+/* Positioning anchor for the floating +N / -N numbers (#hp-float-container),
+   which need to sit centered above the bar regardless of its own size. */
+#hp-bar-container {
+  position: relative;
+}
+
+/* Carved-stone recessed look: dark inset well with a thin gold hairline
+   ring, so the bar reads as part of the dungeon UI rather than a plain web
+   progress bar. */
 #hp-bar {
   width: 13.75rem;
   height: 0.875rem;
-  background: var(--surface);
+  background: linear-gradient(180deg, #0c0c0f, #1c1c21);
   border: 1px solid var(--border);
   border-radius: 0.4375rem;
   overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(217, 164, 65, 0.18);
 }
 
 #hp-fill {
   height: 100%;
   width: 100%;
-  background: var(--danger);
-  transition: width 0.3s ease;
+  background: linear-gradient(180deg, #e0564a, #a5281b);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 0 8px rgba(192, 57, 43, 0.55);
+  transition: width 0.4s ease, box-shadow 0.3s ease;
+}
+
+/* Pulses when HP drops to 25% or below (toggled in renderHp() in ui.js) —
+   a quiet "danger" cue instead of just a short red bar. */
+#hp-bar.hp-bar--low #hp-fill {
+  animation: hp-pulse 1s ease-in-out infinite;
+}
+
+@keyframes hp-pulse {
+  0%,
+  100% {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 0 8px rgba(192, 57, 43, 0.55);
+  }
+  50% {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 0 16px rgba(192, 57, 43, 0.9);
+  }
 }
 
 #hp-text {
@@ -273,6 +300,73 @@ button:disabled::before {
   color: var(--text-muted);
   min-width: 4.375rem;
   text-align: left;
+}
+
+/* --- floating "+7" / "-4" combat numbers ------------------------------- */
+
+#hp-float-container {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  pointer-events: none;
+}
+
+.hp-float {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 1.15rem;
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+.hp-float--heal {
+  color: var(--success);
+  animation: hp-float-up 1.1s ease-out forwards;
+}
+
+.hp-float--damage {
+  color: var(--danger);
+  animation: hp-float-down 1.1s ease-out forwards;
+}
+
+@keyframes hp-float-up {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.75);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+  30% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% - 2.4rem)) scale(1);
+  }
+}
+
+@keyframes hp-float-down {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.75);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+  30% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 2.4rem)) scale(1);
+  }
 }
 
 /* Capped to 2 lines (with ellipsis) so a long fight/flee message can never
