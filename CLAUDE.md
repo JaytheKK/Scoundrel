@@ -64,6 +64,14 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
 - Win/lose is shown via `#gameover-overlay` (full-screen, dimmed, original
   CSS-only banner — no image assets) with a "Play Again" button; see
   `renderGameOverBanner()` in `js/ui.js`.
+- **Responsive sizing:** almost every size in `style.css` is in `rem`, not
+  `px`, on purpose. The root `html` font-size scales by media-query
+  breakpoint (16px phone / 18px tablet ≥640px / 22px small desktop ≥1024px /
+  24px desktop ≥1280px — 24px is exactly 1.5x the 16px base), which scales
+  the whole game (cards, buttons, HP bar, banner, spacing) together. When
+  adding new sized elements, use `rem` (not `px`) so they stay part of this
+  scaling — the only things intentionally left in `px` are hairline borders
+  (1-2px) where scaling would just blur them.
 
 ## Card architecture (important — read before adding/editing cards)
 
