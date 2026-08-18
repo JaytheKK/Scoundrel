@@ -175,6 +175,22 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   same tier class to any new place a card is rendered (it's already done
   for both room cards and the equipped weapon in the weapon slot).
 
+### Potion artwork
+
+- `images/potions/<rank>.png` (2-10, one file per rank) came from a
+  user-supplied sheet (`images/HealPotsIcons.jpeg`, kept as source
+  reference), cropped the same way as the monster art but keeping color
+  this time (alpha = 255 − min(R,G,B) per pixel, not forced to black) so
+  the red potion liquid stays visible against the transparent background.
+  Names are in `POTION_NAMES` in `js/potion-icons.js`.
+- Potions get an extra **"life pulse"** on top of the normal strength-tier
+  border (`.card--potion` / `card-potion-pulse` in `style.css`): the glow
+  breathes in and out continuously, on every potion regardless of tier —
+  added because a static border (even a colored one) read as boring for a
+  healing item. If weapons ever get their own artwork, consider whether
+  they deserve a similar type-specific flourish instead of just reusing
+  the plain tier system, rather than assuming tier alone is always enough.
+
 ## Interaction design decisions
 
 - **No modal dialogs for in-game choices.** An earlier version used a popup
