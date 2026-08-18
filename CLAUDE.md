@@ -39,24 +39,37 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
 ## Conventions
 
 - Plain **vanilla JavaScript**, no frameworks, no npm build step.
-- Files:
+- Files (loaded in this order from `index.html`):
   - `index.html` — page structure
   - `style.css` — styling
-  - `cards.js` — the 44 card definitions (loaded before game.js)
-  - `game.js` — game state, logic, and rendering
-- Keep game **logic** (deck, rooms, combat rules) separate from **DOM/rendering**
-  code as much as practical, so logic can be tested/reasoned about on its own.
+  - `js/cards.js` — the 44 card definitions (data only)
+  - `js/state.js` — game state + rules logic (fight/equip/drink, room refill,
+    win/lose). **No DOM code here** — keeps rules testable/reasoned about on
+    their own, independent of rendering.
+  - `js/ui.js` — rendering only (cards, HP bar, weapon slot, message). Reads
+    `state`, contains no game rules.
+  - `js/main.js` — wiring: click handlers call into `state.js`, then trigger
+    re-renders via `ui.js`. Also owns the resolve animation timing
+    (`CARD_ANIMATION_MS`, kept in sync with the CSS transition duration).
 - Everything user-facing (card names, buttons, messages) is in **English**.
 - Build incrementally: deck/shuffle → room mechanic → combat/weapon/potion
   logic → win/lose conditions → UI polish. Verify each step before moving on.
+- Not yet implemented: fleeing a room, manually choosing weapon vs. bare hands
+  (currently automatic — weapon is used whenever legal), and win/lose screens
+  beyond the inline `#message` text.
 
 ## Card architecture (important — read before adding/editing cards)
 
-- Every card is defined **individually** in `cards.js` via its own `makeCard(suit, rank, overrides)`
-  call — not generated in a loop. This is deliberate: it keeps each of the 44
-  cards independently editable/extendable, which matters once special-ability
-  cards are added later (each card can get a custom `name`, `image`, or
-  `effect` via the `overrides` argument without touching shared generation code).
+- Every card is defined **individually** in `js/cards.js` via its own
+  `makeCard(suit, rank, overrides)` call — not generated in a loop. This is
+  deliberate: it keeps each of the 44 cards independently editable/extendable.
+- **One file per card is intentionally NOT used** for the base 44 — they're
+  pure data with no unique behavior, so one shared `cards.js` list is enough.
+  Once a specific card gets a real special-ability, give **that card** (and
+  only that card) its own file under `js/effects/` (create the folder when
+  the first one is needed), and reference it from that card's `overrides` in
+  `cards.js` (e.g. an `effectId` matched to a lookup, or a directly imported
+  handler). Don't pre-create 44 effect files "just in case."
 - Each card has an `image` field, currently `null` for all cards. When `null`,
   `renderCard()` in `game.js` draws a CSS placeholder (suit symbol + rank,
   colored by type: green=monster, blue=weapon, red=potion). Once real artwork
