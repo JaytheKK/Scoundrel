@@ -166,6 +166,14 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   (11/12/13/14 instead). `card.label` (which still holds "J"/"Q"/"K"/"A")
   is only used for `card.name` / log-message text like "Fought J of
   Clubs...", not for the card face itself.
+- **No flat top-color bar on cards.** An earlier version used a solid
+  `border-top` strip colored by type (monster/weapon/potion) — replaced by
+  a full border whose width/saturation/glow scale with the card's strength
+  tier (`cardTier(rank)` in `js/ui.js`, 1 weakest through 5 strongest; see
+  `.card--tier-N` in `style.css`), while the border's *color* still comes
+  from the type (`--monster-rgb`/`--weapon-rgb`/`--potion-rgb`). Apply this
+  same tier class to any new place a card is rendered (it's already done
+  for both room cards and the equipped weapon in the weapon slot).
 
 ## Interaction design decisions
 
