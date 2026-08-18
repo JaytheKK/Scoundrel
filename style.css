@@ -1,4 +1,29 @@
 /* ---------------------------------------------------------------------------
+   Fonts — self-hosted (see fonts/LICENSE-fonts.txt: both are Google Fonts
+   under the SIL Open Font License, free for commercial use, no attribution
+   required). Metamorphous is the dramatic display face (title, win/lose
+   banner); MedievalSharp is used for buttons and other UI chrome. Regular
+   body/number text stays in a plain readable font on purpose — a decorative
+   face on card numbers or status text would hurt quick readability during
+   play.
+--------------------------------------------------------------------------- */
+@font-face {
+  font-family: 'Metamorphous';
+  src: url('fonts/Metamorphous-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'MedievalSharp';
+  src: url('fonts/MedievalSharp-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ---------------------------------------------------------------------------
    Design tokens — simplistic, flat, dark theme with one warm accent color.
    Change values here to re-theme the whole game.
 --------------------------------------------------------------------------- */
@@ -22,6 +47,10 @@
   --potion: #b3283d;
 
   --radius: 8px;
+
+  --font-body: system-ui, sans-serif;
+  --font-display: 'Metamorphous', serif;
+  --font-ui: 'MedievalSharp', cursive;
 }
 
 * {
@@ -29,7 +58,7 @@
 }
 
 body {
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-body);
   background: var(--bg);
   color: var(--text);
   text-align: center;
@@ -37,16 +66,19 @@ body {
 }
 
 h1 {
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 2.6rem;
+  letter-spacing: 0.04em;
 }
 
 /* --- buttons (shared, flat & simple) -------------------------------------- */
 
 button {
-  font: inherit;
-  font-size: 0.95rem;
-  padding: 0.55rem 1.2rem;
+  font-family: var(--font-ui);
+  font-size: 1.05rem;
+  letter-spacing: 0.03em;
+  padding: 0.55rem 1.3rem;
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--surface);
@@ -284,7 +316,9 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  font-size: 0.9rem;
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  letter-spacing: 0.02em;
   cursor: pointer;
   user-select: none;
 }
@@ -371,9 +405,10 @@ button:disabled {
 
 #gameover-text {
   display: block;
-  font-size: 1.9rem;
-  font-weight: 700;
-  letter-spacing: 0.3em;
+  font-family: var(--font-display);
+  font-size: 2.1rem;
+  font-weight: 400;
+  letter-spacing: 0.25em;
   text-transform: uppercase;
   color: rgb(var(--glow-color, 217, 164, 65));
   text-shadow: 0 0 12px rgba(var(--glow-color, 217, 164, 65), 0.6);

@@ -1,0 +1,20 @@
+Fonts used in this project:
+
+- MedievalSharp (Regular) — designed by Philip Bouchard
+- Metamorphous (Regular) — designed by Sacha Ferrandi / Astigmatic
+
+Both are distributed as Google Fonts and licensed under the
+SIL Open Font License, Version 1.1 (OFL-1.1).
+
+The OFL permits free use, including commercial products (selling a game
+that embeds these fonts is allowed), modification, and redistribution as
+long as the font itself isn't sold on its own and derivative fonts using
+the licensed name follow the OFL's naming rules. No attribution is
+strictly required to ship a product using these fonts, but crediting the
+type designers is good practice.
+
+Full license text: https://openfontlicense.org/documents/OFL.txt
+
+Source (latin subset, woff2):
+- https://fonts.google.com/specimen/MedievalSharp
+- https://fonts.google.com/specimen/Metamorphous
