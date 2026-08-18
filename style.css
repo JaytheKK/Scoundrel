@@ -42,13 +42,15 @@
   --card-bg: #f5f2e9;
   --card-text: #1a1a1a;
   --card-text-red: #b3283d;
-  --monster: #4b6b3a;
-  --weapon: #3a6b8c;
-  --potion: #b3283d;
-  /* rgb components of the three colors above, for use in rgba()/glow effects
-     on the card border (see the .card--tier-N rules) */
-  --monster-rgb: 75, 107, 58;
-  --weapon-rgb: 58, 107, 140;
+  /* "R, G, B" components for use in rgba()/glow effects on the card border
+     (see the .card--tier-N rules). Monsters get darker/gloomier as their
+     tier goes up instead of a single fixed color — see the
+     .card--monster.card--tier-N overrides below — so there's no single
+     --monster-rgb here. Weapons default to white but that's set per-card
+     via card.glowRgb (js/cards.js) applied as an inline style
+     (applyGlowColor() in js/ui.js), not a fixed token — this is just the
+     class-level fallback for a weapon card that somehow has none. */
+  --weapon-rgb: 255, 255, 255;
   --potion-rgb: 179, 40, 61;
 
   --radius: 0.5rem;
@@ -605,9 +607,14 @@ button:disabled::before {
   color: var(--card-text-red);
 }
 
-/* Type color (monster/weapon/potion), used for the border/glow below */
+/* Type color (monster/weapon/potion), used for the border/glow below.
+   Monsters use a dark purple that gets progressively darker/gloomier at
+   higher tiers instead of staying one fixed color — see the
+   .card--monster.card--tier-4/5 overrides further down. Weapons default to
+   white here, but that's normally overridden per-card via card.glowRgb
+   (applied as an inline style in ui.js) — see js/cards.js. */
 .card--monster {
-  --edge-rgb: var(--monster-rgb);
+  --edge-rgb: 96, 48, 130;
 }
 
 .card--weapon {
@@ -652,13 +659,29 @@ button:disabled::before {
   animation: card-tier-5-pulse 2.2s ease-in-out infinite;
 }
 
+/* Only monsters ever reach tier 4/5 (weapons/potions cap at rank 10 / tier
+   3) — for them specifically, the color itself gets darker as the tier
+   goes up (instead of just wider/more opaque like the generic system
+   above), plus an inward dark vignette, so the strongest monsters read as
+   gloomy/ominous rather than just "brighter". */
+.card--monster.card--tier-4 {
+  --edge-rgb: 62, 26, 88;
+  --card-glow: 0 0 14px 2px rgba(var(--edge-rgb), 0.6), inset 0 0 10px rgba(0, 0, 0, 0.4);
+}
+
+.card--monster.card--tier-5 {
+  --edge-rgb: 34, 12, 48;
+  --card-glow: 0 0 20px 3px rgba(var(--edge-rgb), 0.75), inset 0 0 14px rgba(0, 0, 0, 0.5);
+}
+
 @keyframes card-tier-5-pulse {
   0%,
   100% {
     box-shadow: var(--card-glow), 0 2px 6px rgba(0, 0, 0, 0.35);
   }
   50% {
-    box-shadow: 0 0 28px 6px rgba(var(--edge-rgb), 0.85), 0 2px 6px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 0 28px 6px rgba(var(--edge-rgb), 0.85), inset 0 0 16px rgba(0, 0, 0, 0.55),
+      0 2px 6px rgba(0, 0, 0, 0.35);
   }
 }
 

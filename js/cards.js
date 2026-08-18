@@ -64,18 +64,19 @@ function makeCard(suit, rank, overrides = {}) {
     label,
     type,
     name: `${label} of ${capitalize(suit)}`,
-    // Monsters and potions get their bestiary/apothecary artwork
-    // automatically (same image for a given rank regardless of suit — see
-    // images/monsters/ + js/monster-icons.js, and images/potions/ +
-    // js/potion-icons.js, for the name that goes with each rank). Weapons
-    // have no artwork yet, so they still fall back to the suit-symbol
-    // placeholder in fillCardFace() (js/ui.js).
-    image:
-      type === 'monster'
-        ? `images/monsters/${rank}.png`
-        : type === 'potion'
-          ? `images/potions/${rank}.png`
-          : null,
+    // Every card type has its own artwork folder (same image for a given
+    // rank regardless of suit) — see images/monsters/ + js/monster-icons.js,
+    // images/potions/ + js/potion-icons.js, and images/weapons/ +
+    // js/weapon-icons.js for the name that goes with each rank.
+    image: `images/${type}s/${rank}.png`,
+    // The card border/glow color (see .card--tier-N in style.css), as
+    // "R, G, B" for use inside rgba(). Weapons default to white; monsters
+    // and potions get their color from the type-based CSS classes instead
+    // (.card--monster / .card--potion) and leave this null. This is what
+    // lets a *specific* card carry its own glow later — e.g. a fire weapon
+    // could override this to an orange glowRgb via `overrides` once
+    // per-card effects exist — without touching the shared tier system.
+    glowRgb: type === 'weapon' ? '255, 255, 255' : null,
     effect: null,
     ...overrides,
   };

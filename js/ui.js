@@ -4,12 +4,11 @@
 // into state.js and then asks this file to re-render.
 // ---------------------------------------------------------------------------
 
-/** Fills a card-shaped element with a card's face: the artwork (monster
- * image, or the suit symbol for weapons/potions, which have no artwork
- * yet) front and center, and the card's numeric value at the bottom —
- * always a plain number, never a suit letter (no J/Q/K/A). Shared by
- * renderCard() and the weapon slot, which displays the equipped weapon the
- * same way. */
+/** Fills a card-shaped element with a card's face: its artwork (or the suit
+ * symbol as a fallback, for any card without artwork) front and center, and
+ * the card's numeric value at the bottom — always a plain number, never a
+ * suit letter (no J/Q/K/A). Shared by renderCard() and the weapon slot,
+ * which displays the equipped weapon the same way. */
 function fillCardFace(el, card) {
   el.innerHTML = '';
 
@@ -45,12 +44,26 @@ function cardTier(rank) {
 }
 
 /** The flavor name to show alongside a card's plain name in its tooltip
- * (e.g. "8 of Hearts — Imperial Potion"), or null for cards without one
- * (weapons currently have no artwork/name yet). */
+ * (e.g. "8 of Hearts — Imperial Potion"). */
 function flavorNameFor(card) {
   if (card.type === 'monster') return monsterNameFor(card.rank);
   if (card.type === 'potion') return potionNameFor(card.rank);
+  if (card.type === 'weapon') return weaponNameFor(card.rank);
   return null;
+}
+
+/** Applies a card's own glow color (card.glowRgb, an "R, G, B" string —
+ * currently only weapons carry one, defaulting to white) as an inline
+ * --edge-rgb override, taking precedence over the type-based CSS classes
+ * (.card--monster/weapon/potion). This is the hook for a specific card to
+ * have its own glow later — e.g. a fire weapon with an orange glowRgb —
+ * without changing the shared tier system in style.css. */
+function applyGlowColor(el, card) {
+  if (card.glowRgb) {
+    el.style.setProperty('--edge-rgb', card.glowRgb);
+  } else {
+    el.style.removeProperty('--edge-rgb');
+  }
 }
 
 function renderCard(card) {
@@ -58,6 +71,7 @@ function renderCard(card) {
   el.className = `card card--${card.type} card--tier-${cardTier(card.rank)}`;
   el.dataset.suit = card.suit;
   el.dataset.id = card.id;
+  applyGlowColor(el, card);
   const flavorName = flavorNameFor(card);
   el.title = flavorName ? `${card.name} — ${flavorName}` : card.name;
   fillCardFace(el, card);
@@ -126,11 +140,13 @@ function renderWeaponSlot() {
 
   if (!state.equippedWeapon) {
     slot.className = 'card weapon-slot-empty';
+    slot.style.removeProperty('--edge-rgb');
     delete slot.dataset.suit;
     slot.innerHTML = '<div class="sword-icon">⚔</div>';
   } else {
     slot.className = `card card--weapon card--tier-${cardTier(state.equippedWeapon.rank)}`;
     slot.dataset.suit = state.equippedWeapon.suit;
+    applyGlowColor(slot, state.equippedWeapon);
     fillCardFace(slot, state.equippedWeapon);
   }
 
