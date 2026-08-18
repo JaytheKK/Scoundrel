@@ -66,12 +66,42 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   `renderGameOverBanner()` in `js/ui.js`.
 - **Responsive sizing:** almost every size in `style.css` is in `rem`, not
   `px`, on purpose. The root `html` font-size scales by media-query
-  breakpoint (16px phone / 18px tablet ≥640px / 22px small desktop ≥1024px /
-  24px desktop ≥1280px — 24px is exactly 1.5x the 16px base), which scales
-  the whole game (cards, buttons, HP bar, banner, spacing) together. When
-  adding new sized elements, use `rem` (not `px`) so they stay part of this
-  scaling — the only things intentionally left in `px` are hairline borders
-  (1-2px) where scaling would just blur them.
+  breakpoint (16px phone / 18px tablet ≥640px / 22px small desktop / 24px
+  desktop — 24px is exactly 1.5x the 16px base), which scales general UI
+  (buttons, HP bar, banner, text) together. When adding new sized elements,
+  use `rem` (not `px`) so they stay part of this scaling — the only things
+  intentionally left in `px` are hairline borders (1-2px) where scaling
+  would just blur them.
+- **The page must never need scrolling, at any screen size.** This is a
+  hard requirement, not just a nice-to-have — verify with the browser at
+  several widths/heights (phone, tablet, common laptop sizes like
+  1280x720/1366x768, and desktop) after any layout change, checking
+  `document.documentElement.scrollHeight <= window.innerHeight`. Two
+  mechanisms make this work:
+  - Room/weapon-slot card sizing uses dedicated `--card-scale` /
+    `--weapon-slot-scale` tokens (via `calc()`), decoupled from the root
+    font-size — cards have a hard constraint plain text doesn't (all 4 room
+    cards must fit on **one row**, never wrap to 2x2) that needed separate
+    control. `#room` is `flex-wrap: nowrap` for this reason.
+  - Every breakpoint (`--card-scale`, `--stack-gap`, and the root
+    `font-size` together) requires a minimum viewport **height** as well as
+    width before stepping up a tier — measured against this page's actual
+    content height at that tier, with a safety margin. So a wide-but-short
+    window (e.g. a 1280x720 laptop) automatically falls back to a smaller
+    tier instead of overflowing. A `max-height: 480px` tier (e.g. a phone
+    in landscape) is the final safety net.
+  - `#message` is capped to 2 lines via `-webkit-line-clamp` so a long
+    fight/flee message can never push the page taller.
+  - **Gotcha:** a safety-net media query needs to be placed in the source
+    **after** the base rules for whatever it overrides (e.g. `h1`, `button`),
+    not just after other media queries — same-specificity CSS rules are
+    resolved by source order, so a media query earlier in the file loses to
+    a later unconditional rule even when its condition matches. The
+    `max-height: 480px` block is deliberately the very last thing in
+    `style.css` for this reason.
+  - Also note: the browser's default `body { margin: 8px }` was a silent
+    contributor to overflow until it was reset with `html, body { margin: 0 }` —
+    check for this if measurements don't add up.
 
 ## Card architecture (important — read before adding/editing cards)
 
