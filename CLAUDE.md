@@ -54,9 +54,8 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
 - Everything user-facing (card names, buttons, messages) is in **English**.
 - Build incrementally: deck/shuffle → room mechanic → combat/weapon/potion
   logic → win/lose conditions → UI polish. Verify each step before moving on.
-- Not yet implemented: fleeing a room, manually choosing weapon vs. bare hands
-  (currently automatic — weapon is used whenever legal), and win/lose screens
-  beyond the inline `#message` text.
+- Not yet implemented: a real win/lose screen beyond the inline `#message`
+  text (e.g. a modal or restart prompt when `state.gameOver` is true).
 
 ## Card architecture (important — read before adding/editing cards)
 
