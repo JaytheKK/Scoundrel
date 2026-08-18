@@ -9,11 +9,14 @@
 <body>
   <h1>Scoundrel</h1>
 
-  <div id="debug-panel">
-    <button id="new-game-btn">New Game (build deck)</button>
-    <p id="debug-output">Click the button to build and shuffle the 44-card dungeon deck.</p>
+  <div id="controls">
+    <button id="new-game-btn">New Game</button>
+    <span id="deck-count">Deck: 0 cards left</span>
   </div>
 
+  <div id="room"></div>
+
+  <script src="cards.js"></script>
   <script src="game.js"></script>
 </body>
 </html>

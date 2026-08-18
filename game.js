@@ -1,64 +1,18 @@
 // ---------------------------------------------------------------------------
-// Scoundrel — game logic
-// Step 1: build and shuffle the 44-card dungeon deck.
-// UI wiring is kept separate (bottom of file) so the logic above can be
-// reasoned about / tested on its own.
+// Scoundrel — game state, logic, and rendering
+// Card definitions live in cards.js (loaded before this file).
 // ---------------------------------------------------------------------------
 
-const SUITS = {
-  CLUBS: 'clubs',
-  SPADES: 'spades',
-  DIAMONDS: 'diamonds',
-  HEARTS: 'hearts',
-};
+// --- state ---------------------------------------------------------------
 
-const RANKS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]; // J=11, Q=12, K=13, A=14
+let deck = [];
+let room = [];
 
-const RANK_LABELS = {
-  11: 'J',
-  12: 'Q',
-  13: 'K',
-  14: 'A',
-};
-
-function rankLabel(rank) {
-  return RANK_LABELS[rank] || String(rank);
-}
-
-function cardType(suit) {
-  if (suit === SUITS.CLUBS || suit === SUITS.SPADES) return 'monster';
-  if (suit === SUITS.DIAMONDS) return 'weapon';
-  return 'potion'; // hearts
-}
-
-/**
- * Builds the 44-card Scoundrel deck:
- * - Clubs & Spades: all ranks 2-14 (monsters)
- * - Diamonds: ranks 2-10 only (weapons)
- * - Hearts: ranks 2-10 only (potions)
- * (Red face cards J/Q/K and both red Aces are excluded, per the rules.)
- */
-function buildDeck() {
-  const deck = [];
-
-  for (const suit of [SUITS.CLUBS, SUITS.SPADES]) {
-    for (const rank of RANKS) {
-      deck.push({ suit, rank, type: cardType(suit) });
-    }
-  }
-
-  for (const suit of [SUITS.DIAMONDS, SUITS.HEARTS]) {
-    for (const rank of RANKS.filter((r) => r <= 10)) {
-      deck.push({ suit, rank, type: cardType(suit) });
-    }
-  }
-
-  return deck;
-}
+// --- logic -----------------------------------------------------------------
 
 /** Fisher–Yates shuffle, returns a new shuffled array (does not mutate input). */
-function shuffle(deck) {
-  const result = [...deck];
+function shuffle(cards) {
+  const result = [...cards];
   for (let i = result.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [result[i], result[j]] = [result[j], result[i]];
@@ -66,14 +20,59 @@ function shuffle(deck) {
   return result;
 }
 
-// ---------------------------------------------------------------------------
-// UI wiring (temporary debug hook for this step)
-// ---------------------------------------------------------------------------
+function startNewGame() {
+  deck = shuffle(getFreshDeck());
+  room = deck.splice(0, 4);
+  renderRoom();
+  renderDeckCount();
+}
 
-document.getElementById('new-game-btn').addEventListener('click', () => {
-  const deck = shuffle(buildDeck());
-  const output = document.getElementById('debug-output');
-  output.textContent = `Deck built: ${deck.length} cards. Top card: ` +
-    `${rankLabel(deck[0].rank)} of ${deck[0].suit} (${deck[0].type}).`;
-  console.log('Full deck:', deck);
-});
+// --- rendering ---------------------------------------------------------------
+
+/** Builds a DOM element for a card. Uses card.image if set, otherwise falls
+ * back to a CSS-drawn placeholder (suit symbol + rank, colored by type). */
+function renderCard(card) {
+  const el = document.createElement('div');
+  el.className = `card card--${card.type}`;
+  el.dataset.suit = card.suit;
+  el.title = card.name;
+
+  if (card.image) {
+    const img = document.createElement('img');
+    img.className = 'card-image';
+    img.src = card.image;
+    img.alt = card.name;
+    el.appendChild(img);
+  } else {
+    const symbol = document.createElement('div');
+    symbol.className = 'card-suit-symbol';
+    symbol.textContent = SUIT_SYMBOLS[card.suit];
+    el.appendChild(symbol);
+  }
+
+  const rank = document.createElement('div');
+  rank.className = 'card-rank';
+  rank.textContent = card.label;
+  el.appendChild(rank);
+
+  const typeLabel = document.createElement('div');
+  typeLabel.className = 'card-type-label';
+  typeLabel.textContent = card.type;
+  el.appendChild(typeLabel);
+
+  return el;
+}
+
+function renderRoom() {
+  const roomEl = document.getElementById('room');
+  roomEl.innerHTML = '';
+  room.forEach((card) => roomEl.appendChild(renderCard(card)));
+}
+
+function renderDeckCount() {
+  document.getElementById('deck-count').textContent = `Deck: ${deck.length} cards left`;
+}
+
+// --- UI wiring ---------------------------------------------------------------
+
+document.getElementById('new-game-btn').addEventListener('click', startNewGame);
