@@ -50,6 +50,12 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     and status/message text in `var(--font-body)` (plain system font) —
     decorative faces hurt quick readability for things read during play.
   - `js/cards.js` — the 44 card definitions (data only)
+  - `js/monster-icons.js` — the `MONSTERS` lookup (rank 2-14 → `{name, icon}`),
+    one original line-art SVG per monster rank, shown instead of the suit
+    symbol on monster cards (see `fillCardFace()` in `js/ui.js`). Every icon
+    is `viewBox="0 0 100 100"` and draws with `currentColor` so it inherits
+    the card's color automatically — keep new/edited icons consistent with
+    that (no hardcoded colors inside the SVG).
   - `js/state.js` — game state + rules logic (fight/equip/drink, room refill,
     win/lose). **No DOM code here** — keeps rules testable/reasoned about on
     their own, independent of rendering.
