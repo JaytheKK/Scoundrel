@@ -44,13 +44,22 @@ function cardTier(rank) {
   return 1;
 }
 
+/** The flavor name to show alongside a card's plain name in its tooltip
+ * (e.g. "8 of Hearts — Imperial Potion"), or null for cards without one
+ * (weapons currently have no artwork/name yet). */
+function flavorNameFor(card) {
+  if (card.type === 'monster') return monsterNameFor(card.rank);
+  if (card.type === 'potion') return potionNameFor(card.rank);
+  return null;
+}
+
 function renderCard(card) {
   const el = document.createElement('div');
   el.className = `card card--${card.type} card--tier-${cardTier(card.rank)}`;
   el.dataset.suit = card.suit;
   el.dataset.id = card.id;
-  const monsterName = card.type === 'monster' ? monsterNameFor(card.rank) : null;
-  el.title = monsterName ? `${card.name} — ${monsterName}` : card.name;
+  const flavorName = flavorNameFor(card);
+  el.title = flavorName ? `${card.name} — ${flavorName}` : card.name;
   fillCardFace(el, card);
   return el;
 }

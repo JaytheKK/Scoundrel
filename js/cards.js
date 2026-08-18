@@ -64,12 +64,18 @@ function makeCard(suit, rank, overrides = {}) {
     label,
     type,
     name: `${label} of ${capitalize(suit)}`,
-    // Monsters get their bestiary artwork automatically (same image for a
-    // given rank regardless of suit — see images/monsters/ and
-    // js/monster-icons.js for the name that goes with each rank). Weapons
-    // and potions have no artwork yet, so they still fall back to the
-    // suit-symbol placeholder in fillCardFace() (js/ui.js).
-    image: type === 'monster' ? `images/monsters/${rank}.png` : null,
+    // Monsters and potions get their bestiary/apothecary artwork
+    // automatically (same image for a given rank regardless of suit — see
+    // images/monsters/ + js/monster-icons.js, and images/potions/ +
+    // js/potion-icons.js, for the name that goes with each rank). Weapons
+    // have no artwork yet, so they still fall back to the suit-symbol
+    // placeholder in fillCardFace() (js/ui.js).
+    image:
+      type === 'monster'
+        ? `images/monsters/${rank}.png`
+        : type === 'potion'
+          ? `images/potions/${rank}.png`
+          : null,
     effect: null,
     ...overrides,
   };
