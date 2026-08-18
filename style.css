@@ -689,62 +689,73 @@ button:disabled::before {
 /* Potions get a gentle "life" pulse on top of the tier system instead of
    sitting there as a static red outline — a slow breathing glow that gets
    more noticeable the stronger the potion is (every potion pulses, since
-   none of them ever reach tier 4/5 — they cap at rank 10 / tier 3). */
+   none of them ever reach tier 4/5 — they cap at rank 10 / tier 3).
+
+   Implementation note: this does NOT animate box-shadow directly — that
+   forces the browser to recompute blur/spread every frame (an expensive,
+   non-GPU-accelerated repaint), which looked janky/stuttery with several
+   cards pulsing at once. Instead, a ::after the same size as the card
+   holds a fixed, pre-computed peak-glow box-shadow, and only its
+   *opacity* is animated — opacity is compositor-only and animates
+   perfectly smoothly regardless of how many cards are doing it at once. */
 .card--potion {
-  --potion-pulse: 0 0 10px 1px rgba(var(--edge-rgb), 0.35);
-  animation: card-potion-pulse 2.6s ease-in-out infinite;
+  position: relative;
 }
 
-.card--potion.card--tier-2 {
-  --potion-pulse: 0 0 15px 2px rgba(var(--edge-rgb), 0.55);
+.card--potion::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 10px 1px rgba(var(--edge-rgb), 0.35);
+  opacity: 0;
+  pointer-events: none;
+  animation: card-glow-fade 2.6s ease-in-out infinite;
 }
 
-.card--potion.card--tier-3 {
-  --potion-pulse: 0 0 20px 3px rgba(var(--edge-rgb), 0.7);
+.card--potion.card--tier-2::after {
+  box-shadow: 0 0 15px 2px rgba(var(--edge-rgb), 0.55);
 }
 
-@keyframes card-potion-pulse {
-  0%,
-  100% {
-    box-shadow: var(--card-glow), var(--card-glow-inset), 0 2px 6px rgba(0, 0, 0, 0.35);
-  }
-  50% {
-    box-shadow: var(--potion-pulse), var(--card-glow-inset), 0 2px 6px rgba(0, 0, 0, 0.35);
-  }
+.card--potion.card--tier-3::after {
+  box-shadow: 0 0 20px 3px rgba(var(--edge-rgb), 0.7);
 }
 
 /* --- aura: the very strongest cards get more than "just a glow" ---------
    J/Q/K/A monsters (rank 11+) and the 3 strongest weapons (rank 8+) get
    .card--aura added in ui.js (hasAura()): the card's outer glow flares
    gently brighter and back, instead of sitting at a single static glow.
-   (Two things were tried and dropped here: a rotating gradient ring,
-   which wasn't noticeable in practice; and scaling the card up/down,
-   which visibly dragged the value label at the bottom up and down since
-   scale grows the box from its center — glow-only avoids that entirely.)
-   This sits on top of the tier system above, not instead of it (the tier
-   border/glow still applies underneath).
-   Important: --card-glow-inset is used **unchanged** at both 0% and 50%
-   here (only the outer glow's numbers change) — mixing an inset and a
-   non-inset shadow at the same box-shadow list position isn't smoothly
-   interpolatable and was causing a visible white flash mid-pulse. Keep it
-   that way if this animation is ever tuned further. */
+   (A few things were tried and dropped here: a rotating gradient ring,
+   which wasn't noticeable in practice; scaling the card up/down, which
+   visibly dragged the value label at the bottom up and down since scale
+   grows the box from its center; and animating box-shadow's own
+   blur/spread directly, which was janky/stuttery for the same reason
+   described in the potion pulse above — this uses the same fixed-shadow +
+   opacity-fade ::after technique instead.) This sits on top of the tier
+   system above, not instead of it (the tier border/glow still applies
+   underneath, unanimated). */
 .card--aura {
   position: relative;
-  isolation: isolate;
-  animation: card-aura-pulse 2.8s ease-in-out infinite;
 }
 
-/* No transform/scale here on purpose: scaling the whole card moves its
-   content (the value label visibly drifted up/down as the card grew and
-   shrank) — the pulse is glow-only now, so nothing inside the card moves. */
-@keyframes card-aura-pulse {
+.card--aura::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 18px 3.5px rgba(var(--edge-rgb), 0.6);
+  opacity: 0;
+  pointer-events: none;
+  animation: card-glow-fade 2.8s ease-in-out infinite;
+}
+
+@keyframes card-glow-fade {
   0%,
   100% {
-    box-shadow: var(--card-glow), var(--card-glow-inset), 0 2px 6px rgba(0, 0, 0, 0.35);
+    opacity: 0;
   }
   50% {
-    box-shadow: 0 0 16px 3px rgba(var(--edge-rgb), 0.55), var(--card-glow-inset),
-      0 2px 6px rgba(0, 0, 0, 0.35);
+    opacity: 1;
   }
 }
 
