@@ -208,14 +208,18 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
 - **The very strongest cards get a pulsing `.card--aura`, not just a
   bigger glow.** `hasAura(card)` in `js/ui.js` — true for monsters rank 11+
   (J/Q/K/A) and weapons rank 8+ (the 3 strongest) — adds `.card--aura`,
-  which makes the whole card breathe gently — a small scale bump and a
-  slightly brighter outer glow — via `card-aura-pulse`, on top of the
-  normal tier border/glow (not instead of it). Keep this subtle (small
-  scale delta, moderate glow numbers) — an earlier, stronger version of
-  this pulse was reported as too intense. (A rotating gradient ring behind
-  the card, `card-aura-spin`, was tried too but wasn't noticeable in
-  practice and was removed — don't re-add spin-based effects without
-  checking they actually read at card scale.)
+  which flares the outer glow gently brighter and back via
+  `card-aura-pulse`, on top of the normal tier border/glow (not instead of
+  it). Keep this subtle (moderate glow numbers) — an earlier, stronger
+  version was reported as too intense. **Glow-only on purpose, no
+  `transform`/scale:** an earlier version also scaled the card up/down
+  each pulse, which visibly dragged the bottom value label up and down
+  each cycle (scale grows a box from its center, moving its content with
+  it) — don't reintroduce a transform on `.card--aura` without checking
+  the value label stays put. (A rotating gradient ring behind the card,
+  `card-aura-spin`, was tried too but wasn't noticeable in practice and
+  was removed — don't re-add spin-based effects without checking they
+  actually read at card scale.)
 
 ### Potion artwork
 
