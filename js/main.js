@@ -62,7 +62,20 @@ function resolveAndAnimate(cardId, options) {
   }, CARD_ANIMATION_MS);
 }
 
+/** Shared by every "start a new game" entry point: the menu's New Game
+ * button, the game-over screen's Play Again button, and the call-to-action
+ * shown in the room before the first game / after the dungeon ends. */
+function startNewGame() {
+  initGame();
+  renderAll();
+  closeMenu();
+}
+
 document.getElementById('room').addEventListener('click', (event) => {
+  if (event.target.closest('#room-start-btn')) {
+    startNewGame();
+    return;
+  }
   const cardEl = event.target.closest('.card');
   if (!cardEl) return;
   handleCardClick(cardEl.dataset.id);
@@ -82,12 +95,35 @@ document.getElementById('weapon-toggle').addEventListener('change', (event) => {
   renderWeaponSlot();
 });
 
-document.getElementById('new-game-btn').addEventListener('click', () => {
-  initGame();
-  renderAll();
+document.getElementById('new-game-btn').addEventListener('click', startNewGame);
+document.getElementById('play-again-btn').addEventListener('click', startNewGame);
+
+// --- hamburger menu (New Game + rules) --------------------------------------
+
+function openMenu() {
+  document.getElementById('menu-overlay').classList.remove('hidden');
+}
+
+function closeMenu() {
+  document.getElementById('menu-overlay').classList.add('hidden');
+}
+
+document.getElementById('menu-btn').addEventListener('click', openMenu);
+document.getElementById('menu-close-btn').addEventListener('click', closeMenu);
+
+// Clicking the dimmed backdrop (not the panel itself) closes the menu.
+document.getElementById('menu-overlay').addEventListener('click', (event) => {
+  if (event.target.id === 'menu-overlay') closeMenu();
 });
 
-document.getElementById('play-again-btn').addEventListener('click', () => {
-  initGame();
-  renderAll();
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') closeMenu();
 });
+
+// --- initial page load -------------------------------------------------------
+// state starts with an empty room (no game started yet); render that empty
+// state (the New Game call-to-action) and the flee button's disabled look
+// instead of relying on the static HTML markup to already match it.
+renderRoom();
+renderFleeButton();
+renderWeaponSlot();

@@ -212,7 +212,8 @@ button:disabled::before {
 }
 
 #new-game-btn,
-#play-again-btn {
+#play-again-btn,
+#room-start-btn {
   background: linear-gradient(180deg, var(--accent-hover), var(--accent));
   border-color: var(--accent);
   color: #1a1408;
@@ -221,14 +222,15 @@ button:disabled::before {
 }
 
 #new-game-btn:hover:not(:disabled),
-#play-again-btn:hover:not(:disabled) {
+#play-again-btn:hover:not(:disabled),
+#room-start-btn:hover:not(:disabled) {
   background: linear-gradient(180deg, #f0cd7a, var(--accent-hover));
   border-color: #f0cd7a;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35),
     0 0 18px 3px rgba(217, 164, 65, 0.6), 0 4px 10px rgba(0, 0, 0, 0.45);
 }
 
-/* --- controls / deck count -------------------------------------------------- */
+/* --- controls / deck count / hamburger menu button ------------------------ */
 
 #controls {
   display: flex;
@@ -241,6 +243,147 @@ button:disabled::before {
 #deck-count {
   color: var(--text-muted);
   font-size: 0.9rem;
+}
+
+#menu-btn {
+  padding: 0.5rem 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hamburger-icon {
+  position: relative;
+  z-index: 2; /* stays above the button's ::before hover sheen */
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 1.3rem;
+}
+
+.hamburger-icon span {
+  display: block;
+  height: 2px;
+  background: var(--text);
+  border-radius: 1px;
+  transition: background 0.2s ease;
+}
+
+#menu-btn:hover .hamburger-icon span {
+  background: var(--accent);
+}
+
+/* --- menu popup (New Game + rules) ----------------------------------------- */
+
+#menu-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 300;
+  padding: 3rem 1rem;
+  overflow-y: auto;
+}
+
+#menu-overlay.hidden {
+  display: none;
+}
+
+#menu-panel {
+  position: relative;
+  background: linear-gradient(180deg, var(--surface), #17171b);
+  border: 1px solid var(--border);
+  box-shadow: 0 0 0 1px rgba(217, 164, 65, 0.15), 0 10px 30px rgba(0, 0, 0, 0.6);
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: min(30rem, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: menu-in 0.25s ease;
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+#menu-close-btn {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.9rem;
+}
+
+#menu-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.6rem;
+  margin: 0 0 1rem;
+  text-align: center;
+}
+
+#menu-panel #new-game-btn {
+  display: block;
+  width: 100%;
+  margin: 0 0 1.5rem;
+}
+
+#rules {
+  text-align: left;
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+}
+
+#rules h3 {
+  font-family: var(--font-ui);
+  color: var(--accent);
+  font-size: 1rem;
+  margin: 1rem 0 0.35rem;
+}
+
+#rules h3:first-child {
+  margin-top: 0;
+}
+
+#rules p,
+#rules li {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+#rules ul {
+  margin: 0 0 0.5rem 1.1rem;
+  padding: 0;
+}
+
+#rules strong {
+  color: var(--text);
+}
+
+/* --- empty room state (before the first game / after the dungeon ends) ---- */
+
+#room-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+#room-empty-tagline {
+  font-family: var(--font-display);
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
 }
 
 /* --- HP bar / weapon / message -------------------------------------------- */

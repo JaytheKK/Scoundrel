@@ -44,9 +44,31 @@ function renderCard(card) {
   return el;
 }
 
+/** When there's no active room (before the first game, or once the dungeon
+ * is fully cleared/lost), show a "New Game" call-to-action in its place
+ * instead of leaving the room area blank. */
 function renderRoom() {
   const roomEl = document.getElementById('room');
   roomEl.innerHTML = '';
+
+  if (state.room.length === 0) {
+    const empty = document.createElement('div');
+    empty.id = 'room-empty';
+
+    const tagline = document.createElement('p');
+    tagline.id = 'room-empty-tagline';
+    tagline.textContent = 'The dungeon awaits...';
+
+    const cta = document.createElement('button');
+    cta.id = 'room-start-btn';
+    cta.textContent = 'New Game';
+
+    empty.appendChild(tagline);
+    empty.appendChild(cta);
+    roomEl.appendChild(empty);
+    return;
+  }
+
   state.room.forEach((card) => roomEl.appendChild(renderCard(card)));
 }
 

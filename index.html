@@ -10,7 +10,9 @@
   <h1>Scoundrel</h1>
 
   <div id="controls">
-    <button id="new-game-btn">New Game</button>
+    <button id="menu-btn" aria-label="Open menu">
+      <span class="hamburger-icon"><span></span><span></span><span></span></span>
+    </button>
     <span id="deck-count">Deck: 0 cards left</span>
   </div>
 
@@ -37,6 +39,38 @@
       <input type="checkbox" id="weapon-toggle" checked>
       <span>Using weapon</span>
     </label>
+  </div>
+
+  <div id="menu-overlay" class="hidden">
+    <div id="menu-panel">
+      <button id="menu-close-btn" aria-label="Close menu">✕</button>
+      <h2 id="menu-title">Scoundrel</h2>
+      <button id="new-game-btn">New Game</button>
+
+      <div id="rules">
+        <h3>The Deck</h3>
+        <ul>
+          <li><strong>Clubs &amp; Spades</strong> are Monsters (strength = card value; J=11, Q=12, K=13, A=14).</li>
+          <li><strong>Diamonds</strong> are Weapons (value 2–10).</li>
+          <li><strong>Hearts</strong> are Potions (value 2–10).</li>
+        </ul>
+
+        <h3>Rooms</h3>
+        <p>Four cards are dealt face-up as a room. Click a card to resolve it. Once only one card is left, three new cards are drawn to refill the room back to four.</p>
+
+        <h3>Fighting Monsters</h3>
+        <p>Click a monster to fight it. With a weapon equipped and "Using weapon" switched on, you take damage equal to the monster's strength minus your weapon's strength (never less than 0) — but a weapon can only be used again on a monster weaker than the last one it defeated. Turn "Using weapon" off to always fight bare-handed for full damage instead.</p>
+
+        <h3>Weapons &amp; Potions</h3>
+        <p>Click a weapon to equip it — it replaces whatever you had equipped. Click a potion to drink it and heal HP up to your maximum of 20 — but only the first potion in a room actually heals; extra potions in the same room do nothing.</p>
+
+        <h3>Fleeing a Room</h3>
+        <p>"Flee Room" sends the entire room to the bottom of the deck and deals a fresh one. You can only flee a full, untouched room of 4 cards, and never two rooms in a row.</p>
+
+        <h3>Winning &amp; Losing</h3>
+        <p>Clear all 44 cards from the dungeon to win. If your HP drops to 0, you lose.</p>
+      </div>
+    </div>
   </div>
 
   <div id="gameover-overlay" class="hidden">
