@@ -565,6 +565,7 @@ button:disabled::before {
   --card-border-width: 1px;
   --card-border-alpha: 0.25;
   --card-glow: 0 0 0 0 rgba(0, 0, 0, 0);
+  --card-glow-inset: inset 0 0 0 rgba(0, 0, 0, 0);
   width: calc(100px * var(--card-scale));
   height: calc(140px * var(--card-scale));
   border-radius: var(--radius);
@@ -576,7 +577,7 @@ button:disabled::before {
   justify-content: space-between;
   padding: calc(8px * var(--card-scale)) 0;
   border: var(--card-border-width) solid rgba(var(--edge-rgb, 26, 26, 26), var(--card-border-alpha));
-  box-shadow: var(--card-glow), 0 2px 6px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--card-glow), var(--card-glow-inset), 0 2px 6px rgba(0, 0, 0, 0.35);
   cursor: pointer;
   flex-shrink: 0;
   transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease,
@@ -584,7 +585,7 @@ button:disabled::before {
 }
 
 .card:hover {
-  box-shadow: var(--card-glow), 0 4px 10px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--card-glow), var(--card-glow-inset), 0 4px 10px rgba(0, 0, 0, 0.45);
   transform: translateY(-3px);
 }
 
@@ -608,16 +609,16 @@ button:disabled::before {
 }
 
 /* Type color (monster/weapon/potion), used for the border/glow below.
-   Monsters use a vivid purple that gets progressively more electric/
-   saturated at higher tiers — see the .card--monster.card--tier-4/5
-   overrides further down — while an inward dark vignette (not a darker
-   edge color) is what gives the strongest ones their "gloomy" read, so
-   they stay clearly visible against the dark page background instead of
-   just getting harder to see. Weapons default to white here, but that's
-   normally overridden per-card via card.glowRgb (applied as an inline
-   style in ui.js) — see js/cards.js. */
+   Monsters use a dark purple that gets progressively more saturated at
+   higher tiers — see the .card--monster.card--tier-4/5 overrides further
+   down — while an inward dark vignette (--card-glow-inset, kept as its own
+   token so it can stay unanimated — see the .card--aura keyframes further
+   down for why that matters) is what gives the strongest ones their
+   "gloomy" read. Weapons default to white here, but that's normally
+   overridden per-card via card.glowRgb (applied as an inline style in
+   ui.js) — see js/cards.js. */
 .card--monster {
-  --edge-rgb: 150, 60, 210;
+  --edge-rgb: 100, 35, 140;
 }
 
 .card--weapon {
@@ -632,7 +633,13 @@ button:disabled::before {
    Set via cardTier(rank) in ui.js: 2-4 -> tier 1 (weakest) ... 14 -> tier 5
    (strongest — only the Ace/Cthulhu monster reaches it; weapons/potions
    cap at 10, so they top out around tier 3). Each tier ramps up the border
-   width, how solid/saturated its color is, and how much it glows. */
+   width, how solid/saturated its color is, and how much it glows.
+   --card-glow is the OUTER glow only; --card-glow-inset (default invisible)
+   is a separate token so .card--aura's pulse can vary the outer glow's
+   numbers smoothly while leaving the inset shadow's value completely
+   untouched between keyframes — mixing an inset and non-inset shadow at
+   the same list position is not smoothly interpolatable and was causing a
+   visible white flash mid-pulse. */
 .card--tier-1 {
   --card-border-width: 1px;
   --card-border-alpha: 0.3;
@@ -663,18 +670,20 @@ button:disabled::before {
 }
 
 /* Only monsters ever reach tier 4/5 (weapons/potions cap at rank 10 / tier
-   3) — for them specifically, the color gets more saturated/electric as
-   the tier goes up, and an inward dark vignette is layered into the glow,
+   3) — for them specifically, the color gets more saturated as the tier
+   goes up, and an inward dark vignette is layered in via --card-glow-inset,
    so the strongest monsters read as gloomy/ominous *and* still clearly
    visible, rather than just fading into a dark, low-contrast color. */
 .card--monster.card--tier-4 {
-  --edge-rgb: 165, 40, 230;
-  --card-glow: 0 0 16px 2px rgba(var(--edge-rgb), 0.75), inset 0 0 12px rgba(0, 0, 0, 0.45);
+  --edge-rgb: 85, 22, 120;
+  --card-glow: 0 0 16px 2px rgba(var(--edge-rgb), 0.75);
+  --card-glow-inset: inset 0 0 12px rgba(0, 0, 0, 0.45);
 }
 
 .card--monster.card--tier-5 {
-  --edge-rgb: 185, 20, 255;
-  --card-glow: 0 0 24px 4px rgba(var(--edge-rgb), 0.9), inset 0 0 16px rgba(0, 0, 0, 0.55);
+  --edge-rgb: 70, 12, 100;
+  --card-glow: 0 0 24px 4px rgba(var(--edge-rgb), 0.9);
+  --card-glow-inset: inset 0 0 16px rgba(0, 0, 0, 0.55);
 }
 
 /* Potions get a gentle "life" pulse on top of the tier system instead of
@@ -697,36 +706,41 @@ button:disabled::before {
 @keyframes card-potion-pulse {
   0%,
   100% {
-    box-shadow: var(--card-glow), 0 2px 6px rgba(0, 0, 0, 0.35);
+    box-shadow: var(--card-glow), var(--card-glow-inset), 0 2px 6px rgba(0, 0, 0, 0.35);
   }
   50% {
-    box-shadow: var(--potion-pulse), 0 2px 6px rgba(0, 0, 0, 0.35);
+    box-shadow: var(--potion-pulse), var(--card-glow-inset), 0 2px 6px rgba(0, 0, 0, 0.35);
   }
 }
 
 /* --- aura: the very strongest cards get more than "just a glow" ---------
    J/Q/K/A monsters (rank 11+) and the 3 strongest weapons (rank 8+) get
-   .card--aura added in ui.js (hasAura()): the card breathes — scaling up
-   slightly and flaring its shadow to a wider, brighter double glow —
+   .card--aura added in ui.js (hasAura()): the card breathes gently —
+   scaling up just slightly and flaring its outer glow a bit brighter —
    instead of sitting at a single static glow. (An earlier version also
    spun a rotating gradient ring behind the card; dropped — it wasn't
    noticeable in practice.) This sits on top of the tier system above, not
-   instead of it (the tier border/glow still applies underneath). */
+   instead of it (the tier border/glow still applies underneath).
+   Important: --card-glow-inset is used **unchanged** at both 0% and 50%
+   here (only the outer glow's numbers change) — mixing an inset and a
+   non-inset shadow at the same box-shadow list position isn't smoothly
+   interpolatable and was causing a visible white flash mid-pulse. Keep it
+   that way if this animation is ever tuned further. */
 .card--aura {
   position: relative;
   isolation: isolate;
-  animation: card-aura-pulse 2.4s ease-in-out infinite;
+  animation: card-aura-pulse 2.8s ease-in-out infinite;
 }
 
 @keyframes card-aura-pulse {
   0%,
   100% {
     transform: scale(1);
-    box-shadow: var(--card-glow), 0 2px 6px rgba(0, 0, 0, 0.35);
+    box-shadow: var(--card-glow), var(--card-glow-inset), 0 2px 6px rgba(0, 0, 0, 0.35);
   }
   50% {
-    transform: scale(1.045);
-    box-shadow: 0 0 20px 4px rgba(var(--edge-rgb), 0.8), 0 0 38px 12px rgba(var(--edge-rgb), 0.4),
+    transform: scale(1.02);
+    box-shadow: 0 0 16px 3px rgba(var(--edge-rgb), 0.55), var(--card-glow-inset),
       0 2px 6px rgba(0, 0, 0, 0.35);
   }
 }
