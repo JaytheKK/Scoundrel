@@ -64,6 +64,12 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
 - Win/lose is shown via `#gameover-overlay` (full-screen, dimmed, original
   CSS-only banner — no image assets) with a "Play Again" button; see
   `renderGameOverBanner()` in `js/ui.js`.
+- HP changes show a floating combat number (green "+N" up / red "-N" down,
+  see `showHpDelta()` in `js/ui.js`) — triggered in `js/main.js` by
+  comparing `state.hp` before/after `resolveCard()`, not by threading a
+  delta value through `state.js`. Any future action that changes `state.hp`
+  gets the animation for free as long as it goes through that same
+  before/after comparison in `main.js`.
 - **Responsive sizing:** almost every size in `style.css` is in `rem`, not
   `px`, on purpose. The root `html` font-size scales by media-query
   breakpoint (16px phone / 18px tablet ≥640px / 22px small desktop / 24px
