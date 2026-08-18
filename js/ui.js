@@ -4,13 +4,14 @@
 // into state.js and then asks this file to re-render.
 // ---------------------------------------------------------------------------
 
-/** Fills a card-shaped element with a card's face (image, monster icon, or
- * suit/rank placeholder + type label). Shared by renderCard() and the
- * weapon slot, which displays the equipped weapon the same way. */
+/** Fills a card-shaped element with a card's face: the artwork (monster
+ * image, or the suit symbol for weapons/potions, which have no artwork
+ * yet) front and center, and the card's numeric value at the bottom —
+ * always a plain number, never a suit letter (no J/Q/K/A). Shared by
+ * renderCard() and the weapon slot, which displays the equipped weapon the
+ * same way. */
 function fillCardFace(el, card) {
   el.innerHTML = '';
-
-  const monster = card.type === 'monster' ? monsterFor(card.rank) : null;
 
   if (card.image) {
     const img = document.createElement('img');
@@ -18,11 +19,6 @@ function fillCardFace(el, card) {
     img.src = card.image;
     img.alt = card.name;
     el.appendChild(img);
-  } else if (monster) {
-    const icon = document.createElement('div');
-    icon.className = 'card-monster-icon';
-    icon.innerHTML = monster.icon;
-    el.appendChild(icon);
   } else {
     const symbol = document.createElement('div');
     symbol.className = 'card-suit-symbol';
@@ -30,15 +26,10 @@ function fillCardFace(el, card) {
     el.appendChild(symbol);
   }
 
-  const rank = document.createElement('div');
-  rank.className = 'card-rank';
-  rank.textContent = card.label;
-  el.appendChild(rank);
-
-  const typeLabel = document.createElement('div');
-  typeLabel.className = 'card-type-label';
-  typeLabel.textContent = card.type;
-  el.appendChild(typeLabel);
+  const value = document.createElement('div');
+  value.className = 'card-value-label';
+  value.textContent = card.rank;
+  el.appendChild(value);
 }
 
 function renderCard(card) {
@@ -46,8 +37,8 @@ function renderCard(card) {
   el.className = `card card--${card.type}`;
   el.dataset.suit = card.suit;
   el.dataset.id = card.id;
-  const monster = card.type === 'monster' ? monsterFor(card.rank) : null;
-  el.title = monster ? `${card.name} — ${monster.name}` : card.name;
+  const monsterName = card.type === 'monster' ? monsterNameFor(card.rank) : null;
+  el.title = monsterName ? `${card.name} — ${monsterName}` : card.name;
   fillCardFace(el, card);
   return el;
 }

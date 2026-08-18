@@ -56,14 +56,20 @@ function capitalize(word) {
  * changing this helper. */
 function makeCard(suit, rank, overrides = {}) {
   const label = RANK_LABELS[rank];
+  const type = suitToType(suit);
   return {
     id: `${suit}-${rank}`,
     suit,
     rank,
     label,
-    type: suitToType(suit),
+    type,
     name: `${label} of ${capitalize(suit)}`,
-    image: null,
+    // Monsters get their bestiary artwork automatically (same image for a
+    // given rank regardless of suit — see images/monsters/ and
+    // js/monster-icons.js for the name that goes with each rank). Weapons
+    // and potions have no artwork yet, so they still fall back to the
+    // suit-symbol placeholder in fillCardFace() (js/ui.js).
+    image: type === 'monster' ? `images/monsters/${rank}.png` : null,
     effect: null,
     ...overrides,
   };

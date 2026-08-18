@@ -609,32 +609,20 @@ button:disabled::before {
   line-height: 1;
 }
 
-.card-rank {
-  font-size: calc(20.8px * var(--card-scale));
+/* The card's numeric value, always a plain number (2-14) — never a suit
+   letter like J/Q/K/A — shown at the bottom of the card instead of the old
+   "MONSTER"/"WEAPON"/"POTION" type word. */
+.card-value-label {
+  font-family: var(--font-ui);
+  font-size: calc(22px * var(--card-scale));
   font-weight: 600;
-}
-
-.card-type-label {
-  font-size: calc(10.4px * var(--card-scale));
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  opacity: 0.6;
+  opacity: 0.85;
 }
 
 .card-image {
   width: 100%;
-  height: calc(64px * var(--card-scale));
+  height: calc(78px * var(--card-scale));
   object-fit: contain;
-  image-rendering: pixelated; /* keeps future pixel-art crisp */
-}
-
-/* One simple line-art SVG per monster rank (see js/monster-icons.js),
-   sized the same way the suit symbol/image slot is — scales with the card
-   via --card-scale, and inherits the card's text color since every icon
-   draws with stroke/fill="currentColor". */
-.card-monster-icon {
-  width: calc(40px * var(--card-scale));
-  height: calc(40px * var(--card-scale));
 }
 
 .card-monster-icon svg {
@@ -669,16 +657,12 @@ button:disabled::before {
   font-size: calc(33.6px * var(--card-scale) * var(--weapon-slot-scale));
 }
 
-#weapon-slot-card .card-rank {
-  font-size: calc(20.8px * var(--card-scale) * var(--weapon-slot-scale));
-}
-
-#weapon-slot-card .card-type-label {
-  font-size: calc(10.4px * var(--card-scale) * var(--weapon-slot-scale));
+#weapon-slot-card .card-value-label {
+  font-size: calc(22px * var(--card-scale) * var(--weapon-slot-scale));
 }
 
 #weapon-slot-card .card-image {
-  height: calc(64px * var(--card-scale) * var(--weapon-slot-scale));
+  height: calc(78px * var(--card-scale) * var(--weapon-slot-scale));
 }
 
 .weapon-slot-empty {
