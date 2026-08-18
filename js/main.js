@@ -52,6 +52,17 @@ function resolveAndAnimate(cardId, options) {
   renderWeaponSlot();
   renderMessage(result.message);
 
+  // Electric weapon effect: play a "-1" + shake on each monster it weakened,
+  // while their card elements are still the ones actually in the DOM.
+  if (result.weakenedIds && result.weakenedIds.length) {
+    result.weakenedIds.forEach((id) => {
+      const weakenedEl = document.querySelector(`.card[data-id="${id}"]`);
+      if (!weakenedEl) return;
+      showCardDamage(weakenedEl, -1);
+      weakenedEl.classList.add('card--shake');
+    });
+  }
+
   // ...then re-render the room (removing/replacing cards) once the
   // animation has had time to finish, so it doesn't get cut short.
   setTimeout(() => {

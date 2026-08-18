@@ -177,6 +177,30 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   always does. Keep this in mind if adding more effects later: prefer a
   letter/simple-glyph badge over an emoji unless you've verified it
   renders broadly.
+- **Electric gets its own hit feedback**, separate from the normal HP-loss
+  feedback: a floating "-1" plus a brief shake on each monster it weakens.
+  `fightMonster()` in `js/state.js` returns the ids of every monster it
+  weakened this fight as `weakenedIds`, threaded back through
+  `resolveCard()`. `resolveAndAnimate()` in `js/main.js` reads
+  `result.weakenedIds` and, for each one, calls `showCardDamage()` (in
+  `js/ui.js`) and adds `.card--shake` — both **before** the
+  `CARD_ANIMATION_MS` timeout that calls `renderRoom()`, while the weakened
+  cards' actual DOM elements (not the fought card, which is already
+  removed from `state.room` by then) are still the ones on screen.
+  - `showCardDamage()` deliberately does **not** reuse `#hp-float-container`
+    (which anchors over the HP bar) — it's a per-card effect, so it needs
+    its own position. It appends a `.card-float` span straight to
+    `<body>`, positioned via `getBoundingClientRect()` on the target card
+    and `position: fixed` (not `absolute`, and not a child of the card
+    element) — because `renderRoom()` replaces that card's DOM element
+    well before the 1.1s float animation finishes; anchoring to the
+    card itself would cut the animation short. Same shared
+    `hp-float-up`/`hp-float-down` keyframes as the HP bar's numbers, so
+    the two feel identical.
+  - `.card--shake` (`card-shake` keyframes in `style.css`) is a small,
+    brief **`translateX`-only** wobble — same reasoning as `.card--aura`
+    below: a whole-card translate doesn't drag the bottom value label out
+    of place the way a `transform: scale()` from the center would.
 
 ### Monster artwork
 

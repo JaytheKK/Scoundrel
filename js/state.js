@@ -75,6 +75,10 @@ function fightMonster(card, useWeapon = true) {
   const weaponUsable = useWeapon && isWeaponUsableOn(card);
   const weapon = state.equippedWeapon;
 
+  // Ids of monsters weakened this fight (currently only via Electric) — the
+  // caller (main.js) uses this to play a "-1" + shake on those cards.
+  const weakenedIds = [];
+
   let damage;
   if (weaponUsable) {
     damage = Math.max(card.rank - weapon.rank, 0);
@@ -89,7 +93,10 @@ function fightMonster(card, useWeapon = true) {
 
     if (weapon.effect === 'electric') {
       state.room.forEach((roomCard) => {
-        if (roomCard.type === 'monster') weakenMonster(roomCard);
+        if (roomCard.type === 'monster') {
+          weakenMonster(roomCard);
+          weakenedIds.push(roomCard.id);
+        }
       });
     }
   } else {
@@ -109,7 +116,7 @@ function fightMonster(card, useWeapon = true) {
     message = `Fought ${card.name}${how} — took ${damage} damage.`;
   }
 
-  return { message };
+  return { message, weakenedIds };
 }
 
 function equipWeapon(card) {

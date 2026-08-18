@@ -160,6 +160,25 @@ function showHpDelta(delta) {
   setTimeout(() => el.remove(), HP_FLOAT_MS);
 }
 
+/** Shows a floating "-1" (or "+1") over a specific card still in the DOM —
+ * currently used when the Electric weapon effect weakens a monster.
+ * Positioned via getBoundingClientRect and appended to <body> (position:
+ * fixed, see .card-float in style.css) rather than as a child of `cardEl`,
+ * because renderRoom() replaces the room's card elements shortly after
+ * (see CARD_ANIMATION_MS in main.js) — anchoring to the card itself would
+ * cut the animation short. */
+function showCardDamage(cardEl, delta) {
+  if (!delta) return;
+  const rect = cardEl.getBoundingClientRect();
+  const el = document.createElement('span');
+  el.className = `card-float ${delta > 0 ? 'card-float--heal' : 'card-float--damage'}`;
+  el.textContent = delta > 0 ? `+${delta}` : `${delta}`;
+  el.style.left = `${rect.left + rect.width / 2}px`;
+  el.style.top = `${rect.top + rect.height / 2}px`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), HP_FLOAT_MS);
+}
+
 function renderWeaponSlot() {
   const slot = document.getElementById('weapon-slot-card');
   const status = document.getElementById('weapon-status');

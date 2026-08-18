@@ -519,6 +519,36 @@ button:disabled::before {
   }
 }
 
+/* Same floating combat-number treatment as .hp-float, but for a single card
+   (currently: a monster weakened by the Electric weapon effect). Appended
+   to <body> and positioned via getBoundingClientRect (see showCardDamage()
+   in ui.js) rather than as a child of the card itself, and `position: fixed`
+   (not absolute) to match — the card element it points at gets replaced by
+   renderRoom() well before the 1.1s animation finishes, so it can't be
+   anchored to that element's own box. Reuses the hp-float-up/down keyframes
+   above so the two feel identical. */
+.card-float {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 1rem;
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  z-index: 50;
+}
+
+.card-float--heal {
+  color: var(--success);
+  animation: hp-float-up 1.1s ease-out forwards;
+}
+
+.card-float--damage {
+  color: var(--danger);
+  animation: hp-float-down 1.1s ease-out forwards;
+}
+
 /* Capped to 2 lines (with ellipsis) so a long fight/flee message can never
    push the page taller and cause scrolling — height stays predictable. */
 #message {
@@ -592,7 +622,7 @@ button:disabled::before {
 .card-effect-badge {
   position: absolute;
   top: calc(4px * var(--card-scale));
-  right: calc(4px * var(--card-scale));
+  left: calc(4px * var(--card-scale));
   width: calc(20px * var(--card-scale));
   height: calc(20px * var(--card-scale));
   border-radius: 50%;
@@ -620,6 +650,32 @@ button:disabled::before {
   transform: translateY(24px);
   opacity: 0;
   pointer-events: none;
+}
+
+/* Minimal shake for a monster hit indirectly (currently: the Electric
+   weapon effect weakening it) rather than fought directly. Small
+   translateX-only wobble — deliberately not scale/rotate, same reasoning as
+   .card--aura: a whole-card translate doesn't drag the value label out of
+   place the way scaling from the center would. Plays once; the room
+   re-renders shortly after anyway (see CARD_ANIMATION_MS in main.js). */
+@keyframes card-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+  75% {
+    transform: translateX(-2px);
+  }
+}
+
+.card--shake {
+  animation: card-shake 0.3s ease-in-out;
 }
 
 /* Suit color (matches normal playing-card convention) */
