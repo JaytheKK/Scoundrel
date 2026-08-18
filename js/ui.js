@@ -52,6 +52,17 @@ function flavorNameFor(card) {
   return null;
 }
 
+/** Whether a card is strong enough to get the extra pulsing "aura" (rotating
+ * glow ring + breathing shadow, see .card--aura in style.css) on top of the
+ * normal tier border — the very strongest monsters (J/Q/K/A, rank 11+) and
+ * the 3 strongest weapons (rank 8+, since weapons cap at 10). Potions don't
+ * get one — they already have their own always-on life-pulse. */
+function hasAura(card) {
+  if (card.type === 'monster') return card.rank >= 11;
+  if (card.type === 'weapon') return card.rank >= 8;
+  return false;
+}
+
 /** Applies a card's own glow color (card.glowRgb, an "R, G, B" string —
  * currently only weapons carry one, defaulting to white) as an inline
  * --edge-rgb override, taking precedence over the type-based CSS classes
@@ -69,6 +80,7 @@ function applyGlowColor(el, card) {
 function renderCard(card) {
   const el = document.createElement('div');
   el.className = `card card--${card.type} card--tier-${cardTier(card.rank)}`;
+  if (hasAura(card)) el.classList.add('card--aura');
   el.dataset.suit = card.suit;
   el.dataset.id = card.id;
   applyGlowColor(el, card);
@@ -145,6 +157,7 @@ function renderWeaponSlot() {
     slot.innerHTML = '<div class="sword-icon">⚔</div>';
   } else {
     slot.className = `card card--weapon card--tier-${cardTier(state.equippedWeapon.rank)}`;
+    if (hasAura(state.equippedWeapon)) slot.classList.add('card--aura');
     slot.dataset.suit = state.equippedWeapon.suit;
     applyGlowColor(slot, state.equippedWeapon);
     fillCardFace(slot, state.equippedWeapon);

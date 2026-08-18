@@ -608,13 +608,16 @@ button:disabled::before {
 }
 
 /* Type color (monster/weapon/potion), used for the border/glow below.
-   Monsters use a dark purple that gets progressively darker/gloomier at
-   higher tiers instead of staying one fixed color — see the
-   .card--monster.card--tier-4/5 overrides further down. Weapons default to
-   white here, but that's normally overridden per-card via card.glowRgb
-   (applied as an inline style in ui.js) — see js/cards.js. */
+   Monsters use a vivid purple that gets progressively more electric/
+   saturated at higher tiers — see the .card--monster.card--tier-4/5
+   overrides further down — while an inward dark vignette (not a darker
+   edge color) is what gives the strongest ones their "gloomy" read, so
+   they stay clearly visible against the dark page background instead of
+   just getting harder to see. Weapons default to white here, but that's
+   normally overridden per-card via card.glowRgb (applied as an inline
+   style in ui.js) — see js/cards.js. */
 .card--monster {
-  --edge-rgb: 96, 48, 130;
+  --edge-rgb: 150, 60, 210;
 }
 
 .card--weapon {
@@ -637,70 +640,58 @@ button:disabled::before {
 
 .card--tier-2 {
   --card-border-width: 1.5px;
-  --card-border-alpha: 0.5;
+  --card-border-alpha: 0.55;
+  --card-glow: 0 0 6px 0 rgba(var(--edge-rgb), 0.3);
 }
 
 .card--tier-3 {
   --card-border-width: 2px;
-  --card-border-alpha: 0.8;
-  --card-glow: 0 0 8px 0 rgba(var(--edge-rgb), 0.4);
+  --card-border-alpha: 0.85;
+  --card-glow: 0 0 11px 1px rgba(var(--edge-rgb), 0.55);
 }
 
 .card--tier-4 {
   --card-border-width: 2.5px;
   --card-border-alpha: 1;
-  --card-glow: 0 0 14px 2px rgba(var(--edge-rgb), 0.55);
+  --card-glow: 0 0 16px 2px rgba(var(--edge-rgb), 0.7);
 }
 
 .card--tier-5 {
   --card-border-width: 3px;
   --card-border-alpha: 1;
-  --card-glow: 0 0 20px 3px rgba(var(--edge-rgb), 0.7);
-  animation: card-tier-5-pulse 2.2s ease-in-out infinite;
+  --card-glow: 0 0 22px 4px rgba(var(--edge-rgb), 0.85);
 }
 
 /* Only monsters ever reach tier 4/5 (weapons/potions cap at rank 10 / tier
-   3) — for them specifically, the color itself gets darker as the tier
-   goes up (instead of just wider/more opaque like the generic system
-   above), plus an inward dark vignette, so the strongest monsters read as
-   gloomy/ominous rather than just "brighter". */
+   3) — for them specifically, the color gets more saturated/electric as
+   the tier goes up, and an inward dark vignette is layered into the glow,
+   so the strongest monsters read as gloomy/ominous *and* still clearly
+   visible, rather than just fading into a dark, low-contrast color. */
 .card--monster.card--tier-4 {
-  --edge-rgb: 62, 26, 88;
-  --card-glow: 0 0 14px 2px rgba(var(--edge-rgb), 0.6), inset 0 0 10px rgba(0, 0, 0, 0.4);
+  --edge-rgb: 165, 40, 230;
+  --card-glow: 0 0 16px 2px rgba(var(--edge-rgb), 0.75), inset 0 0 12px rgba(0, 0, 0, 0.45);
 }
 
 .card--monster.card--tier-5 {
-  --edge-rgb: 34, 12, 48;
-  --card-glow: 0 0 20px 3px rgba(var(--edge-rgb), 0.75), inset 0 0 14px rgba(0, 0, 0, 0.5);
-}
-
-@keyframes card-tier-5-pulse {
-  0%,
-  100% {
-    box-shadow: var(--card-glow), 0 2px 6px rgba(0, 0, 0, 0.35);
-  }
-  50% {
-    box-shadow: 0 0 28px 6px rgba(var(--edge-rgb), 0.85), inset 0 0 16px rgba(0, 0, 0, 0.55),
-      0 2px 6px rgba(0, 0, 0, 0.35);
-  }
+  --edge-rgb: 185, 20, 255;
+  --card-glow: 0 0 24px 4px rgba(var(--edge-rgb), 0.9), inset 0 0 16px rgba(0, 0, 0, 0.55);
 }
 
 /* Potions get a gentle "life" pulse on top of the tier system instead of
    sitting there as a static red outline — a slow breathing glow that gets
-   more noticeable the stronger the potion is (weapons/monsters don't pulse
-   below tier 5, but every potion does, since none of them ever reach that
-   tier — they cap at rank 10 / tier 3). */
+   more noticeable the stronger the potion is (every potion pulses, since
+   none of them ever reach tier 4/5 — they cap at rank 10 / tier 3). */
 .card--potion {
-  --potion-pulse: 0 0 9px 1px rgba(var(--edge-rgb), 0.3);
+  --potion-pulse: 0 0 10px 1px rgba(var(--edge-rgb), 0.35);
   animation: card-potion-pulse 2.6s ease-in-out infinite;
 }
 
 .card--potion.card--tier-2 {
-  --potion-pulse: 0 0 13px 2px rgba(var(--edge-rgb), 0.5);
+  --potion-pulse: 0 0 15px 2px rgba(var(--edge-rgb), 0.55);
 }
 
 .card--potion.card--tier-3 {
-  --potion-pulse: 0 0 18px 3px rgba(var(--edge-rgb), 0.65);
+  --potion-pulse: 0 0 20px 3px rgba(var(--edge-rgb), 0.7);
 }
 
 @keyframes card-potion-pulse {
@@ -710,6 +701,62 @@ button:disabled::before {
   }
   50% {
     box-shadow: var(--potion-pulse), 0 2px 6px rgba(0, 0, 0, 0.35);
+  }
+}
+
+/* --- aura: the very strongest cards get more than "just a glow" ---------
+   J/Q/K/A monsters (rank 11+) and the 3 strongest weapons (rank 8+) get
+   .card--aura added in ui.js (hasAura()): a rotating conic-gradient ring
+   glowing around the card (::before, blurred, spinning), plus the card
+   itself breathing — scaling up slightly and flaring its shadow — instead
+   of a single static glow. This sits on top of the tier system above, not
+   instead of it (the tier border/glow still applies underneath). */
+.card--aura {
+  position: relative;
+  isolation: isolate;
+  animation: card-aura-pulse 2.4s ease-in-out infinite;
+}
+
+.card--aura::before {
+  content: '';
+  position: absolute;
+  inset: calc(-7px * var(--card-scale));
+  border-radius: calc(var(--radius) + 6px * var(--card-scale));
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(var(--edge-rgb), 0.95) 55deg,
+    transparent 130deg,
+    transparent 230deg,
+    rgba(var(--edge-rgb), 0.95) 305deg,
+    transparent 360deg
+  );
+  filter: blur(calc(5px * var(--card-scale)));
+  opacity: 0.85;
+  z-index: -1;
+  pointer-events: none;
+  animation: card-aura-spin 3.2s linear infinite;
+}
+
+@keyframes card-aura-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes card-aura-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: var(--card-glow), 0 2px 6px rgba(0, 0, 0, 0.35);
+  }
+  50% {
+    transform: scale(1.045);
+    box-shadow: 0 0 20px 4px rgba(var(--edge-rgb), 0.8), 0 0 38px 12px rgba(var(--edge-rgb), 0.4),
+      0 2px 6px rgba(0, 0, 0, 0.35);
   }
 }
 
