@@ -38,6 +38,7 @@ function shuffle(cards) {
 function initGame() {
   state.hp = state.maxHp;
   state.deck = shuffle(getFreshDeck());
+  rollWeaponEffects(state.deck); // 25% chance per weapon, re-rolled every game
   state.room = state.deck.splice(0, 4);
   state.equippedWeapon = null;
   state.weaponMaxMonster = null;
@@ -56,25 +57,59 @@ function isWeaponUsableOn(card) {
   );
 }
 
+/** Lowers a monster's rank by 1 (min 1), keeping its identity (artwork,
+ * flavor name — both keyed off `baseRank`, not `rank`) but updating its
+ * displayed label/name so messages/tooltips stay consistent with the new,
+ * weaker value. Used by the Electric weapon effect. */
+function weakenMonster(card) {
+  card.rank = Math.max(1, card.rank - 1);
+  card.label = RANK_LABELS[card.rank] || String(card.rank);
+  card.name = `${card.label} of ${capitalize(card.suit)}`;
+}
+
 /** @param useWeapon - player's choice, only relevant if the weapon is legal
  * to use here in the first place (see isWeaponUsableOn). Defaults to true
  * (use the weapon whenever legal) so callers that don't offer a choice keep
  * working as before. */
 function fightMonster(card, useWeapon = true) {
   const weaponUsable = useWeapon && isWeaponUsableOn(card);
+  const weapon = state.equippedWeapon;
 
   let damage;
   if (weaponUsable) {
-    damage = Math.max(card.rank - state.equippedWeapon.rank, 0);
-    state.weaponMaxMonster = card.rank; // weapon degrades: only usable on weaker monsters from now on
+    damage = Math.max(card.rank - weapon.rank, 0);
+
+    // Weapon degrade: normally the weapon can only be used again on a
+    // monster weaker than the one it just defeated. Sturdy limits how far
+    // that usable-strength ceiling can drop in one fight (max -2) instead
+    // of dropping straight to the defeated monster's value.
+    const previousCeiling = state.weaponMaxMonster === null ? weapon.rank : state.weaponMaxMonster;
+    state.weaponMaxMonster =
+      weapon.effect === 'sturdy' ? Math.max(card.rank, previousCeiling - 2) : card.rank;
+
+    if (weapon.effect === 'electric') {
+      state.room.forEach((roomCard) => {
+        if (roomCard.type === 'monster') weakenMonster(roomCard);
+      });
+    }
   } else {
     damage = card.rank;
   }
 
   state.hp = Math.max(state.hp - damage, 0);
 
-  const how = weaponUsable ? ` with your ${state.equippedWeapon.name}` : ' bare-handed';
-  return { message: `Fought ${card.name}${how} — took ${damage} damage.` };
+  let message;
+  const how = weaponUsable ? ` with your ${weapon.name}` : ' bare-handed';
+  if (weaponUsable && weapon.effect === 'vampiric') {
+    state.hp = Math.min(state.hp + 1, state.maxHp);
+    message = `Fought ${card.name}${how} — took ${damage} damage. Vampiric weapon healed 1 HP.`;
+  } else if (weaponUsable && weapon.effect === 'electric') {
+    message = `Fought ${card.name}${how} — took ${damage} damage. Electric surge weakened the other monsters!`;
+  } else {
+    message = `Fought ${card.name}${how} — took ${damage} damage.`;
+  }
+
+  return { message };
 }
 
 function equipWeapon(card) {

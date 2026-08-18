@@ -5,10 +5,11 @@
 // ---------------------------------------------------------------------------
 
 /** Fills a card-shaped element with a card's face: its artwork (or the suit
- * symbol as a fallback, for any card without artwork) front and center, and
- * the card's numeric value at the bottom — always a plain number, never a
- * suit letter (no J/Q/K/A). Shared by renderCard() and the weapon slot,
- * which displays the equipped weapon the same way. */
+ * symbol as a fallback, for any card without artwork) front and center, the
+ * card's numeric value at the bottom — always a plain number, never a suit
+ * letter (no J/Q/K/A) — and, for a weapon with a rolled effect, a small
+ * corner badge. Shared by renderCard() and the weapon slot, which displays
+ * the equipped weapon the same way. */
 function fillCardFace(el, card) {
   el.innerHTML = '';
 
@@ -23,6 +24,15 @@ function fillCardFace(el, card) {
     symbol.className = 'card-suit-symbol';
     symbol.textContent = SUIT_SYMBOLS[card.suit];
     el.appendChild(symbol);
+  }
+
+  if (card.effect && WEAPON_EFFECTS[card.effect]) {
+    const effect = WEAPON_EFFECTS[card.effect];
+    const badge = document.createElement('div');
+    badge.className = 'card-effect-badge';
+    badge.textContent = effect.icon;
+    badge.title = `${effect.name} — ${effect.description}`;
+    el.appendChild(badge);
   }
 
   const value = document.createElement('div');
@@ -44,11 +54,13 @@ function cardTier(rank) {
 }
 
 /** The flavor name to show alongside a card's plain name in its tooltip
- * (e.g. "8 of Hearts — Imperial Potion"). */
+ * (e.g. "8 of Hearts — Imperial Potion"). Keyed off `baseRank`, not the
+ * (possibly effect-lowered) current `rank`, so a monster weakened by the
+ * Electric weapon effect still shows as the same creature. */
 function flavorNameFor(card) {
-  if (card.type === 'monster') return monsterNameFor(card.rank);
-  if (card.type === 'potion') return potionNameFor(card.rank);
-  if (card.type === 'weapon') return weaponNameFor(card.rank);
+  if (card.type === 'monster') return monsterNameFor(card.baseRank);
+  if (card.type === 'potion') return potionNameFor(card.baseRank);
+  if (card.type === 'weapon') return weaponNameFor(card.baseRank);
   return null;
 }
 
@@ -85,7 +97,9 @@ function renderCard(card) {
   el.dataset.id = card.id;
   applyGlowColor(el, card);
   const flavorName = flavorNameFor(card);
-  el.title = flavorName ? `${card.name} — ${flavorName}` : card.name;
+  const title = flavorName ? `${card.name} — ${flavorName}` : card.name;
+  const effect = card.effect && WEAPON_EFFECTS[card.effect];
+  el.title = effect ? `${title} (${effect.name})` : title;
   fillCardFace(el, card);
   return el;
 }
@@ -172,10 +186,12 @@ function renderWeaponSlot() {
   } else if (!state.equippedWeapon) {
     status.textContent = 'No weapon equipped';
   } else {
-    status.textContent =
+    const restriction =
       state.weaponMaxMonster === null
         ? 'Can defeat any monster'
         : `Can only defeat monsters weaker than ${state.weaponMaxMonster}`;
+    const effect = state.equippedWeapon.effect && WEAPON_EFFECTS[state.equippedWeapon.effect];
+    status.textContent = effect ? `${restriction} — ${effect.name}: ${effect.description}` : restriction;
   }
 }
 

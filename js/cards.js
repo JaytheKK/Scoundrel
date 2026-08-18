@@ -8,16 +8,28 @@
 //
 // Card shape:
 // {
-//   id:     unique string, e.g. "clubs-7"
-//   suit:   'clubs' | 'spades' | 'diamonds' | 'hearts'
-//   rank:   2-14 (11=J, 12=Q, 13=K, 14=A)
-//   label:  display text for the rank, e.g. "7", "J", "A"
-//   type:   'monster' | 'weapon' | 'potion'
-//   name:   human-readable name, e.g. "7 of Clubs"
-//   image:  path to card artwork, or null to fall back to the CSS placeholder.
-//           Swap this later (e.g. to a pixel-art sprite) without touching
-//           any other logic.
-//   effect: reserved for future special-ability cards (null for base game).
+//   id:       unique string, e.g. "clubs-7"
+//   suit:     'clubs' | 'spades' | 'diamonds' | 'hearts'
+//   rank:     2-14 (11=J, 12=Q, 13=K, 14=A). This is the card's CURRENT
+//             strength — some card effects can change it at runtime (e.g.
+//             the Electric weapon effect lowers a monster's rank). Always
+//             use `rank`, never `baseRank`, for anything gameplay-facing
+//             (damage math, the number shown on the card, tier/aura).
+//   baseRank: the rank the card was created with — never changes. Artwork
+//             and flavor-name lookups (monsterNameFor()/potionNameFor()/
+//             weaponNameFor()) key off this, not `rank`, so a monster whose
+//             rank was lowered by an effect still shows as the same
+//             creature (e.g. a weakened Skeleton stays a Skeleton).
+//   label:    display text for the rank, e.g. "7", "J", "A"
+//   type:     'monster' | 'weapon' | 'potion'
+//   name:     human-readable name, e.g. "7 of Clubs"
+//   image:    path to card artwork, or null to fall back to the CSS
+//             placeholder. Swap this later (e.g. to a pixel-art sprite)
+//             without touching any other logic.
+//   effect:   null, or a weapon-effect id ('vampiric'/'electric'/'sturdy',
+//             see js/weapon-effects.js) — rolled randomly per weapon card
+//             at the start of each game (rollWeaponEffects() in
+//             js/weapon-effects.js, called from initGame() in state.js).
 // }
 // ---------------------------------------------------------------------------
 
@@ -61,6 +73,7 @@ function makeCard(suit, rank, overrides = {}) {
     id: `${suit}-${rank}`,
     suit,
     rank,
+    baseRank: rank,
     label,
     type,
     name: `${label} of ${capitalize(suit)}`,

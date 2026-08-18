@@ -64,6 +64,14 @@
         <h3>Weapons &amp; Potions</h3>
         <p>Click a weapon to equip it, it replaces whatever you had equipped. Click a potion to drink it and heal HP up to your maximum of 20, but only the first potion in a room actually heals; extra potions in the same room do nothing.</p>
 
+        <h3>Weapon Effects</h3>
+        <p>Every weapon has a 25% chance of carrying one of three effects, shown as a small badge in its corner:</p>
+        <ul>
+          <li><strong>V — Vampiric</strong>: heals 1 HP whenever this weapon defeats a monster.</li>
+          <li><strong>E — Electric</strong>: every other revealed monster loses 1 strength whenever this weapon is used in a fight (still the same monster, just weaker).</li>
+          <li><strong>S — Sturdy</strong>: this weapon's usable strength can never drop by more than 2 per fight, instead of dropping straight to the defeated monster's value.</li>
+        </ul>
+
         <h3>Fleeing a Room</h3>
         <p>"Flee Room" sends the entire room to the bottom of the deck and deals a fresh one. You can only flee a full, untouched room of 4 cards, and never two rooms in a row.</p>
 
@@ -84,6 +92,7 @@
   <script src="js/monster-icons.js"></script>
   <script src="js/potion-icons.js"></script>
   <script src="js/weapon-icons.js"></script>
+  <script src="js/weapon-effects.js"></script>
   <script src="js/state.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>

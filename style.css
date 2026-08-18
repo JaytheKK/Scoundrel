@@ -566,6 +566,7 @@ button:disabled::before {
   --card-border-alpha: 0.25;
   --card-glow: 0 0 0 0 rgba(0, 0, 0, 0);
   --card-glow-inset: inset 0 0 0 rgba(0, 0, 0, 0);
+  position: relative;
   width: calc(100px * var(--card-scale));
   height: calc(140px * var(--card-scale));
   border-radius: var(--radius);
@@ -582,6 +583,30 @@ button:disabled::before {
   flex-shrink: 0;
   transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease,
     border-color 0.2s ease, border-width 0.2s ease;
+}
+
+/* Small corner badge showing a weapon's rolled effect (see
+   WEAPON_EFFECTS in js/weapon-effects.js and fillCardFace() in ui.js).
+   Sits above the card's own artwork/glow layers; the full name and
+   description are in its title (tooltip) and in #weapon-status. */
+.card-effect-badge {
+  position: absolute;
+  top: calc(4px * var(--card-scale));
+  right: calc(4px * var(--card-scale));
+  width: calc(20px * var(--card-scale));
+  height: calc(20px * var(--card-scale));
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: calc(11px * var(--card-scale));
+  line-height: 1;
+  color: #fff;
+  z-index: 1;
 }
 
 .card:hover {
