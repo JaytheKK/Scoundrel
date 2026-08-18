@@ -134,9 +134,15 @@ function fightMonster(card, useWeapon = true) {
   // always "defeated" once its card resolves — there's no monster HP to
   // track separately.
   let paladinHeal = 0;
+  // True on the exact kill that completes a 5-kill cycle, even if the heal
+  // itself was capped to 0 HP by an already-full health bar — the ability
+  // bar (see renderChampionAbilityBar() in ui.js) still plays its "full,
+  // then drain" animation on the milestone kill either way.
+  let paladinCycleComplete = false;
   if (state.champion === 'paladin') {
     state.monstersDefeated += 1;
     if (state.monstersDefeated % 5 === 0) {
+      paladinCycleComplete = true;
       const hpBefore = state.hp;
       state.hp = Math.min(state.hp + 3, state.maxHp);
       paladinHeal = state.hp - hpBefore;
@@ -144,39 +150,47 @@ function fightMonster(card, useWeapon = true) {
   }
 
   let message;
-  const how = weaponUsable ? ` with your ${weapon.name}` : ' bare-handed';
+  // Show flavor names (e.g. "Shadow Assassin", "Mjölnir"), never raw poker
+  // card names (e.g. "8 of Clubs", "9 of Diamonds"), in the fight log.
+  // Monster lookup uses baseRank so a weakened monster (see
+  // weakenMonster()) still shows the right creature.
+  const monsterLabel = monsterNameFor(card.baseRank) || card.name;
+  const weaponLabel = weaponUsable ? weaponNameFor(weapon.baseRank) || weapon.name : null;
+  const how = weaponUsable ? ` with your ${weaponLabel}` : ' bare-handed';
   if (weaponUsable && weapon.effect === 'vampiric') {
     state.hp = Math.min(state.hp + 1, state.maxHp);
-    message = `Fought ${card.name}${how} — took ${damage} damage. Vampiric weapon healed 1 HP.`;
+    message = `Fought ${monsterLabel}${how} — took ${damage} damage. Vampiric weapon healed 1 HP.`;
   } else if (weaponUsable && weapon.effect === 'electric') {
-    message = `Fought ${card.name}${how} — took ${damage} damage. Electric surge weakened the other monsters!`;
+    message = `Fought ${monsterLabel}${how} — took ${damage} damage. Electric surge weakened the other monsters!`;
   } else {
-    message = `Fought ${card.name}${how} — took ${damage} damage.`;
+    message = `Fought ${monsterLabel}${how} — took ${damage} damage.`;
   }
   if (paladinHeal > 0) {
     message += ` Paladin's faith healed ${paladinHeal} HP.`;
   }
 
-  return { message, weakenedIds };
+  return { message, weakenedIds, paladinCycleComplete };
 }
 
 function equipWeapon(card) {
   state.equippedWeapon = card;
   state.weaponMaxMonster = null; // fresh weapon: no restriction until first use
-  return { message: `Equipped ${card.name}.` };
+  const weaponLabel = weaponNameFor(card.baseRank) || card.name;
+  return { message: `Equipped ${weaponLabel}.` };
 }
 
 function drinkPotion(card) {
   // Normally only the first potion in a room heals; the Herbalist champion
   // raises that cap to two.
+  const potionLabel = potionNameFor(card.baseRank) || card.name;
   const maxHealingPotions = state.champion === 'herbalist' ? 2 : 1;
   if (state.potionsDrunkThisRoom >= maxHealingPotions) {
-    return { message: `Drank ${card.name} — already healed this room, no effect.` };
+    return { message: `Drank ${potionLabel} — already healed this room, no effect.` };
   }
   const healed = Math.min(card.rank, state.maxHp - state.hp);
   state.hp += healed;
   state.potionsDrunkThisRoom += 1;
-  return { message: `Drank ${card.name} — healed ${healed} HP.` };
+  return { message: `Drank ${potionLabel} — healed ${healed} HP.` };
 }
 
 /**

@@ -7,8 +7,8 @@
 // ---------------------------------------------------------------------------
 
 const WEAPON_NAMES = {
-  2: 'Wooden Club (Damaged)',
-  3: 'Old Sword (Damaged)',
+  2: 'Wooden Club',
+  3: 'Damaged Sword',
   4: 'Spear',
   5: 'Sword',
   6: 'Battle Axe',

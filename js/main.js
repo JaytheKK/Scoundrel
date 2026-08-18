@@ -111,6 +111,7 @@ function applyResolve(cardId, options) {
   showHpDelta(state.hp - hpBefore);
   renderWeaponSlot();
   renderMessage(result.message);
+  renderChampionAbilityBar({ animateHeal: !!result.paladinCycleComplete });
 
   // Electric weapon effect: play a "-1" + shake on each monster it weakened,
   // while their card elements are still the ones actually in the DOM.
@@ -250,6 +251,7 @@ document.getElementById('flee-btn').addEventListener('click', () => {
   renderRoom();
   renderDeckCount();
   renderFleeButton();
+  renderChampionAbilityBar();
 });
 
 document.getElementById('weapon-toggle').addEventListener('change', (event) => {

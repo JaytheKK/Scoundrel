@@ -147,6 +147,94 @@ function renderChampionBadge() {
   badge.title = champ ? `${champ.name} — ${champ.description}` : '';
 }
 
+/** Returns { total, filled, label } describing the current champion's
+ * repeating-passive progress bar (see #champion-ability-bar in style.css),
+ * or null if the current champion has no such bar (Berserker, or no
+ * champion picked yet). `filled` is always in [0, total].
+ *   - Paladin: 5 segments, one per kill since the last heal-trigger — heals
+ *     3 HP every 5th kill (state.monstersDefeated), so filled cycles
+ *     1..5 and shows a full bar right after a heal instead of resetting to
+ *     0 in the same instant it triggers (state.monstersDefeated itself
+ *     never resets — it's a running total — so the cycle is derived here).
+ *   - Rogue: 2 segments, one per room fled in a row (state.fleeStreak,
+ *     already reset to 0 whenever a room is completed or a new game
+ *     starts — see resolveCard()/fleeRoom() in state.js).
+ *   - Herbalist: 2 segments, one per potion that actually healed this room
+ *     (state.potionsDrunkThisRoom, already reset to 0 on every new room —
+ *     see resolveCard()/fleeRoom() in state.js). */
+function championAbilityProgress() {
+  if (state.champion === 'paladin') {
+    const total = 5;
+    const filled = state.monstersDefeated === 0 ? 0 : ((state.monstersDefeated - 1) % total) + 1;
+    return { total, filled, label: `${filled} / ${total} kills until Paladin's heal` };
+  }
+  if (state.champion === 'rogue') {
+    const total = 2;
+    return { total, filled: Math.min(state.fleeStreak, total), label: `${state.fleeStreak} / ${total} rooms fled in a row` };
+  }
+  if (state.champion === 'herbalist') {
+    const total = 2;
+    return { total, filled: Math.min(state.potionsDrunkThisRoom, total), label: `${state.potionsDrunkThisRoom} / ${total} potions healed this room` };
+  }
+  return null;
+}
+
+// Paladin's full-bar heal celebration (see renderChampionAbilityBar()'s
+// animateHeal option below): hold the full 5/5 bar this long, then drain it
+// back to empty over this long. The drain duration is kept in sync with the
+// .ability-bar--draining transition-duration in style.css.
+const PALADIN_HEAL_HOLD_MS = 1000;
+const PALADIN_HEAL_DRAIN_MS = 1000;
+
+/** Fills #champion-ability-bar with one segment per championAbilityProgress()
+ * step, or hides it entirely for a champion without one. Called from
+ * renderAll(), so it stays current after every fight/flee/potion/new room.
+ * @param options.animateHeal - pass true only on the fight that completed a
+ *   Paladin 5-kill cycle (result.paladinCycleComplete from fightMonster(),
+ *   threaded through resolveCard()): the bar still renders full immediately
+ *   (state already reflects the completed cycle), but after a beat it fades
+ *   back to empty instead of silently jumping to the next cycle's 1/5 on the
+ *   following kill, so the heal reads as a clear, celebratory beat. */
+function renderChampionAbilityBar(options = {}) {
+  const bar = document.getElementById('champion-ability-bar');
+  const progress = championAbilityProgress();
+  bar.classList.remove('ability-bar--draining');
+
+  if (!progress) {
+    bar.classList.add('hidden');
+    bar.innerHTML = '';
+    bar.title = '';
+    return;
+  }
+
+  bar.classList.remove('hidden');
+  bar.title = progress.label;
+  bar.innerHTML = '';
+  for (let i = 0; i < progress.total; i++) {
+    const segment = document.createElement('div');
+    segment.className = 'ability-segment' + (i < progress.filled ? ' ability-segment--filled' : '');
+    bar.appendChild(segment);
+  }
+
+  if (options.animateHeal) {
+    setTimeout(() => {
+      bar.classList.add('ability-bar--draining');
+      // Two nested rAFs so the browser paints the (slow-transition) class
+      // before the filled class comes off — otherwise the removal can land
+      // in the same style-recalc as the class add and skip the transition
+      // entirely, jumping straight to empty instead of fading.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          bar.querySelectorAll('.ability-segment--filled').forEach((seg) => {
+            seg.classList.remove('ability-segment--filled');
+          });
+        });
+      });
+      setTimeout(() => bar.classList.remove('ability-bar--draining'), PALADIN_HEAL_DRAIN_MS);
+    }, PALADIN_HEAL_HOLD_MS);
+  }
+}
+
 function renderHp() {
   const pct = Math.max(0, Math.min(100, (state.hp / state.maxHp) * 100));
   const fill = document.getElementById('hp-fill');
@@ -431,6 +519,7 @@ function renderChampionSelect() {
 
 function renderAll() {
   renderChampionBadge();
+  renderChampionAbilityBar();
   renderHp();
   renderRoom();
   renderDeckCount();
@@ -562,20 +651,20 @@ function animateWeaponToSlot(cardEl, onDone) {
 
 // --- weapon-attack animation -------------------------------------------------
 
-// Total ~2s, split into three legs so it reads as one fluid swing rather than
-// a linear slide: swing out to the monster (ease-in, gathering speed), a
+// Total ~1.5s, split into three legs so it reads as one fluid swing rather
+// than a linear slide: swing out to the monster (ease-in, gathering speed), a
 // brief pause right on impact, then swing back into the weapon slot
 // (ease-out, settling in). Driven by transform transitions rather than a
 // fixed @keyframes animation because the start (weapon slot) and end (the
 // clicked monster card) positions are measured at runtime and differ every
 // time.
-const WEAPON_ATTACK_OUT_MS = 800;
-const WEAPON_ATTACK_IMPACT_MS = 150;
-const WEAPON_ATTACK_RETURN_MS = 1050;
+const WEAPON_ATTACK_OUT_MS = 600;
+const WEAPON_ATTACK_IMPACT_MS = 113;
+const WEAPON_ATTACK_RETURN_MS = 788;
 
 /** Animates the actual equipped-weapon card (not a clone) flying out of the
  * weapon slot to strike `monsterEl`, then flying back into the slot — about
- * 2 seconds total. Moving the real element (rather than a cloned stand-in
+ * 1.5 seconds total. Moving the real element (rather than a cloned stand-in
  * left floating over the slot) means there's never a duplicate card visible
  * anywhere — the slot is simply empty-looking for the instant its card is
  * "out" fighting. `onImpact()` fires the moment the weapon visually lands

@@ -674,6 +674,12 @@ button:disabled::before {
   height: 5rem;
 }
 
+.champion-select-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .champion-select-portrait .portrait-placeholder {
   font-size: 2rem;
 }
@@ -749,6 +755,18 @@ button:disabled::before {
   font-size: 0.9rem;
 }
 
+/* Stacks the HP bar and the champion-ability bar directly beneath it in a
+   column, both the same width (11.25rem, matching #hp-bar) — kept as its
+   own wrapper rather than putting the ability bar inside #hp-bar-container
+   so that container's 50%/50% floating-number anchor (see
+   #hp-float-container below) stays centered on the HP bar alone, not on
+   the taller combined column. */
+#hp-bar-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 /* Positioning anchor for the floating +N / -N numbers (#hp-float-container),
    which need to sit centered above the bar regardless of its own size. */
 #hp-bar-container {
@@ -798,6 +816,42 @@ button:disabled::before {
   color: var(--text-muted);
   min-width: 4.375rem;
   text-align: left;
+}
+
+/* Thin per-champion progress bar directly under the HP bar, same width
+   (11.25rem, via #hp-bar-column above) — shows progress toward whichever
+   champion's passive triggers repeatedly during a run (Paladin's every-5th-
+   kill heal, Rogue's flee streak, Herbalist's potions-per-room). Segment
+   count varies by champion (buildChampionAbilitySegments() in js/ui.js);
+   hidden entirely for a champion without one of these (Berserker) or no
+   champion picked. Segments are always green when filled — deliberately
+   not tied to the card-tier color system, this is a simple fill gauge. */
+#champion-ability-bar {
+  display: flex;
+  gap: 2px;
+  width: 11.25rem;
+  height: 0.25rem;
+}
+
+.ability-segment {
+  flex: 1;
+  border-radius: 0.125rem;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+  transition: background 0.25s ease, box-shadow 0.25s ease;
+}
+
+.ability-segment--filled {
+  background: var(--success);
+  box-shadow: 0 0 4px rgba(46, 204, 113, 0.7);
+}
+
+/* Paladin's full-bar heal celebration (see renderChampionAbilityBar()'s
+   animateHeal option in js/ui.js): scoped to this state only, so the bar's
+   normal instant-ish segment updates elsewhere (0.25s, above) aren't slowed
+   down — only the post-heal drain from 5/5 back to empty fades over ~1s. */
+#champion-ability-bar.ability-bar--draining .ability-segment {
+  transition: background 1s ease, box-shadow 1s ease;
 }
 
 /* --- floating "+7" / "-4" combat numbers ------------------------------- */

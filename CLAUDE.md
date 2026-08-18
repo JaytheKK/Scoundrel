@@ -450,13 +450,44 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   than a rank — champions aren't cards) came from a user-supplied 2x2
   sprite sheet (`images/ChampionsIcons.jpeg`, kept as source reference:
   top-left Paladin, top-right Herbalist, bottom-left Rogue, bottom-right
-  Berserker), cropped the same way as the monster/weapon art — alpha = 255
-  − min(R,G,B) per pixel (transparent background, forced-black linework),
-  largest-connected-component only (drops the sheet's circle-border
-  fragments outside each portrait), then tightly cropped to that shape's
-  bounding box with a small padding. Unlike the monster/weapon sheets these
-  are actual line-art portraits (not silhouettes), but the same alpha trick
-  works fine since the source art is pure black-on-white to begin with.
+  Berserker), cropped similarly to the monster/weapon art but with one
+  deliberate difference: **plain `alpha = 255 − min(R,G,B)` is not enough
+  for line-art portraits.** A first pass used that plain formula and left
+  thin single-pixel linework (eyes especially — Herbalist/Rogue/Berserker
+  all lost eye detail) at very low alpha (~15-35/255), because JPEG
+  compression anti-aliases thin lines into light gray rather than solid
+  black. At low alpha those lines are nearly invisible against the light
+  `--card-bg` they render on (though they can look deceptively fine in a
+  raw image viewer/preview on a dark background, which is why this shipped
+  unnoticed once already — always preview champion art composited on a
+  light background, not just as a bare transparent PNG). The fix: contrast-
+  stretch the darkness value before using it as alpha —
+  `alpha = clip((darkness − LOW) / (HIGH − LOW), 0, 1) × 255` with
+  `LOW≈12, HIGH≈90` — so any pixel meaningfully darker than the paper-white
+  background snaps close to fully opaque instead of staying a faint gray.
+  After that: tightly cropped to the alpha mask's bounding box with a
+  small padding, same as the monster/weapon art. Apply this same
+  contrast-stretch (not the plain monster/weapon formula) to any future
+  line-art crop (more champions, or any other non-silhouette art) —
+  silhouette-style monster/weapon art doesn't need it since those are
+  solid fills, not thin outlines.
+  **Second bug, found later (all 4 champions again lost detail — Paladin's
+  second eye, Herbalist's entire eyes/nose/mouth, Berserker's second eye):**
+  the crop script's "largest-connected-component only" step (meant to drop
+  the sheet's circle-border fragments outside each portrait) was far too
+  aggressive — a face's eyes/nose/mouth are drawn as strokes that don't
+  touch the outer hair/hood/helmet outline, so they're each their own
+  *separate* connected component and got deleted right along with the
+  actual border fragments, since only the single largest component
+  survived. **Never filter line-art down to just the largest connected
+  component** — instead keep every component above a tiny pixel-count
+  floor (e.g. ~8px, enough to drop JPEG noise specks but keep every real
+  stroke including small disconnected ones) and rely on a per-portrait
+  crop rectangle to keep neighboring circles' fragments out in the first
+  place. Re-verify against the source reference sheet (composited on a
+  light background, per the paragraph above) after any recrop — a missing
+  eye or facial feature is easy to miss at a glance since the silhouette
+  still reads as "a face."
 - Champions aren't cards, so this artwork never goes through
   `fillCardFace()` — it's shown via the shared `fillPortrait()` helper
   (`js/ui.js`) instead, in three places: the Champions gallery tiles, the
