@@ -337,3 +337,18 @@ document.getElementById('tutorial-next-btn').addEventListener('click', () => {
     showTutorialStep(tutorialState.step + 1);
   }
 });
+
+// #menu-btn stays clickable during the tutorial (see the CSS exemption in
+// style.css) specifically so its "Back to Menu" button works as another way
+// out, same as #tutorial-skip-btn. Both listeners below just end the
+// tutorial in addition to whatever main.js's own listener on the same
+// button already does (closeMenu()/showStartScreen(), or opening
+// champion-select) — without this, leaving via the menu would abandon the
+// scripted run but leave body.tutorial-active (and the coachmark/skip
+// button) stuck on, dimming a real game started right after.
+document.getElementById('back-to-menu-btn').addEventListener('click', () => {
+  if (tutorialState.active) endTutorial();
+});
+document.getElementById('new-game-btn').addEventListener('click', () => {
+  if (tutorialState.active) endTutorial();
+});

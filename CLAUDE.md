@@ -1101,16 +1101,30 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   (`animateWeaponAttack()`/`animateShieldShatter()` in `js/ui.js`) for very
   little benefit here. Instead `body.tutorial-active` (`style.css`) dims and
   `pointer-events: none`s every non-target interactive element (room cards,
-  Flee, the ability button, the hamburger menu, the weapon toggle), and the
-  current step's one clickable target gets `.tutorial-target` layered on
-  top, which, via higher CSS specificity, not `!important`-free overrides,
-  restores its clickability and adds a pulsing gold outline. A floating
-  "coachmark" bubble (`#tutorial-coachmark`) with the step's explanation is
-  positioned next to that target via `getBoundingClientRect()`
+  Flee, the ability button, the weapon toggle), and the current step's one
+  clickable target gets `.tutorial-target` layered on top, which, via higher
+  CSS specificity, not `!important`-free overrides, restores its
+  clickability and adds a pulsing gold outline. A floating "coachmark"
+  bubble (`#tutorial-coachmark`) with the step's explanation is positioned
+  next to that target via `getBoundingClientRect()`
   (`positionCoachmarkNear()`), or centered on screen for the two info-only
   bookend steps that have no specific target (`positionCoachmarkCenter()`).
   `#tutorial-skip-btn` stays visible the whole time, in the same spirit as
   every other overlay in this project always having an obvious way out.
+  - **`#menu-btn` is deliberately exempt from the dimming**, unlike every
+    other interactive element, so the hamburger menu (and its "Back to
+    Menu" button) stays reachable throughout the tutorial as a second,
+    more familiar way out on top of `#tutorial-skip-btn`. `#tutorial-
+    coachmark`/`#tutorial-skip-btn` are given a lower `z-index` than
+    `#menu-overlay` for this reason too, so opening the menu covers them
+    cleanly instead of the coachmark floating on top of the menu panel.
+    `js/tutorial.js` adds its own listeners on `#back-to-menu-btn` and
+    `#new-game-btn` that call `endTutorial()` whenever `tutorialState.active`
+    is true, in addition to whatever `main.js`'s own listener on that same
+    button already does, without this, leaving via the menu would abandon
+    the scripted run but leave `body.tutorial-active` (and the coachmark/
+    skip button) stuck on, dimming whatever real game gets started right
+    after.
 - **A step advances itself once its target is actually clicked**, a
   one-off (`{ once: true }`) listener attached directly to that element in
   `showTutorialStep()`, entirely separate from (and never modifying) the

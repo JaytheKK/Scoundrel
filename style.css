@@ -469,6 +469,37 @@ button:disabled::before {
   margin-top: 0.5rem;
 }
 
+/* All 6 buttons the same size, sized to fit the widest label ("How to
+   Play") rather than each hugging its own text. min-width (not width) so a
+   future 7th button with an even longer label just grows this instead of
+   truncating/wrapping. In rem so it scales with the root font-size same as
+   everything else (see "Responsive sizing" in CLAUDE.md). */
+#start-nav button {
+  min-width: 9rem;
+}
+
+/* Fixed 3-column, 2-row grid for the 6 start-screen buttons on desktop,
+   instead of the phone/tablet flex-wrap letting the row length depend on
+   how many buttons happen to fit per line. grid-template-columns: repeat(3,
+   auto) sizes every column to fit its content (all equal already, since
+   #start-nav button has its own shared min-width above) rather than
+   stretching to fill the row, and justify-content: center keeps the whole
+   grid centered the same way the flex row was.
+   Deliberately placed AFTER the plain #start-nav rule above, not inside the
+   min-width:1024px breakpoint block near the top of the file, even though
+   it's conditioned on that same breakpoint — see the "Gotcha" in
+   CLAUDE.md's Responsive sizing notes: a media query earlier in the file
+   loses to a later unconditional same-specificity rule (here, the plain
+   #start-nav { display: flex } above) regardless of its condition matching,
+   since same-specificity CSS is resolved by source order. */
+@media (min-width: 1024px) and (min-height: 900px) {
+  #start-nav {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    justify-content: center;
+  }
+}
+
 /* --- gallery popup (Champions/Weapons/Monsters, opened from the start
    screen) — reuses #menu-overlay/#menu-panel chrome, see above. ----------- */
 
@@ -1886,13 +1917,19 @@ button:disabled::before {
 body.tutorial-active #room .card,
 body.tutorial-active #flee-btn,
 body.tutorial-active #ability-wrap,
-body.tutorial-active #menu-btn,
 body.tutorial-active .toggle-wrapper {
   opacity: 0.3;
   pointer-events: none;
   filter: grayscale(0.4);
   transition: opacity 0.2s ease, filter 0.2s ease;
 }
+
+/* #menu-btn is deliberately NOT in the dimmed list above, unlike every
+   other interactive element, so the hamburger menu (and its "Back to Menu"
+   button) stays reachable throughout the tutorial as an always-available
+   way out, same spirit as #tutorial-skip-btn. See the #new-game-btn/
+   #back-to-menu-btn listeners in js/tutorial.js, which end the tutorial
+   (endTutorial()) the moment either is used from within it. */
 
 .tutorial-target {
   opacity: 1 !important;
@@ -1921,7 +1958,11 @@ body.tutorial-active .toggle-wrapper {
    step and isn't known ahead of time. */
 #tutorial-coachmark {
   position: fixed;
-  z-index: 400;
+  /* Below #gameover-overlay (200) and #menu-overlay/#gallery-overlay/
+     #champion-select-overlay (300) on purpose, so opening the hamburger
+     menu during the tutorial (see #menu-btn's exemption above) covers the
+     coachmark cleanly instead of it floating on top of the menu panel. */
+  z-index: 150;
   max-width: min(20rem, 85vw);
   background: var(--surface);
   border: 1px solid var(--accent);
@@ -1962,7 +2003,7 @@ body.tutorial-active .toggle-wrapper {
   position: fixed;
   top: 1rem;
   right: 1rem;
-  z-index: 400;
+  z-index: 150; /* see #tutorial-coachmark's z-index comment above */
   padding: 0.4rem 0.75rem;
   font-size: 0.8rem;
   color: var(--text-muted);
