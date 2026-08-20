@@ -36,6 +36,42 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
 > edge cases (e.g. weapon degrade rule, potion stacking) against the official
 > rules PDF if something feels off, and adjust this file when corrected.
 
+## Safe start (custom addition, not part of the original Scoundrel rules)
+
+- The first two rooms of a game can't be "monotype" (4 monsters, 4 weapons,
+  or 4 potions/shields all at once) — a 4-monster room in particular can
+  come close to killing a fresh 20 HP player outright with no weapon to
+  fall back on, and two such rooms in a row leave no recourse at all, since
+  fleeing a second room straight after fleeing the first isn't normally
+  allowed. From room 3 onward there's no restriction, exactly as before
+  this feature existed.
+- Implemented as **rejection sampling, not a scripted/rigged deck** —
+  `drawForRoom()` in `js/state.js` performs a full, fair Fisher–Yates
+  reshuffle of the still-undealt portion of the deck and checks the room it
+  would produce (`isRoomTypeSafe()`); if that room is monotype, it
+  reshuffles and checks again (capped at 100 attempts, which in practice is
+  never come close to). Every attempt is a completely fair shuffle, so the
+  result stays fully random and unpredictable, it only excludes the narrow
+  slice of outcomes that would otherwise hand the player an unfair death
+  through no fault of their own. Deck composition and overall difficulty
+  are unaffected, only the order of the first two rooms is nudged, and only
+  away from that one specific shape — this does not make the game easier.
+- `state.roomsDealt` counts how many rooms have been dealt so far this game
+  (the initial deal counts as 1); `drawForRoom()` only applies the
+  reshuffle-and-check loop while it's below `SAFE_ROOM_LIMIT` (2). This is
+  tracked by room count, not by deck position, so it also covers fleeing
+  room 1 (the flee-redeal becomes room 2 and is protected) the same way it
+  covers a normal 3-cards-resolved refill.
+- Fleeing pushes the fled room to the bottom of the deck before drawing a
+  replacement — `drawForRoom()`'s `protectedTailCount` param excludes those
+  just-appended cards from the reshuffle, so a fled card can never be
+  immediately reshuffled back into the very next room; it stays at the
+  bottom like the flee rule promises.
+- The Tutorial's fixed, hand-ordered deck (`state.scriptedDeck`, set from
+  `initGame()`'s `options.deck`) is exempt entirely — `drawForRoom()` skips
+  the reshuffle loop whenever it's set, since reordering the scripted deck
+  would break the tutorial's hand-verified room-by-room script.
+
 ## Conventions
 
 - **No em dashes ( — ) in any text you write for this project.** This

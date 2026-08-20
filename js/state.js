@@ -29,6 +29,17 @@ const state = {
   fleeStreak: 0,              // consecutive rooms fled in a row — normally
                               // capped at 1 (see fleeRoom()), but the Rogue
                               // champion raises that cap to two
+  roomsDealt: 0,               // how many rooms have been dealt so far this
+                              // game (the initial room counts as 1, every
+                              // refill/flee-redeal adds 1) — drives the
+                              // "safe start" rule in drawForRoom() below,
+                              // which only applies while this is below
+                              // SAFE_ROOM_LIMIT
+  scriptedDeck: false,        // true only for the Tutorial's fixed,
+                              // hand-ordered deck (see initGame()'s
+                              // options.deck) — drawForRoom() below must
+                              // never reshuffle a scripted deck, or it would
+                              // break the tutorial's hand-verified sequence
   gameOver: false,
   outcome: null,              // 'won' | 'lost' | null
 
@@ -109,6 +120,69 @@ function shuffle(cards) {
   return result;
 }
 
+/** Custom addition, not part of the original Scoundrel rules: how many
+ * rooms (see state.roomsDealt above) get the "no unfair start" treatment in
+ * drawForRoom() below. Room 1 and room 2 are protected; from room 3 onward
+ * the deck is fully unconstrained, exactly as it was before this feature
+ * existed. */
+const SAFE_ROOM_LIMIT = 2;
+
+/** True unless every card in a room is the same type — the specific
+ * "unfair instant death" shape drawForRoom() below exists to rule out: 4
+ * fresh monsters with no weapon or potion to fall back on (and if it
+ * happens two rooms running, no way to flee a second time either, since
+ * fleeing twice in a row isn't normally allowed). A room of 4 weapons or 4
+ * potions isn't dangerous the same way, but is equally called out by the
+ * design brief as an unsatisfying way to open a run, so it's excluded too.
+ * Cards.length < 4 (the tail end of the deck) is always considered safe —
+ * nothing left to reshuffle into a better shape anyway. */
+function isRoomTypeSafe(cards) {
+  if (cards.length < 4) return true;
+  return !cards.every((c) => c.type === cards[0].type);
+}
+
+/** Draws `needed` cards for the next room from the front of state.deck,
+ * combining them with whatever `existingCards` are already going to be in
+ * that room (e.g. the one leftover card carried over from the previous
+ * room, or nothing for a fresh/fled room). For the first SAFE_ROOM_LIMIT
+ * rooms of a real (non-tutorial) game, this rejects and reshuffles the
+ * as-yet-undealt part of the deck until the resulting room isn't monotype
+ * (see isRoomTypeSafe() above) before actually drawing.
+ *
+ * This is rejection sampling, not a scripted or rigged deck: every attempt
+ * is a full, fair Fisher–Yates shuffle, so the result stays completely
+ * random and unpredictable — it only excludes the narrow slice of outcomes
+ * that would otherwise let sheer bad luck end (or badly cripple) a run
+ * before the player has any weapon, potion, or second flee to fall back
+ * on. Deck composition and overall difficulty are unaffected either way;
+ * only the order of the first couple of rooms is nudged, and only away
+ * from that one specific shape.
+ *
+ * `protectedTailCount` excludes that many cards at the very end of
+ * state.deck from the reshuffle — used when a room was just fled (pushed
+ * to the bottom of the deck, see fleeRoom() below): those specific cards
+ * must stay put at the bottom, or reshuffling the whole deck could pull
+ * one straight back out again in the very next room, breaking the "fled
+ * cards go to the bottom" guarantee players rely on. */
+function drawForRoom(existingCards, needed, protectedTailCount = 0) {
+  const drawCount = Math.min(needed, state.deck.length);
+  const skipSafety = state.scriptedDeck || state.roomsDealt >= SAFE_ROOM_LIMIT;
+
+  if (!skipSafety && drawCount > 0) {
+    const shuffleEnd = state.deck.length - protectedTailCount;
+    let attempts = 0;
+    let candidate;
+    do {
+      const reshuffled = shuffle(state.deck.slice(0, shuffleEnd));
+      state.deck = [...reshuffled, ...state.deck.slice(shuffleEnd)];
+      candidate = state.deck.slice(0, drawCount);
+      attempts++;
+    } while (!isRoomTypeSafe([...existingCards, ...candidate]) && attempts < 100);
+  }
+
+  return state.deck.splice(0, drawCount);
+}
+
 /** @param championId - id of the champion picked on the champion-select
  * screen (see js/champion-icons.js), or undefined/null to start without one
  * (kept optional so callers/tests that don't care about champions still
@@ -123,13 +197,16 @@ function shuffle(cards) {
  * damage numbers. */
 function initGame(championId = null, options = {}) {
   state.hp = state.maxHp;
+  state.scriptedDeck = !!options.deck;
   if (options.deck) {
     state.deck = [...options.deck];
   } else {
     state.deck = shuffle(getFreshDeck());
     rollWeaponEffects(state.deck); // 25% chance per weapon, re-rolled every game
   }
-  state.room = state.deck.splice(0, 4);
+  state.roomsDealt = 0;
+  state.room = drawForRoom([], 4);
+  state.roomsDealt = 1;
   state.equippedWeapon = null;
   state.weaponMaxMonster = null;
   state.equippedShield = null;
@@ -543,8 +620,9 @@ function resolveCard(cardId, options = {}) {
   }
 
   if (state.room.length === 1 && state.deck.length > 0) {
-    const drawn = state.deck.splice(0, Math.min(3, state.deck.length));
+    const drawn = drawForRoom(state.room, 3);
     state.room.push(...drawn);
+    state.roomsDealt += 1; // see the "safe start" rule in drawForRoom() above
     state.potionsDrunkThisRoom = 0; // new room = potion(s) can heal again
     state.fleeStreak = 0; // completing a room normally resets the flee streak
     gainMana(); // room cleared — see gainMana() above
@@ -584,8 +662,10 @@ function fleeRoom() {
     };
   }
 
+  const fledCount = state.room.length;
   state.deck.push(...state.room);
-  state.room = state.deck.splice(0, Math.min(4, state.deck.length));
+  state.room = drawForRoom([], 4, fledCount);
+  state.roomsDealt += 1; // see the "safe start" rule in drawForRoom() above
   state.fleeStreak += 1;
   state.potionsDrunkThisRoom = 0;
   gainMana(); // room changed (fled) — see gainMana() above
