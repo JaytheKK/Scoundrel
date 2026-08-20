@@ -4,27 +4,44 @@
 // into state.js and then asks this file to re-render.
 // ---------------------------------------------------------------------------
 
-/** Fills a card-shaped element with a card's face: its artwork (or the suit
- * symbol as a fallback, for any card without artwork) front and center, the
- * card's numeric value at the bottom — always a plain number, never a suit
- * letter (no J/Q/K/A) — and, for a weapon with a rolled effect, a small
- * corner badge. Shared by renderCard() and the weapon slot, which displays
- * the equipped weapon the same way. */
+/** Fills a card-shaped element with a card's face: the type's illustrated
+ * base frame (see .card--monster/weapon/shield/potion's background-image in
+ * style.css, cropped from the user-supplied images/CardDesigns.jpeg sheet —
+ * see "Card frame artwork" in CLAUDE.md), the item's artwork (or the suit
+ * symbol as a fallback, for any card without artwork) laid over the frame's
+ * blank parchment area, the card's numeric value centered in the frame's
+ * hexagon at the bottom — always a plain number, never a suit letter (no
+ * J/Q/K/A) — and, for a weapon with a rolled effect, a small corner badge.
+ * Shared by renderCard() and the weapon/shield slots, which display the
+ * equipped item the same way.
+ *
+ * The artwork and value label are both wrapped in their own absolutely
+ * positioned container (.card-art / .card-value-label itself), sized via
+ * the --art-... / --hex-... percentage custom properties set per card type in
+ * style.css — percentages so the same markup works unchanged at every
+ * --card-scale/--weapon-slot-scale tier without a separate px override per
+ * size (the old flex-centered layout needed one, see CLAUDE.md). .card-art
+ * needs a wrapper div (not just the <img> itself) since only a flex
+ * container, not a leaf <img>, can center a variable-aspect-ratio image
+ * within a fixed-percentage box via max-width/max-height. */
 function fillCardFace(el, card) {
   el.innerHTML = '';
 
+  const art = document.createElement('div');
+  art.className = 'card-art';
   if (card.image) {
     const img = document.createElement('img');
     img.className = 'card-image';
     img.src = card.image;
     img.alt = card.name;
-    el.appendChild(img);
+    art.appendChild(img);
   } else {
     const symbol = document.createElement('div');
     symbol.className = 'card-suit-symbol';
     symbol.textContent = SUIT_SYMBOLS[card.suit];
-    el.appendChild(symbol);
+    art.appendChild(symbol);
   }
+  el.appendChild(art);
 
   if (card.effect && WEAPON_EFFECTS[card.effect]) {
     const effect = WEAPON_EFFECTS[card.effect];

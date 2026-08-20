@@ -79,6 +79,26 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   comments, and this file. Use a comma or a period instead. Existing em
   dashes already in this file/codebase don't need to be hunted down and
   replaced on sight, but don't introduce new ones.
+- **Gotcha when writing a `/* ... */` block comment (CSS or JS):** never
+  let a hyphen/asterisk run right up against a following slash, e.g.
+  `--art-*/--hex-*` in prose meant a literal `--art-` followed by `*` then
+  `/`, which reads as `*/`, the comment-close token, and silently
+  terminates the comment right there. Everything after that point (until
+  the next real `*/`) gets parsed as actual code, which either throws a
+  syntax error (a JS file's `<script>` tag stops executing entirely,
+  breaking every function defined later in the file, e.g. `renderAll` was
+  reported as "not defined" even though it plainly was, further down) or,
+  worse, gets silently dropped by the parser with no visible error at all
+  (a CSS parser just discards the one broken rule and recovers at the
+  next `*/`, so a rule can vanish with zero console output, the actual
+  cause of `.card--monster`/etc.'s `background-size: 100% 100%` rule not
+  applying, first noticed as a huge, badly cropped-looking card frame
+  image rather than as an error). Caught by checking whether the same
+  count of `/*` and `*/` tokens appear in the file, and by `node --check`
+  for JS. When prose needs to reference two hyphenated tokens together
+  (`--art-*` and `--hex-*`), write `--art-... / --hex-...` or add a space
+  before the slash, anything that keeps `*` and `/` from landing back to
+  back.
 - Plain **vanilla JavaScript**, no frameworks, no npm build step.
 - Files (loaded in this order from `index.html`):
   - `index.html` — page structure
@@ -260,6 +280,23 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     font-size — cards have a hard constraint plain text doesn't (all 4 room
     cards must fit on **one row**, never wrap to 2x2) that needed separate
     control. `#room` is `flex-wrap: nowrap` for this reason.
+  - **Each `--card-scale` value is bounded by a horizontal fit constraint
+    too, not just the per-tier vertical one described below.** 4 cards
+    plus 3 gaps at a tier's scale must fit within that tier's minimum
+    qualifying viewport **width**, or the row causes horizontal
+    scrolling, exactly as unacceptable as vertical scrolling. This bit
+    both the phone tier and the landscape-safety tier when `--card-scale`
+    was bumped up across the board to make cards generally bigger: the
+    phone-tier value had to be capped at `0.78` (not a rounder `0.8`)
+    because `0.8` overflowed by a couple px at 360px width (a common
+    Android baseline, e.g. Galaxy/Pixel phones — narrower than the
+    375px iPhone width this project had mostly been eyeballed against),
+    and the landscape-safety tier (`max-height: 480px`) had to stay at
+    its original `0.45` entirely, with no headroom to increase at all,
+    because even `0.46` overflowed at a 360px-tall landscape window.
+    Verify both axes (`scrollWidth > clientWidth` and
+    `scrollHeight > clientHeight`) at a tier's minimum width **and**
+    minimum height, not just one, whenever `--card-scale` changes.
   - Every breakpoint (`--card-scale`, `--stack-gap`, and the root
     `font-size` together) requires a minimum viewport **height** as well as
     width before stepping up a tier — measured against this page's actual
@@ -684,6 +721,128 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   new source file and a `<rank>-damaged.png` output name instead of
   `<rank>.png`.
 
+### Card frame artwork
+
+- Every room/weapon/shield card's base frame (the illustrated brown
+  border, corner icon boxes, and bottom hexagon that used to be a flat
+  `--card-bg` parchment rectangle plus a plain CSS border/glow) is one of
+  4 illustrated frames, one per card type, cropped from a user-supplied
+  2x2 sheet (`images/CardDesigns.jpeg`, kept as source reference:
+  top-left monster, top-right weapon, bottom-left shield, bottom-right
+  potion) into `images/frames/monster.png` / `weapon.png` / `shield.png` /
+  `potion.png`. Each is a tight crop of that quadrant's non-white bounding
+  box, then alpha-masked to drop the crop's own white/near-white
+  background and rounded corners, for a different reason than the
+  monster/weapon/shield/champion art's thin-line alpha fix: these are
+  full-color painted illustrations with no faint anti-aliased linework to
+  rescue, but the source sheet draws each rounded-corner card frame with
+  a soft drop shadow against a plain white canvas, and that shadow is a
+  wide gradient (about 25px at full sheet resolution), not a hard edge.
+  A first pass used one conservative white threshold (min channel >= 240)
+  for the flood-fill-from-border removal, which cleared the flat white
+  but left a visible light gray/pink halo ring where the shadow gradient
+  hadn't yet faded past that threshold by the time it reached the frame's
+  actual dark border. Lowering the flood-fill threshold to min channel
+  >= 150 removed the halo entirely, since the gradient's brightest values
+  just before the sharp jump to the dark border color were still well
+  under 150. As with the monster/weapon crops, the flood fill only
+  removes background pixels connected to the image's outer edge (via
+  scipy.ndimage.label), so it can't eat into the light parchment interior
+  or a light-colored icon fill, both fully enclosed by the frame's dark
+  border and never touching the image edge. A small Gaussian blur on the
+  resulting alpha channel feathers the cut edge instead of leaving it
+  hard-jagged. Without this the card showed a washed-out white/gray
+  fringe around the illustrated frame shape against the page's dark
+  background, contradicting the point of a base-frame graphic in the
+  first place, nothing outside the frame's own silhouette should be
+  opaque.
+- **A second, separate cause of the same "white background" symptom,
+  found after the alpha-masking above still didn't fully fix it:** even
+  with the PNGs themselves fully transparent outside their own
+  illustrated shape, `.card`'s own `background: var(--card-bg)` (a cream
+  fill, `#f5f2e9`) was still painted underneath every card as a plain
+  rounded-rect. Since the frame image's own illustrated rounded corner
+  never lines up exactly with `.card`'s CSS `border-radius` (two
+  different roundings, one hand-painted, one a fixed `--radius` token),
+  the corner region where they diverge showed the cream fill through the
+  PNG's now-transparent corner, reading as a leftover white background
+  even though the PNG itself had none, most visible at the top-left/
+  top-right corners where the two curves diverge the most (straight
+  edges barely showed it, since a straight line matches almost exactly
+  either way). Fixed with `background-color: transparent` on
+  `.card--monster`/`.card--weapon`/`.card--potion`/`.card--shield`
+  (overriding just that one longhand of `.card`'s `background` shorthand
+  for these 4 types), so the page's own dark background shows through
+  any gap instead of a stray cream band. **When diagnosing a "white
+  edge/halo" on any image-backed element, check both possible causes
+  independently** — the image's own alpha content, and any
+  background-color still painted underneath it — since fixing only one
+  can look like it "didn't work" when the other is still the visible
+  cause; verified here by simulating the exact render pipeline in Pillow
+  (crop the source frame, resize to an actual in-game card size, clip to
+  a rounded-rect mask at `.card`'s real `--radius`, composite over the
+  page's actual dark background color) and confirming zero white/near-white
+  pixels in the result, since an actual browser screenshot wasn't available
+  in the session that found this.
+- Applied as a plain CSS `background-image` on `.card--monster` /
+  `.card--weapon` / `.card--shield` / `.card--potion` (`style.css`), with
+  `background-size: 100% 100%` — a deliberate non-uniform stretch to
+  exactly fill `.card`'s box (100x140 design size), rather than
+  letterboxing/padding to match the crop's own aspect ratio. The 4 crops'
+  raw aspect ratios (~0.65-0.70) aren't identical to `.card`'s 100:140
+  (0.714) or to each other (the shield/potion frames are relatively
+  wider/shorter than monster/weapon, from their crenellated/vine borders
+  extending less far vertically), but the frames are hand-painted and
+  forgiving at card scale — a stretch test at the actual in-game ratio
+  showed no visible distortion worth the complexity of preserving each
+  crop's exact native ratio (which would need per-type letterboxing and
+  leave the card-bg color showing at the letterboxed edges). This still
+  layers underneath the existing `--card-border-width`/`--card-glow`
+  strength-tier system (see the strength tiers section above) — that
+  system was deliberately left in place, unchanged, on top of the new
+  frame background; it's still meaningful gameplay signal (a card's
+  strength), not a leftover from the old flat-card look, so replacing the
+  base card art wasn't reason enough to remove it.
+- **The item's artwork and the value number are positioned against the
+  frame via percentage boxes, not the old flex layout.** Each type class
+  sets 8 custom properties, `--art-left/top/right/bottom` (the frame's
+  blank parchment area, where `.card-art` — a wrapper div added around
+  `.card-image`/`.card-suit-symbol` in `fillCardFace()`, `js/ui.js` —
+  centers the item's artwork via `max-width/max-height: 100%` inside a
+  flex container) and `--hex-left/top/right/bottom` (the frame's hexagon,
+  where `.card-value-label` itself is now positioned/sized, also via
+  flex-centering). Both `.card-art` and `.card-value-label` are
+  `position: absolute` with these percentages as their inset, which
+  resolve against `.card`'s own padding-box regardless of `--card-scale`/
+  `--weapon-slot-scale` — this is why no size tier needs its own override
+  for `.card-image`/`.card-art` position the way the old fixed-px
+  `height: calc(78px * var(--card-scale))` formula did (still true for
+  `--weapon-slot-scale`, which is why `#weapon-slot-card .card-image` /
+  `#shield-slot-card .card-image` has no override left in `style.css`,
+  unlike `.card-suit-symbol`/`.card-value-label`, which still need a
+  font-size override there — percentages size a *box*, not text, so a
+  smaller slot's box shrinks for free but its font doesn't).
+- The exact percentages per type were tuned by cropping each frame,
+  overlaying the candidate box as a rectangle on the actual PNG with
+  Pillow, and eyeballing the result against the hexagon/parchment shapes
+  (not computed from pixel analysis — the hexagon's interior and the
+  surrounding parchment are near-identical in color, which makes
+  automatic detection unreliable, whereas the shapes are easy to align by
+  eye once outlined). Monster and weapon share identical numbers (their
+  frames use the same rail/hexagon layout); shield and potion each have
+  their own, since their rails/vine border and hexagon sit at slightly
+  different insets. **If any new frame art replaces or adds to these 4,
+  re-tune its `--art-*`/`--hex-*` box the same way** — don't assume the
+  monster/weapon numbers apply, since they only happen to match because
+  those two source frames were laid out identically.
+- The old fixed top-color-bar-free tier border/glow system, the
+  `hasAura()` pulsing aura, and the potion life-pulse (see "No flat
+  top-color bar" and related notes above) are all untouched by this
+  change — they're independent `box-shadow`/`::after` layers keyed off
+  `--edge-rgb`/tier classes, not the card's background, so they still
+  render exactly as before, now on top of an illustrated frame instead of
+  a flat parchment rectangle.
+
 ### Champion artwork
 
 - `images/champions/<id>.png` (one file per champion, keyed by id rather
@@ -821,7 +980,7 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     `setTimeout` once its `ability-heal-particle-float` animation finishes.
 - **Paladin's ability — "Blessing":** activating it sets
   `state.paladinResistCharges = 3`. `fightMonster()` (`js/state.js`) then
-  reduces the next 3 hits that would deal any damage by 3 each (never below
+  reduces the next 3 hits that would deal any damage by 2 each (never below
   0, and never counting a hit that was already fully stopped by the weapon
   as one of the 3), decrementing the counter each time, applied right where
   Berserker's passive flat reduction is (after the weapon/bare-handed damage
@@ -866,15 +1025,15 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   distinct ability once actually played. Frenzy instead lifts a
   *restriction* rather than reducing damage, so it occupies different
   system space entirely:
-  - Activating it sets `state.berserkerFrenzyCharges = 3`.
+  - Activating it sets `state.berserkerFrenzyCharges = 4`.
     `isWeaponUsableOn(card)` (`js/state.js`) then ignores
     `weaponMaxMonster` (the "weapon can only be used again on a monster
     weaker than the last one it defeated" degrade rule) entirely while
     `berserkerFrenzyCharges > 0` — a fully degraded weapon can strike any
     monster again, full stop.
-  - The charge ticks down on **every one of the next 3 weapon fights**,
+  - The charge ticks down on **every one of the next 4 weapon fights**,
     whether or not the override was actually needed that particular fight
-    — a plain, predictable "next 3 weapon fights" counter. `fightMonster()`
+    — a plain, predictable "next 4 weapon fights" counter. `fightMonster()`
     still separately computes `frenzyOverrode` (from the pre-fight
     `weaponMaxMonster` value, before it gets overwritten for the next
     fight) purely to pick the right flavor text — "overpowered the
@@ -934,7 +1093,7 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   in both the rules screen and the info popup below — lives in one place
   too: `ABILITY_DETAILS` in `js/ability-icons.js` (`abilityDetailsFor()`).
   Keep this in sync with the actual mechanic whenever an ability's numbers
-  change (e.g. Blessing's "3" or Frenzy's "3 weapon fights") — same
+  change (e.g. Blessing's "2" or Frenzy's "4 weapon fights") — same
   "single source of truth, everything else reads from it" pattern as
   `ABILITY_MANA_COST`.
 - **Rules screen:** `#rules`' Champions section (`index.html`) lists each
@@ -1181,7 +1340,7 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     exceeds the shield's remaining durability, shattering it (this is
     specifically the **2nd monster in this room**, matching how the shield
     is introduced, see the shield HP/durability math below). This fight is
-    also the game's 5th monster kill, so Paladin's passive (heal 3 HP every
+    also the game's 5th monster kill, so Paladin's passive (heal 2 HP every
     5 kills) fires here too, entirely for free, no separate step needed,
     the normal fight message already announces it.
   - **Room 4:** fled whole (not resolved card by card) specifically to
@@ -1194,9 +1353,9 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     mana only trickles in 1 per room change via `gainMana()`, and grinding
     out several more real room changes just to reach the ability once would
     kill the pacing) so Blessing can be triggered and immediately shown
-    reducing the next hit by 3.
+    reducing the next hit by 2.
   - HP is tracked by hand across the whole script and never drops below
-    ~7/20 (ends there, after the final Blessing-reduced hit), tuned
+    ~5/20 (ends there, after the final Blessing-reduced hit), tuned
     deliberately so the run always survives to the end screen. **Any future
     edit to `TUTORIAL_DECK_IDS`, `TUTORIAL_STEPS`, or the rules those steps
     exercise (weapon degrade math, shield block math, Paladin's passive/
