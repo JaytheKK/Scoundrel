@@ -66,8 +66,11 @@
         <div id="shield-slot-card" class="card shield-slot-empty">
           <div class="shield-icon">S</div>
         </div>
-        <div id="weapon-slot-card" class="card weapon-slot-empty">
-          <div class="sword-icon">⚔</div>
+        <div id="weapon-slot-wrap">
+          <div id="weapon-slot-card" class="card weapon-slot-empty">
+            <div class="sword-icon">⚔</div>
+          </div>
+          <div id="weapon-fragile-bar" class="hidden"></div>
         </div>
         <div id="ability-wrap">
           <div id="mana-ring"></div>
@@ -123,6 +126,7 @@
           <li><strong>V: Vampiric</strong>: heals 1 HP whenever this weapon defeats a monster.</li>
           <li><strong>E: Electric</strong>: every other revealed monster loses 1 strength whenever this weapon is used in a fight (still the same monster, just weaker).</li>
           <li><strong>S: Sturdy</strong>: this weapon's usable strength can never drop by more than 2 per fight, instead of dropping straight to the defeated monster's value.</li>
+          <li><strong>F: Fragile</strong>: breaks after 2 uses, no matter which monster it's used on.</li>
         </ul>
 
         <h3>Champions</h3>

@@ -30,8 +30,8 @@
 //   image:    path to card artwork, or null to fall back to the CSS
 //             placeholder. Swap this later (e.g. to a pixel-art sprite)
 //             without touching any other logic.
-//   effect:   null, or a weapon-effect id ('vampiric'/'electric'/'sturdy',
-//             see js/weapon-effects.js) — rolled randomly per weapon card
+//   effect:   null, or a weapon-effect id ('vampiric'/'electric'/'sturdy'/
+//             'fragile', see js/weapon-effects.js) — rolled randomly per weapon card
 //             at the start of each game (rollWeaponEffects() in
 //             js/weapon-effects.js, called from initGame() in state.js).
 // }

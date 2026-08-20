@@ -53,10 +53,11 @@ function cardTier(rank) {
   return 1;
 }
 
-/** The flavor name to show alongside a card's plain name in its tooltip
- * (e.g. "8 of Hearts — Imperial Potion"). Keyed off `baseRank`, not the
- * (possibly effect-lowered) current `rank`, so a monster weakened by the
- * Electric weapon effect still shows as the same creature. */
+/** The flavor name shown as a card's tooltip (e.g. "Major Health Potion",
+ * not the underlying poker-card name "8 of Hearts", see renderCard() below).
+ * Keyed off `baseRank`, not the (possibly effect-lowered) current `rank`,
+ * so a monster weakened by the Electric weapon effect still shows as the
+ * same creature. */
 function flavorNameFor(card) {
   if (card.type === 'monster') return monsterNameFor(card.baseRank);
   if (card.type === 'potion') return potionNameFor(card.baseRank);
@@ -97,8 +98,10 @@ function renderCard(card) {
   el.dataset.suit = card.suit;
   el.dataset.id = card.id;
   applyGlowColor(el, card);
-  const flavorName = flavorNameFor(card);
-  const title = flavorName ? `${card.name} — ${flavorName}` : card.name;
+  // Tooltip shows the flavor name only, never the underlying poker-card
+  // name ("8 of Hearts"). Falls back to it only for a hypothetical card
+  // with no flavor name at all (doesn't happen for any real card today).
+  const title = flavorNameFor(card) || card.name;
   const effect = card.effect && WEAPON_EFFECTS[card.effect];
   el.title = effect ? `${title} (${effect.name})` : title;
   fillCardFace(el, card);
@@ -489,6 +492,39 @@ function renderWeaponSlot() {
           : `Can only defeat monsters weaker than ${state.weaponMaxMonster}`;
     const effect = state.equippedWeapon.effect && WEAPON_EFFECTS[state.equippedWeapon.effect];
     status.textContent = effect ? `${restriction} — ${effect.name}: ${effect.description}` : restriction;
+  }
+
+  renderWeaponFragileBar();
+}
+
+/** Fills #weapon-fragile-bar with one segment per FRAGILE_MAX_USES, mirroring
+ * renderChampionAbilityBar()'s discrete filled/unfilled segments (same CSS
+ * classes, .ability-segment/.ability-segment--filled, just a second bar
+ * instance), full when a Fragile weapon (see js/weapon-effects.js) is
+ * freshly equipped, one segment drains per use (state.weaponFragileUsesRemaining,
+ * js/state.js) until it empties right as the weapon breaks. Hidden entirely
+ * for a non-Fragile weapon or no weapon at all. Called from renderWeaponSlot()
+ * itself (not a separate call site to remember) so it can never drift out of
+ * sync with whichever weapon is currently equipped. */
+function renderWeaponFragileBar() {
+  const bar = document.getElementById('weapon-fragile-bar');
+  const fragile = state.equippedWeapon && state.equippedWeapon.effect === 'fragile';
+
+  if (!fragile) {
+    bar.classList.add('hidden');
+    bar.innerHTML = '';
+    bar.title = '';
+    return;
+  }
+
+  const filled = Math.max(0, state.weaponFragileUsesRemaining);
+  bar.classList.remove('hidden');
+  bar.title = `${filled} / ${FRAGILE_MAX_USES} uses left before this weapon breaks`;
+  bar.innerHTML = '';
+  for (let i = 0; i < FRAGILE_MAX_USES; i++) {
+    const segment = document.createElement('div');
+    segment.className = 'ability-segment' + (i < filled ? ' ability-segment--filled' : '');
+    bar.appendChild(segment);
   }
 }
 
@@ -946,31 +982,35 @@ function animateShieldShake() {
   slot.classList.add('card--shake');
 }
 
-const SHIELD_SHATTER_MS = 650;
-const SHIELD_SHATTER_SHARDS = 6;
+const SLOT_SHATTER_MS = 650;
+const SLOT_SHATTER_SHARDS = 6;
 
-/** Plays the shield slot's "broke" shatter: clones the slot's current card
- * face (before it's overwritten by renderShieldSlot() showing the now-empty
- * slot) into several pie-slice shards that fly outward and fade, then calls
- * `onDone()` once they're gone so the caller can re-render the slot to its
- * real (empty) state underneath. Must be called BEFORE renderShieldSlot()
- * so the shards still show the shield's artwork, not a blank placeholder. */
-function animateShieldShatter(onDone) {
-  const slot = document.getElementById('shield-slot-card');
+/** Shared by animateShieldShatter() and animateWeaponShatter() below: clones
+ * `slotId`'s current card face (before the caller overwrites it with the
+ * now-empty slot) into several pie-slice shards that fly outward and fade,
+ * then calls `onDone()` once they're gone so the caller can re-render the
+ * slot to its real (empty) state underneath. Must be called BEFORE that
+ * re-render, so the shards still show the equipped item's artwork, not a
+ * blank placeholder. Originally written just for shields; generalized to
+ * take a slot id once weapons needed the exact same "breaks and shatters"
+ * feedback for the Fragile weapon effect (see js/weapon-effects.js).
+ * Nothing here is shield- or weapon-specific beyond which element it clones. */
+function animateSlotShatter(slotId, onDone) {
+  const slot = document.getElementById(slotId);
   const rect = slot.getBoundingClientRect();
 
   const container = document.createElement('div');
-  container.className = 'shield-shatter-container';
+  container.className = 'card-shatter-container';
   container.style.left = `${rect.left}px`;
   container.style.top = `${rect.top}px`;
   container.style.width = `${rect.width}px`;
   container.style.height = `${rect.height}px`;
 
-  const angleStep = (2 * Math.PI) / SHIELD_SHATTER_SHARDS;
-  for (let i = 0; i < SHIELD_SHATTER_SHARDS; i++) {
+  const angleStep = (2 * Math.PI) / SLOT_SHATTER_SHARDS;
+  for (let i = 0; i < SLOT_SHATTER_SHARDS; i++) {
     const shard = slot.cloneNode(true);
-    shard.removeAttribute('id'); // avoid duplicate #shield-slot-card ids while shards are in the DOM
-    shard.classList.add('shield-shard');
+    shard.removeAttribute('id'); // avoid a duplicate #<slotId> while shards are in the DOM
+    shard.classList.add('card-shard');
 
     // Clip this shard to one pie slice of the card, from the center out —
     // together all slices reconstruct the whole card face. The radius
@@ -1002,7 +1042,23 @@ function animateShieldShatter(onDone) {
     container.remove();
     slot.style.visibility = '';
     onDone();
-  }, SHIELD_SHATTER_MS);
+  }, SLOT_SHATTER_MS);
+}
+
+/** Plays the shield slot's "broke" shatter, see animateSlotShatter() above. */
+function animateShieldShatter(onDone) {
+  animateSlotShatter('shield-slot-card', onDone);
+}
+
+/** Plays the weapon slot's "broke" shatter, for a Fragile weapon that just
+ * ran out of uses (see js/weapon-effects.js and breakFragileWeapon() in
+ * js/state.js). See animateSlotShatter() above. Callers must wait until any
+ * in-flight weapon-attack swing (animateWeaponAttack() below) has fully
+ * returned to the slot before calling this, or the shards would be clipped
+ * from the slot's mid-swing, off-position transform instead of its resting
+ * card face. */
+function animateWeaponShatter(onDone) {
+  animateSlotShatter('weapon-slot-card', onDone);
 }
 
 // --- weapon-attack animation -------------------------------------------------

@@ -219,6 +219,12 @@ function resolveAndAnimate(cardId, options, registerSpeedUp, onFinished) {
     cardEl && card && card.type === 'monster' && options.useWeapon && isWeaponUsableOn(card);
 
   if (willUseWeapon) {
+    // Captured from the onImpact callback below so the onDone callback (once
+    // the swing has fully returned) can see whether this fight broke a
+    // Fragile weapon. See breakFragileWeapon() in js/state.js for why that
+    // actual break waits until here instead of happening at impact.
+    let fightResult = null;
+
     const ctl = animateWeaponAttack(
       cardEl,
       () => {
@@ -226,7 +232,7 @@ function resolveAndAnimate(cardId, options, registerSpeedUp, onFinished) {
         // visually connects, then the card fades the same way any other
         // resolved card does.
         cardEl.classList.add('card--resolved');
-        applyResolve(cardId, options);
+        fightResult = applyResolve(cardId, options);
 
         const fadeTimer = speedableTimeout(() => {
           renderRoom();
@@ -237,9 +243,22 @@ function resolveAndAnimate(cardId, options, registerSpeedUp, onFinished) {
         registerSpeedUp(fadeTimer.speedUp);
       },
       () => {
-        // The weapon has fully swung back into the slot — only now is this
-        // action considered done, so the next queued click can start.
-        onFinished();
+        // The weapon has fully swung back into the slot, still showing
+        // itself intact (see breakFragileWeapon()'s comment in js/state.js
+        // for why fightMonster() only reported the break rather than
+        // unequipping it earlier). A Fragile weapon that just ran out of
+        // uses breaks and shatters right here, now that the slot is back at
+        // rest and not mid-swing. Only now is this action considered done,
+        // so the next queued click can start.
+        if (fightResult && fightResult.weaponBroke) {
+          breakFragileWeapon();
+          animateWeaponShatter(() => {
+            renderWeaponSlot();
+            onFinished();
+          });
+        } else {
+          onFinished();
+        }
       }
     );
     registerSpeedUp(ctl.speedUp);

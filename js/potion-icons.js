@@ -3,19 +3,23 @@
 // Potion artwork itself lives in images/potions/<rank>.png (assigned
 // automatically in makeCard(), see js/cards.js) — this file just maps each
 // rank to its potion name, used for the card tooltip (see renderCard() in
-// js/ui.js, e.g. "8 of Hearts — Imperial Potion").
+// js/ui.js, e.g. "Major Health Potion"). The tooltip shows only the flavor
+// name, never the underlying poker-card name. Names are a plain size scale
+// (Minor through Supreme) with "Health Potion" appended, deliberately
+// simpler than monsters'/weapons' individually-flavored names since a
+// potion has no distinct identity beyond how much it heals.
 // ---------------------------------------------------------------------------
 
 const POTION_NAMES = {
-  2: 'Small Potion',
-  3: 'Medium Potion',
-  4: 'Large Potion',
-  5: 'Strong Potion',
-  6: 'Very Strong Potion',
-  7: 'Royal Potion',
-  8: 'Imperial Potion',
-  9: 'Legendary Potion',
-  10: 'Ultimate Potion',
+  2: 'Minor Health Potion',
+  3: 'Lesser Health Potion',
+  4: 'Small Health Potion',
+  5: 'Medium Health Potion',
+  6: 'Large Health Potion',
+  7: 'Greater Health Potion',
+  8: 'Major Health Potion',
+  9: 'Superior Health Potion',
+  10: 'Supreme Health Potion',
 };
 
 function potionNameFor(rank) {

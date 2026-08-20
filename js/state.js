@@ -14,6 +14,14 @@ const state = {
   weaponMaxMonster: null,    // null = fresh weapon (no restriction yet);
                               // otherwise the weapon may only be used on a
                               // monster with rank < this value
+  weaponFragileUsesRemaining: null, // null unless the equipped weapon has the
+                              // Fragile effect (see js/weapon-effects.js),
+                              // in which case it starts at FRAGILE_MAX_USES
+                              // and counts down by 1 every time the weapon
+                              // is actually used in a fight (see
+                              // fightMonster() below); once it hits 0 the
+                              // weapon breaks. Reset by equipWeapon()
+                              // whenever a new weapon is equipped.
   equippedShield: null,      // card object, or null — custom addition (see
                               // "Shields" in js/cards.js). Clicking one
                               // equips it (equipShield() below) the same way
@@ -209,6 +217,7 @@ function initGame(championId = null, options = {}) {
   state.roomsDealt = 1;
   state.equippedWeapon = null;
   state.weaponMaxMonster = null;
+  state.weaponFragileUsesRemaining = null;
   state.equippedShield = null;
   state.potionsDrunkThisRoom = 0;
   state.fleeStreak = 0;
@@ -427,6 +436,16 @@ function fightMonster(card, useWeapon = true) {
         }
       });
     }
+
+    // Fragile: counts down every time the weapon is actually used, no
+    // matter which monster or how the fight otherwise went; reaching 0
+    // means it breaks. The weapon stays equipped (at 0 uses) for the rest
+    // of this fight; the caller only actually unequips it and plays the
+    // shatter animation once the weapon-attack swing has fully returned to
+    // the slot (see breakFragileWeapon() above for why).
+    if (weapon.effect === 'fragile') {
+      state.weaponFragileUsesRemaining -= 1;
+    }
   } else {
     damage = card.rank;
     // Berserker champion: 2 less damage from every monster fought
@@ -516,6 +535,10 @@ function fightMonster(card, useWeapon = true) {
   // 1 HP forever (the vampiric-immortality bug) — gate on state.hp > 0.
   const vampiricHeals =
     weaponUsable && weapon.effect === 'vampiric' && !frenzyOverrode && state.hp > 0;
+  // True the instant a Fragile weapon's uses reach 0 on this fight. See
+  // breakFragileWeapon() above for why this only *reports* the break rather
+  // than unequipping the weapon here directly.
+  const weaponBroke = weaponUsable && weapon.effect === 'fragile' && state.weaponFragileUsesRemaining <= 0;
   if (vampiricHeals) {
     state.hp = Math.min(state.hp + 1, state.maxHp);
     message = `Fought ${monsterLabel}${how} — took ${damage} damage. Vampiric weapon healed 1 HP.`;
@@ -523,6 +546,11 @@ function fightMonster(card, useWeapon = true) {
     message = `Fought ${monsterLabel}${how} — took ${damage} damage. Electric surge weakened the other monsters!`;
   } else {
     message = `Fought ${monsterLabel}${how} — took ${damage} damage.`;
+  }
+  if (weaponUsable && weapon.effect === 'fragile') {
+    message += weaponBroke
+      ? ` Your fragile ${weaponLabel} shatters!`
+      : ` Your fragile ${weaponLabel} is cracking (${state.weaponFragileUsesRemaining} use${state.weaponFragileUsesRemaining === 1 ? '' : 's'} left).`;
   }
   if (paladinHeal > 0) {
     message += ` Paladin's faith healed ${paladinHeal} HP.`;
@@ -556,14 +584,42 @@ function fightMonster(card, useWeapon = true) {
   // play the shield's shake/shatter feedback (see animateShieldShake()/
   // animateShieldShatter() in js/ui.js) without having to re-derive whether
   // a shield was involved from the before/after state itself.
-  return { message, weakenedIds, paladinCycleComplete, shieldBlocked: blocked > 0, shieldBroke };
+  return { message, weakenedIds, paladinCycleComplete, shieldBlocked: blocked > 0, shieldBroke, weaponBroke };
 }
 
 function equipWeapon(card) {
   state.equippedWeapon = card;
   state.weaponMaxMonster = null; // fresh weapon: no restriction until first use
+  // Fragile: starts at full uses on every fresh equip, even if the card
+  // being replaced was itself Fragile and partway through breaking.
+  // Equipping a new weapon always discards the old one's condition too, same
+  // as everything else about the old weapon (see fightMonster() below for
+  // where this counts down, and breakFragileWeapon() for what happens at 0).
+  state.weaponFragileUsesRemaining = card.effect === 'fragile' ? FRAGILE_MAX_USES : null;
   const weaponLabel = weaponNameFor(card.baseRank) || card.name;
   return { message: `Equipped ${weaponLabel}.` };
+}
+
+/** Actually breaks the currently-equipped Fragile weapon: unequips it and
+ * clears its degrade ceiling/use counter, the same three fields a normal
+ * "equip something else" swap would clear. Deliberately a separate function
+ * from fightMonster() below rather than fightMonster() clearing the weapon
+ * itself the instant its uses hit 0. The weapon-attack swing animation
+ * (animateWeaponAttack() in js/ui.js) keeps flying the *real* weapon-slot
+ * element out to the monster and back over ~1.5s, calling renderWeaponSlot()
+ * partway through (at impact) while the element is still mid-flight; if the
+ * weapon were already unequipped by then, that mid-flight re-render would
+ * instantly swap the flying card face for the empty-slot icon, which reads
+ * as the weapon vanishing before it's even swung back. So fightMonster()
+ * only reports `weaponBroke: true` and leaves the weapon equipped (at 0
+ * uses) for the rest of that swing; the caller (resolveAndAnimate() in
+ * js/main.js) waits until the swing has fully returned, then calls this
+ * function immediately before playing the shatter animation
+ * (animateWeaponShatter() in js/ui.js) on the now-stationary slot. */
+function breakFragileWeapon() {
+  state.equippedWeapon = null;
+  state.weaponMaxMonster = null;
+  state.weaponFragileUsesRemaining = null;
 }
 
 /** Equips a shield card, the same way equipWeapon() equips a weapon. Its

@@ -3,7 +3,8 @@
 // Weapon artwork itself lives in images/weapons/<rank>.png (assigned
 // automatically in makeCard(), see js/cards.js) — this file just maps each
 // rank to its weapon name, used for the card tooltip (see renderCard() in
-// js/ui.js, e.g. "9 of Diamonds — Mjölnir").
+// js/ui.js, e.g. "Mjölnir"). The tooltip shows only the flavor name, never
+// the underlying poker-card name.
 // ---------------------------------------------------------------------------
 
 const WEAPON_NAMES = {

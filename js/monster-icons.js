@@ -3,7 +3,8 @@
 // Monster artwork itself lives in images/monsters/<rank>.png (assigned
 // automatically in makeCard(), see js/cards.js) — this file just maps each
 // rank to its creature name, used for the card tooltip (see renderCard() in
-// js/ui.js, e.g. "7 of Clubs — Shadow Assassin").
+// js/ui.js, e.g. "Shadow Assassin"). The tooltip shows only the flavor
+// name, never the underlying poker-card name.
 // ---------------------------------------------------------------------------
 
 const MONSTER_NAMES = {

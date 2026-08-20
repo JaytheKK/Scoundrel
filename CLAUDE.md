@@ -315,7 +315,7 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
 
 ## Weapon Effects (custom addition, not part of the original Scoundrel rules)
 
-- Every weapon card has a 25% chance of getting one of three effects,
+- Every weapon card has a 25% chance of getting one of four effects,
   re-rolled at the start of every game — `rollWeaponEffects()` in
   `js/weapon-effects.js`, called once from `initGame()` in `js/state.js`.
   `WEAPON_EFFECTS` in that same file holds each effect's name/icon/
@@ -331,11 +331,80 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   - **Sturdy** — `state.weaponMaxMonster` (the "can only defeat monsters
     weaker than X" ceiling) can drop by at most 2 per fight instead of
     dropping straight to the defeated monster's value.
-- Badge icons are plain letters (V/E/S), not emoji — an emoji shield
+  - **Fragile**: breaks after `FRAGILE_MAX_USES` (2) uses, no matter which
+    monster it's used on. Tracked by `state.weaponFragileUsesRemaining`
+    (`js/state.js`): set to `FRAGILE_MAX_USES` by `equipWeapon()` whenever a
+    Fragile weapon is equipped (and reset the same way if it's replaced
+    before breaking), then counted down by 1 in `fightMonster()` every time
+    the weapon is actually used, regardless of the fight's outcome.
+- Badge icons are plain letters (V/E/S/F), not emoji — an emoji shield
   (🛡) didn't render on every system/font tested, while a plain letter
   always does. Keep this in mind if adding more effects later: prefer a
   letter/simple-glyph badge over an emoji unless you've verified it
   renders broadly.
+- **Fragile's durability bar and break animation.** `#weapon-fragile-bar`
+  (`index.html`, styled in `style.css`) reuses the exact same
+  `.ability-segment`/`.ability-segment--filled` markup/CSS as
+  `#champion-ability-bar` (the Paladin/Rogue/Herbalist passive bar under the
+  HP bar), full (`FRAGILE_MAX_USES` segments filled) on a fresh Fragile
+  weapon, one segment drains per use. `renderWeaponFragileBar()` in
+  `js/ui.js` is called from inside `renderWeaponSlot()` itself (not a
+  separate call site to remember at every one of `renderWeaponSlot()`'s many
+  call sites) so it can never drift out of sync with whichever weapon is
+  currently equipped, and is hidden entirely for a non-Fragile weapon or no
+  weapon at all. `#weapon-fragile-bar.hidden { display: none; }` has its
+  own rule (this project has no shared `.hidden` utility class, see the
+  comment near `#tutorial-coachmark.hidden` in `style.css`) since without it
+  the bar's own explicit height would still occupy space even while "hidden".
+  - **Positioned absolutely against `#weapon-slot-wrap`, not laid out below
+    the card in normal flow.** `#weapon-slot-card` is wrapped in a plain
+    `position: relative` `#weapon-slot-wrap` (in `index.html`, replacing the
+    bare `#weapon-slot-card` inside `#equipment-slots`) specifically so the
+    bar can center itself under the weapon slot on its own (`left: 50%` +
+    `translateX(-50%)`) rather than under the whole shield/weapon/ability
+    row, whose midpoint only lines up with the weapon slot by coincidence of
+    the three slots being equal width. An earlier version laid the bar out
+    as a second row inside a column-flex wrap, in normal flow underneath the
+    card. That made the wrap taller than the shield slot the instant a
+    Fragile weapon got equipped, and `#equipment-slots`' `align-items:
+    center` then re-centered the whole (now taller) wrap, visibly nudging
+    the weapon card itself up out of alignment with the shield card every
+    time a Fragile weapon was equipped or unequipped. Taking the bar out of
+    flow (`position: absolute; top: 100%`) fixes this at the root: the
+    wrap's own in-flow height is always exactly the card's height, so the
+    weapon slot never moves regardless of whether the bar is showing.
+  - **The actual break is deliberately deferred until after the weapon-attack
+    swing has fully returned to the slot, not applied the instant uses hit
+    0.** `fightMonster()` only *reports* `weaponBroke: true` in its result
+    and leaves the weapon equipped (at 0 uses); a new function,
+    `breakFragileWeapon()`, is what actually unequips it (clearing
+    `equippedWeapon`/`weaponMaxMonster`/`weaponFragileUsesRemaining`, the
+    same three fields any other "equip something else" swap would clear).
+    The reason: `animateWeaponAttack()` (`js/ui.js`) flies the *real*
+    `#weapon-slot-card` element out to the monster and back over ~1.5s,
+    calling `renderWeaponSlot()` mid-flight at impact (see "Fighting a
+    monster with the equipped weapon..." under Interaction design decisions
+    below): if the weapon were already unequipped by then, that mid-flight
+    re-render would instantly swap the flying card face for the empty-slot
+    icon, reading as the weapon vanishing before it's even swung back.
+    `resolveAndAnimate()` in `js/main.js` captures `fightMonster()`'s result
+    from the impact callback into an outer `fightResult` variable, then
+    checks `fightResult.weaponBroke` in `animateWeaponAttack()`'s `onDone`
+    callback (fired once the swing has fully returned and every inline
+    transform/position style it used has already been cleared); only then
+    does it call `breakFragileWeapon()` followed by the shatter animation.
+  - **Shatter animation is shared with shields, not reimplemented.** What
+    was `animateShieldShatter()` in `js/ui.js` is now a thin wrapper around a
+    generalized `animateSlotShatter(slotId, onDone)`, the same pie-slice-shard
+    clone-and-fly logic (see "Breaks (`shieldBroke`)" under Shields below
+    for how it works), just parameterized on which slot element to clone.
+    `animateWeaponShatter()` is the weapon-slot counterpart, calling the same
+    helper with `'weapon-slot-card'`. The CSS classes it uses were renamed
+    to match (`.shield-shatter-container`/`.shield-shard` →
+    `.card-shatter-container`/`.card-shard`, keyframe `shield-shard-fly` →
+    `card-shard-fly`) since they're no longer shield-specific. Any future
+    equip slot that can "break" should reuse this same helper rather than
+    writing another copy of the shard math.
 - **Electric gets its own hit feedback**, separate from the normal HP-loss
   feedback: a floating "-1" plus a brief shake on each monster it weakens.
   `fightMonster()` in `js/state.js` returns the ids of every monster it

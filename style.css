@@ -1219,27 +1219,29 @@ button:disabled::before {
   animation: card-target-wiggle 0.5s ease-in-out infinite;
 }
 
-/* Shield shatter: played by animateShieldShatter() (js/ui.js) when a shield
-   breaks. A fixed-position container sits exactly over the (now-hidden)
-   shield slot; each .shield-shard is a full clone of the slot clipped to
-   one pie slice via clip-path (set inline, per-shard, in JS) so together
-   they reconstruct the whole card, then fly outward and fade — the
-   --shatter-* custom properties (also set inline per shard) are each
+/* Slot shatter: played by animateSlotShatter() (js/ui.js), via
+   animateShieldShatter() when a shield breaks, or animateWeaponShatter()
+   when a Fragile weapon runs out of uses (see js/weapon-effects.js), when
+   an equipped item breaks. A fixed-position container sits exactly over the
+   (now-hidden) weapon/shield slot; each .card-shard is a full clone of the
+   slot clipped to one pie slice via clip-path (set inline, per-shard, in JS)
+   so together they reconstruct the whole card, then fly outward and fade.
+   The --shatter-* custom properties (also set inline per shard) are each
    shard's own direction/rotation, computed from its slice's angle. */
-.shield-shatter-container {
+.card-shatter-container {
   position: fixed;
   z-index: 80;
   pointer-events: none;
 }
 
-.shield-shard {
+.card-shard {
   position: absolute;
   inset: 0;
   margin: 0;
-  animation: shield-shard-fly 0.55s cubic-bezier(0.3, 0.6, 0.4, 1) forwards;
+  animation: card-shard-fly 0.55s cubic-bezier(0.3, 0.6, 0.4, 1) forwards;
 }
 
-@keyframes shield-shard-fly {
+@keyframes card-shard-fly {
   0% {
     transform: translate(0, 0) rotate(0deg);
     opacity: 1;
@@ -1460,6 +1462,26 @@ button:disabled::before {
   display: flex;
   align-items: center;
   gap: calc(0.3rem + 0.3rem * var(--card-scale));
+}
+
+/* Wraps #weapon-slot-card together with its Fragile-weapon durability bar
+   (#weapon-fragile-bar) so the bar centers under the weapon slot itself,
+   not under the whole #equipment-slots row (shield + weapon + ability).
+   The row's own midpoint only lines up with the weapon slot's center by
+   coincidence of the three slots being equal width, which broke down in
+   practice (see the git history for the off-center bar this replaced).
+   #weapon-fragile-bar is positioned absolutely against this wrap (see
+   below) rather than laid out as a second flex row underneath it. An
+   earlier version used a column flex here, but that made the wrap taller
+   than the shield slot beside it the instant a Fragile weapon got
+   equipped, and #equipment-slots' align-items: center then re-centered the
+   whole (now taller) wrap, visibly nudging the weapon card itself up out
+   of alignment with the shield card. Taking the bar out of flow avoids
+   that entirely: the wrap's own in-flow height is always just the card's
+   height, so the weapon slot never moves, regardless of whether the bar is
+   showing underneath it. */
+#weapon-slot-wrap {
+  position: relative;
 }
 
 /* Both slots reuse .card sizing/layout, but at a smaller scale than room
@@ -1799,6 +1821,40 @@ button:disabled::before {
   font-size: 0.85rem;
   color: var(--text-muted);
   min-height: 1.1rem;
+}
+
+/* Fragile weapon's remaining-uses gauge (renderWeaponFragileBar() in
+   js/ui.js). Reuses .ability-segment/.ability-segment--filled, the exact
+   same discrete-segment look as #champion-ability-bar (the Paladin/Rogue/
+   Herbalist passive-progress bar under the HP bar), just a second bar
+   instance sitting under the weapon slot instead. Hidden entirely unless
+   the currently equipped weapon actually has the Fragile effect.
+   Positioned against #weapon-slot-wrap (position: relative, see above)
+   instead of laid out in normal flow, so showing/hiding it (or its height)
+   never affects the wrap's own box size. That's what keeps the weapon
+   slot itself from shifting position when a Fragile weapon gets equipped.
+   Centered the same way #ability-info-popup and similar badges are
+   elsewhere in this file: left: 50% + translateX(-50%). */
+#weapon-fragile-bar {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: calc(0.15rem + 0.15rem * var(--card-scale));
+  display: flex;
+  gap: 2px;
+  width: calc(100px * var(--card-scale) * var(--weapon-slot-scale));
+  height: 0.25rem;
+}
+
+/* This project doesn't use a shared global .hidden utility (see the comment
+   near #tutorial-coachmark.hidden further down); every hideable element
+   needs its own #id.hidden rule. Without this one, the bar (an empty flex
+   box with an explicit height) was still rendered, just as an empty bar.
+   Harmless now that it's positioned out of flow, but it should still not
+   sit there doing nothing when no Fragile weapon is equipped. */
+#weapon-fragile-bar.hidden {
+  display: none;
 }
 
 .toggle-wrapper {
