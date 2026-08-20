@@ -178,3 +178,11 @@ const CARD_LIST = [
 function getFreshDeck() {
   return CARD_LIST.map((card) => ({ ...card }));
 }
+
+/** Looks up one card from the master CARD_LIST by id (e.g. "clubs-7"),
+ * returning null if not found. Used by js/tutorial.js to build its fixed,
+ * hand-picked scripted deck (see TUTORIAL_DECK_IDS there) — every other
+ * caller still goes through getFreshDeck() for a real shuffled game. */
+function getCardById(id) {
+  return CARD_LIST.find((card) => card.id === id) || null;
+}

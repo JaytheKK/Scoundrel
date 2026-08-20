@@ -1014,6 +1014,118 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   and call `onFinished()` once fully done) rather than firing immediately,
   or rapid clicking will reintroduce the same interleaving bug.
 
+## Tutorial (custom addition, not part of the original Scoundrel rules)
+
+- A guided, one-time walkthrough of one real (but fully pre-arranged)
+  dungeon run, entirely in `js/tutorial.js`. It's opt-in only, no
+  `localStorage` first-visit tracking: a "Tutorial" button sits at the start
+  of `#start-nav` on the start screen, the same discoverability level as
+  Champions/Weapons/Monsters/How to Play, and it can be replayed any number
+  of times. This was a deliberate choice over auto-launching it on first
+  visit, accounts (which would make "has this player seen it" easy and
+  durable to track) don't exist yet, and a plain button is simpler than
+  standing up `localStorage` tracking for a single boolean that'll likely
+  need re-plumbing once accounts do exist.
+- **Always the Paladin, no champion-select screen.** Every other "New Game"
+  entry point opens `#champion-select-overlay` first (see "Champion-select
+  screen" above); the Tutorial deliberately skips that and calls
+  `startNewGame('paladin', ...)` directly. One fewer decision for a
+  brand-new player before they've even seen the game, and it keeps the
+  whole scripted run's numbers (see below) verifiable against exactly one
+  champion's passive/active ability instead of four.
+- **Reuses the real game engine end to end, no separate tutorial rules
+  logic anywhere.** The only two differences from a normal game: the deck
+  is a fixed, hand-picked list of cards instead of a shuffle, and the
+  champion is fixed. Every fight/equip/drink/flee/ability click goes
+  through the exact same `resolveCard()`/`fightMonster()`/`fleeRoom()`/
+  `useAbility()` (`js/state.js`) and the exact same click handlers and
+  animations (`js/main.js`/`js/ui.js`) a real game uses.
+  - `initGame()` (`js/state.js`) gained an `options.deck` param: an
+    already-ordered array of full card objects used verbatim instead of
+    `shuffle(getFreshDeck())`, and `rollWeaponEffects()` is skipped entirely
+    for a scripted deck (a random Vampiric/Electric/Sturdy roll would throw
+    off the tutorial's hand-tuned damage numbers, `buildTutorialDeck()` in
+    `js/tutorial.js` also forces `effect: null` on every card itself, belt
+    and suspenders). `startNewGame()` (`js/main.js`) just threads an
+    `options` param through to `initGame()` unchanged, so it stays the one
+    shared entry point for starting a game (see "New Game / rules" above),
+    `startTutorial()` calls it exactly like any real "New Game" would, just
+    passing a champion and a deck instead of opening champion-select.
+  - `getCardById(id)` (`js/cards.js`) is a plain lookup into `CARD_LIST` by
+    id (e.g. `"clubs-7"`), added specifically so `TUTORIAL_DECK_IDS` in
+    `js/tutorial.js` could reference exact cards by name instead of
+    duplicating their data.
+- **The scripted deck (`TUTORIAL_DECK_IDS`, `js/tutorial.js`) is 17 cards,
+  hand-verified room by room against the real engine's rules** (weapon
+  degrade ceiling, shield block/durability, Paladin's every-5th-kill
+  passive, potion-per-room cap) so every damage number and every rule
+  demonstration is exact, not approximate:
+  - **Room 1:** fight bare-handed (no weapon yet) → equip a weapon → fight
+    again with it (damage = monster − weapon) → a potion is deliberately
+    left unresolved, carrying into room 2.
+  - **Room 2:** the carried potion heals, a second potion in the same room
+    doesn't (only the first per room does) → a monster stronger than the
+    weapon's current degrade ceiling forces a bare-handed fight → a shield
+    is left unresolved, carrying into room 3.
+  - **Room 3:** equip the shield → a monster it partially blocks (shield
+    survives, lower durability) → a second, harder monster whose damage
+    exceeds the shield's remaining durability, shattering it (this is
+    specifically the **2nd monster in this room**, matching how the shield
+    is introduced, see the shield HP/durability math below). This fight is
+    also the game's 5th monster kill, so Paladin's passive (heal 3 HP every
+    5 kills) fires here too, entirely for free, no separate step needed,
+    the normal fight message already announces it.
+  - **Room 4:** fled whole (not resolved card by card) specifically to
+    demonstrate the flee mechanic and the "not twice in a row" cap, the
+    3 filler cards dealt alongside the one carried-over card are never
+    clicked.
+  - **Room 5** (dealt fresh after fleeing): a potion tops HP back up, then
+    `state.mana` is force-set to the Paladin's ability cost (a tutorial-only
+    shortcut, `before()` on that step in `TUTORIAL_STEPS`, since normally
+    mana only trickles in 1 per room change via `gainMana()`, and grinding
+    out several more real room changes just to reach the ability once would
+    kill the pacing) so Blessing can be triggered and immediately shown
+    reducing the next hit by 3.
+  - HP is tracked by hand across the whole script and never drops below
+    ~7/20 (ends there, after the final Blessing-reduced hit), tuned
+    deliberately so the run always survives to the end screen. **Any future
+    edit to `TUTORIAL_DECK_IDS`, `TUTORIAL_STEPS`, or the rules those steps
+    exercise (weapon degrade math, shield block math, Paladin's passive/
+    active) must be re-walked by hand the same way**, there's no
+    lose-condition guard beyond `showTutorialStep()`'s defensive
+    `state.gameOver` check, which just ends the tutorial early rather than
+    letting numbers be wrong.
+- **UI: dim everything except the current target, rather than a full-page
+  overlay with a cutout.** An overlay-plus-cutout approach would have to
+  fight the existing weapon-attack/shield-shatter z-index choreography
+  (`animateWeaponAttack()`/`animateShieldShatter()` in `js/ui.js`) for very
+  little benefit here. Instead `body.tutorial-active` (`style.css`) dims and
+  `pointer-events: none`s every non-target interactive element (room cards,
+  Flee, the ability button, the hamburger menu, the weapon toggle), and the
+  current step's one clickable target gets `.tutorial-target` layered on
+  top, which, via higher CSS specificity, not `!important`-free overrides,
+  restores its clickability and adds a pulsing gold outline. A floating
+  "coachmark" bubble (`#tutorial-coachmark`) with the step's explanation is
+  positioned next to that target via `getBoundingClientRect()`
+  (`positionCoachmarkNear()`), or centered on screen for the two info-only
+  bookend steps that have no specific target (`positionCoachmarkCenter()`).
+  `#tutorial-skip-btn` stays visible the whole time, in the same spirit as
+  every other overlay in this project always having an obvious way out.
+- **A step advances itself once its target is actually clicked**, a
+  one-off (`{ once: true }`) listener attached directly to that element in
+  `showTutorialStep()`, entirely separate from (and never modifying) the
+  real click handlers in `js/main.js`, which fire and do the actual game
+  logic exactly as they always do. After a short, per-step delay
+  (`advanceDelayMs`, hand-tuned to outlast whatever that action's animation
+  is, a plain fade, a weapon-fly, a full weapon-swing, or a shield-shatter
+ , see the values in `TUTORIAL_STEPS`) the next step is shown; by then the
+  real re-render has already finished, so the next target element reliably
+  exists in the DOM. **Any new tutorial step must set `advanceDelayMs` to
+  comfortably outlast its action's real animation duration** (check the
+  relevant constant in `js/main.js`/`js/ui.js`, e.g. `CARD_ANIMATION_MS` or
+  `WEAPON_ATTACK_OUT_MS`/`_IMPACT_MS`/`_RETURN_MS`) or the next coachmark can
+  appear while the previous animation is still visibly finishing.
+
 ## Local dev / preview
 
 - `.claude/launch.json` runs a plain `python -m http.server` on port 5173 so

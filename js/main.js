@@ -277,7 +277,10 @@ function resolveAndAnimate(cardId, options, registerSpeedUp, onFinished) {
  * (see animateWeaponAttack in ui.js) are cleared by hand — renderWeaponSlot()
  * (called via renderAll below) only ever touches className/innerHTML, not
  * those. */
-function startNewGame(championId) {
+/** @param options.deck - passed straight through to initGame() — only the
+ * Tutorial (js/tutorial.js's startTutorial()) uses this, to run on its
+ * fixed scripted deck instead of a real shuffle. */
+function startNewGame(championId, options = {}) {
   actionQueue.length = 0;
   queueBusy = false;
   speedUpCurrentAction = null;
@@ -287,7 +290,7 @@ function startNewGame(championId) {
   slot.style.zIndex = '';
   slot.style.position = '';
 
-  initGame(championId);
+  initGame(championId, options);
   renderAll();
   closeChampionSelect();
   closeMenu();

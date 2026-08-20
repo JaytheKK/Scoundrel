@@ -1873,6 +1873,105 @@ button:disabled::before {
   }
 }
 
+/* --- Tutorial (custom addition, see js/tutorial.js) ------------------------
+   A guided walkthrough that runs on the real game engine with a fixed
+   scripted deck instead of a shuffle. Rather than a full-page dimming
+   overlay with a cutout (fragile to get right against the existing
+   weapon-attack/shield-shatter z-index choreography), every non-target
+   interactive element is dimmed and made unclickable directly via
+   body.tutorial-active, and the one element the current step wants clicked
+   gets .tutorial-target layered on top to both restore its clickability
+   (higher specificity wins) and draw the eye to it. */
+
+body.tutorial-active #room .card,
+body.tutorial-active #flee-btn,
+body.tutorial-active #ability-wrap,
+body.tutorial-active #menu-btn,
+body.tutorial-active .toggle-wrapper {
+  opacity: 0.3;
+  pointer-events: none;
+  filter: grayscale(0.4);
+  transition: opacity 0.2s ease, filter 0.2s ease;
+}
+
+.tutorial-target {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  filter: none !important;
+  outline: 3px solid rgba(217, 164, 65, 0.9);
+  outline-offset: 4px;
+  border-radius: var(--radius);
+  animation: tutorial-target-pulse 1.2s ease-in-out infinite;
+  position: relative;
+  z-index: 30;
+}
+
+@keyframes tutorial-target-pulse {
+  0%, 100% {
+    outline-color: rgba(217, 164, 65, 0.9);
+  }
+  50% {
+    outline-color: rgba(217, 164, 65, 0.35);
+  }
+}
+
+/* The coachmark bubble: positioned in JS (positionCoachmarkNear()/
+   positionCoachmarkCenter() in js/tutorial.js) via plain left/top, since its
+   anchor (a room card, or screen-center for an info-only step) moves every
+   step and isn't known ahead of time. */
+#tutorial-coachmark {
+  position: fixed;
+  z-index: 400;
+  max-width: min(20rem, 85vw);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 0.6rem;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  transition: left 0.25s ease, top 0.25s ease;
+}
+
+/* This project doesn't use one shared global .hidden utility class — every
+   hideable element gets its own `#id.hidden { display: none }` rule (see
+   e.g. #start-screen.hidden/#game-screen.hidden above) so a plain `.hidden`
+   selector never has to out-specificity an element's own ID-scoped layout
+   rules. #tutorial-next-btn already has its own further down; these two
+   need the same. */
+#tutorial-coachmark.hidden,
+#tutorial-skip-btn.hidden {
+  display: none;
+}
+
+#tutorial-coachmark-text {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+#tutorial-coachmark-text:last-child {
+  margin-bottom: 0;
+}
+
+#tutorial-next-btn.hidden {
+  display: none;
+}
+
+#tutorial-skip-btn {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 400;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+#tutorial-skip-btn:hover {
+  color: var(--text);
+}
+
 /* --- very short viewport safety net --------------------------------------
    Deliberately placed at the very END of the file: it needs to override
    the base h1/button/body rules above (same selector specificity, so

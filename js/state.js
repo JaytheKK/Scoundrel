@@ -112,11 +112,23 @@ function shuffle(cards) {
 /** @param championId - id of the champion picked on the champion-select
  * screen (see js/champion-icons.js), or undefined/null to start without one
  * (kept optional so callers/tests that don't care about champions still
- * work). */
-function initGame(championId = null) {
+ * work).
+ * @param options.deck - an already-ordered array of full card objects to use
+ * verbatim instead of a fresh shuffled deck. Used only by the Tutorial (see
+ * js/tutorial.js's buildTutorialDeck()), which needs the exact same cards in
+ * the exact same order every run so its scripted coachmark steps always line
+ * up with what's actually in the room. Weapon effects are never rolled for a
+ * scripted deck (tutorial cards already have effect: null set explicitly) —
+ * a random Vampiric/Electric/Sturdy roll would throw off its hand-tuned
+ * damage numbers. */
+function initGame(championId = null, options = {}) {
   state.hp = state.maxHp;
-  state.deck = shuffle(getFreshDeck());
-  rollWeaponEffects(state.deck); // 25% chance per weapon, re-rolled every game
+  if (options.deck) {
+    state.deck = [...options.deck];
+  } else {
+    state.deck = shuffle(getFreshDeck());
+    rollWeaponEffects(state.deck); // 25% chance per weapon, re-rolled every game
+  }
   state.room = state.deck.splice(0, 4);
   state.equippedWeapon = null;
   state.weaponMaxMonster = null;

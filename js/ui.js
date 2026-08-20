@@ -854,6 +854,17 @@ function animateWeaponToSlot(cardEl, onDone) {
 
   const clone = cardEl.cloneNode(true);
   clone.classList.add('weapon-flying');
+  // The clone is a flying phantom, not a clickable target any more (the
+  // player already clicked the real card, which is about to be hidden
+  // below) — strip .tutorial-target if it was on the original. Left on, its
+  // `position: relative` (see style.css) would win over .weapon-flying's
+  // `position: fixed` (both single-class selectors, so whichever rule comes
+  // later in the stylesheet wins), knocking the clone out of `position:
+  // fixed` and into normal document flow at the bottom of <body> instead of
+  // flying as an overlay — which is exactly what caused the equip animation
+  // to silently not play and a scrollbar/page-jump to flash briefly while
+  // the oversized in-flow clone existed.
+  clone.classList.remove('tutorial-target');
   clone.style.left = `${startRect.left}px`;
   clone.style.top = `${startRect.top}px`;
   clone.style.width = `${startRect.width}px`;
@@ -889,6 +900,7 @@ function animateShieldToSlot(cardEl, onDone) {
 
   const clone = cardEl.cloneNode(true);
   clone.classList.add('weapon-flying');
+  clone.classList.remove('tutorial-target'); // see animateWeaponToSlot() above for why
   clone.style.left = `${startRect.left}px`;
   clone.style.top = `${startRect.top}px`;
   clone.style.width = `${startRect.width}px`;

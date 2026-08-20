@@ -17,6 +17,7 @@
       <button id="shields-btn">Shields</button>
       <button id="monsters-btn">Monsters</button>
       <button id="anleitung-btn">How to Play</button>
+      <button id="tutorial-btn">Tutorial</button>
     </div>
   </div>
 
@@ -181,6 +182,16 @@
     </div>
   </div>
 
+  <!-- Tutorial coachmark + skip button — see js/tutorial.js. Both are plain
+       top-level overlay elements (same pattern as #gameover-overlay etc.)
+       rather than children of #game-screen, since they must stay above
+       everything while the tutorial runs. -->
+  <button id="tutorial-skip-btn" class="hidden" type="button">Skip Tutorial ✕</button>
+  <div id="tutorial-coachmark" class="hidden">
+    <p id="tutorial-coachmark-text"></p>
+    <button id="tutorial-next-btn" class="hidden" type="button">Next</button>
+  </div>
+
   <script src="js/cards.js"></script>
   <script src="js/monster-icons.js"></script>
   <script src="js/potion-icons.js"></script>
@@ -192,5 +203,6 @@
   <script src="js/state.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>
+  <script src="js/tutorial.js"></script>
 </body>
 </html>
