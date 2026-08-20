@@ -619,6 +619,20 @@ function resolveCard(cardId, options = {}) {
     return result;
   }
 
+  // Win the moment no monster cards remain anywhere (deck or room) — once
+  // every monster is dead, the leftover weapons/potions/shields have no
+  // further purpose, so there's no reason to force the player to keep
+  // clicking through them just to empty the deck.
+  const monstersRemain =
+    state.deck.some((c) => c.type === 'monster') ||
+    state.room.some((c) => c.type === 'monster');
+  if (!monstersRemain) {
+    state.gameOver = true;
+    state.outcome = 'won';
+    result.message += ' All monsters defeated, the dungeon is cleared — you win!';
+    return result;
+  }
+
   if (state.room.length === 1 && state.deck.length > 0) {
     const drawn = drawForRoom(state.room, 3);
     state.room.push(...drawn);
