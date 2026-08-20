@@ -68,7 +68,7 @@ const ABILITY_DETAILS = {
   },
   rogue: {
     name: 'Backstab',
-    description: 'Choose a monster afterward to strike it for 6 damage.',
+    description: 'Choose a monster to strike it for 6 damage.',
   },
   berserker: {
     name: 'Frenzy',

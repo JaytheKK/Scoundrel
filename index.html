@@ -16,7 +16,7 @@
       <button id="weapons-btn">Weapons</button>
       <button id="shields-btn">Shields</button>
       <button id="monsters-btn">Monsters</button>
-      <button id="anleitung-btn">Anleitung</button>
+      <button id="anleitung-btn">How to Play</button>
     </div>
   </div>
 
@@ -102,36 +102,41 @@
         <p>Click a weapon to equip it, it replaces whatever you had equipped. Click a potion to drink it and heal HP up to your maximum of 20, but only the first potion in a room actually heals; extra potions in the same room do nothing.</p>
 
         <h3>Shields</h3>
-        <p>Click a shield to equip it, it replaces whatever you had equipped. A shield blocks damage that would otherwise get through — after your weapon (or bare hands) has already done its part, the shield absorbs as much of the remaining damage as its block value allows. Blocking costs the shield durability equal to the damage it absorbed; once its durability reaches 0, it shatters and is gone.</p>
+        <p>Click a shield to equip it, it replaces whatever you had equipped. A shield blocks damage that would otherwise get through, after your weapon (or bare hands) has already done its part, the shield absorbs as much of the remaining damage as its block value allows. Blocking costs the shield durability equal to the damage it absorbed; once its durability reaches 0, it shatters and is gone.</p>
 
         <h3>Weapon Effects</h3>
         <p>Every weapon has a 25% chance of carrying one of three effects, shown as a small badge in its corner:</p>
         <ul>
-          <li><strong>V — Vampiric</strong>: heals 1 HP whenever this weapon defeats a monster.</li>
-          <li><strong>E — Electric</strong>: every other revealed monster loses 1 strength whenever this weapon is used in a fight (still the same monster, just weaker).</li>
-          <li><strong>S — Sturdy</strong>: this weapon's usable strength can never drop by more than 2 per fight, instead of dropping straight to the defeated monster's value.</li>
+          <li><strong>V: Vampiric</strong>: heals 1 HP whenever this weapon defeats a monster.</li>
+          <li><strong>E: Electric</strong>: every other revealed monster loses 1 strength whenever this weapon is used in a fight (still the same monster, just weaker).</li>
+          <li><strong>S: Sturdy</strong>: this weapon's usable strength can never drop by more than 2 per fight, instead of dropping straight to the defeated monster's value.</li>
         </ul>
 
         <h3>Champions</h3>
         <p>Before each game you pick a champion, who grants one passive ability for that whole run, plus a mana-costed active ability you can trigger yourself once you've collected enough mana (gained by clearing or fleeing rooms):</p>
         <ul>
           <li>
-            <strong>Paladin</strong>: every 5 monsters you defeat, heal 3 HP.
-            <br><em><strong>Blessing</strong></em> — the next 3 hits that would deal damage are reduced by 3 each.
+            <strong>Paladin</strong>
+            <br><strong>Passive:</strong> every 5 monsters you defeat, heal 3 HP.
+            <br><strong>Active, Blessing:</strong> the next 3 hits that would deal damage are reduced by 3 each.
           </li>
           <li>
-            <strong>Herbalist</strong>: you can drink two potions per room instead of just one.
-            <br><em><strong>Nature's Grace</strong></em> — instantly heals 3 HP.
+            <strong>Herbalist</strong>
+            <br><strong>Passive:</strong> you can drink two potions per room instead of just one.
+            <br><strong>Active, Nature's Grace:</strong> instantly heals 3 HP.
           </li>
           <li>
-            <strong>Rogue</strong>: you may flee two rooms in a row instead of just one.
-            <br><em><strong>Backstab</strong></em> — choose a monster afterward to strike it for 6 damage.
+            <strong>Rogue</strong>
+            <br><strong>Passive:</strong> you may flee two rooms in a row instead of just one.
+            <br><strong>Active, Backstab:</strong> choose a monster to strike it for 6 damage.
           </li>
           <li>
-            <strong>Berserker</strong>: fighting bare-handed, you take 2 less damage from every monster.
-            <br><em><strong>Frenzy</strong></em> — for the next 3 weapon fights, the weapon ignores its degrade limit and can strike any monster.
+            <strong>Berserker</strong>
+            <br><strong>Passive:</strong> fighting bare-handed, you take 2 less damage from every monster.
+            <br><strong>Active, Frenzy:</strong> for the next 3 weapon fights, the weapon ignores its degrade limit and can strike any monster.
           </li>
         </ul>
+        <p>The ring around your ability button shows your banked mana. You gain 1 mana every time a room is cleared or fled, up to your champion's ability cost. Once the ring is full, the button lights up and you can click it to trigger your active ability, which spends all of it.</p>
 
         <h3>Fleeing a Room</h3>
         <p>"Flee Room" sends the entire room to the bottom of the deck and deals a fresh one. You can only flee a full, untouched room of 4 cards, and never two rooms in a row.</p>

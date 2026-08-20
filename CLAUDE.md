@@ -38,6 +38,11 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
 
 ## Conventions
 
+- **No em dashes ( — ) in any text you write for this project.** This
+  applies to user-facing copy (rules text, messages, button labels), code
+  comments, and this file. Use a comma or a period instead. Existing em
+  dashes already in this file/codebase don't need to be hunted down and
+  replaced on sight, but don't introduce new ones.
 - Plain **vanilla JavaScript**, no frameworks, no npm build step.
 - Files (loaded in this order from `index.html`):
   - `index.html` — page structure

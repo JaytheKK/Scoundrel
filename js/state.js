@@ -416,7 +416,18 @@ function fightMonster(card, useWeapon = true) {
   const monsterLabel = monsterNameFor(card.baseRank) || card.name;
   const weaponLabel = weaponUsable ? weaponNameFor(weapon.baseRank) || weapon.name : null;
   const how = weaponUsable ? ` with your ${weaponLabel}` : ' bare-handed';
-  if (weaponUsable && weapon.effect === 'vampiric') {
+  // Vampiric only heals if the weapon actually defeated the monster within
+  // its normal degrade limit — true on a fresh weapon's first swing
+  // (weaponMaxMonster was null, so any monster counts as "under the limit"),
+  // and true afterward only while card.rank is still below weaponMaxMonster.
+  // Berserker's Frenzy can make weaponUsable true even when the monster is
+  // AT or ABOVE that limit (frenzyOverrode) — that swing must not heal.
+  // Also never heal on a lethal hit: state.hp was already clamped to 0
+  // above, and healing after death let the player survive every fight at
+  // 1 HP forever (the vampiric-immortality bug) — gate on state.hp > 0.
+  const vampiricHeals =
+    weaponUsable && weapon.effect === 'vampiric' && !frenzyOverrode && state.hp > 0;
+  if (vampiricHeals) {
     state.hp = Math.min(state.hp + 1, state.maxHp);
     message = `Fought ${monsterLabel}${how} — took ${damage} damage. Vampiric weapon healed 1 HP.`;
   } else if (weaponUsable && weapon.effect === 'electric') {

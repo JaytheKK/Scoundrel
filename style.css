@@ -402,6 +402,13 @@ button:disabled::before {
   color: var(--text-muted);
 }
 
+#rules p {
+  /* Reset the browser's default paragraph margin — it was stacking on top
+     of #rules h3's own margin-bottom, making the gap under each title look
+     much bigger than the 0.35rem actually set there. */
+  margin: 0 0 0.5rem;
+}
+
 #rules ul {
   margin: 0 0 0.5rem 1.1rem;
   padding: 0;
