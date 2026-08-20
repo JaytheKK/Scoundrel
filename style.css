@@ -435,15 +435,55 @@ button:disabled::before {
 }
 
 #start-screen.hidden,
-#game-screen.hidden {
+#game-screen.hidden,
+#loading-screen.hidden {
   display: none;
+}
+
+/* --- loading screen (js/preload.js) ---------------------------------------
+   Shown first, before #start-screen; body's flex centering (see body rule
+   above) centers this the same way it centers the other top-level screens,
+   no layout of its own needed beyond the column/gap here. */
+#loading-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+#loading-bar {
+  width: 14rem;
+  max-width: 60vw;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+#loading-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  /* Matches the progress-bar-style updates in js/preload.js, not a fixed
+     duration, since real progress arrives in irregular bursts. */
+  transition: width 0.15s ease;
+}
+
+#loading-text {
+  font-family: var(--font-ui);
+  color: var(--text-muted);
+  font-size: 0.9rem;
 }
 
 #start-screen {
   gap: calc(var(--stack-gap) * 1.5);
 }
 
-#start-logo {
+/* Shared with #loading-logo (js/preload.js's loading screen) so the two
+   screens feel like one continuous brand moment rather than a jump cut. */
+#start-logo,
+#loading-logo {
   font-size: 3.2rem;
   color: var(--accent);
   text-shadow: 0 0 24px rgba(217, 164, 65, 0.35);
@@ -461,9 +501,20 @@ button:disabled::before {
   padding: 0.7rem 2.2rem;
 }
 
+/* Always a fixed grid, never flex-wrap. flex-wrap only wraps once a row
+   actually runs out of room, so on a wide-but-short laptop (plenty of
+   width, but failing the html-font-size tier's min-height gate a bit
+   further up this file) it used to happily fit all 6 buttons on one row
+   instead of the intended 3x2/2x3 grid, since nothing about button width
+   depends on that height gate. A grid with an explicit column count is
+   controlled by width alone, so it can't make that mistake regardless of
+   viewport height. Deliberately its own width-only breakpoint below, not
+   reusing the html-font-size tier's min-width+min-height media query above
+   (that gate exists to stop room/weapon cards overflowing vertically, an
+   unrelated concern from how many nav buttons fit per row). */
 #start-nav {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, auto);
   justify-content: center;
   gap: 0.6rem;
   margin-top: 0.5rem;
@@ -478,25 +529,16 @@ button:disabled::before {
   min-width: 9rem;
 }
 
-/* Fixed 3-column, 2-row grid for the 6 start-screen buttons on desktop,
-   instead of the phone/tablet flex-wrap letting the row length depend on
-   how many buttons happen to fit per line. grid-template-columns: repeat(3,
-   auto) sizes every column to fit its content (all equal already, since
-   #start-nav button has its own shared min-width above) rather than
-   stretching to fill the row, and justify-content: center keeps the whole
-   grid centered the same way the flex row was.
-   Deliberately placed AFTER the plain #start-nav rule above, not inside the
-   min-width:1024px breakpoint block near the top of the file, even though
-   it's conditioned on that same breakpoint — see the "Gotcha" in
-   CLAUDE.md's Responsive sizing notes: a media query earlier in the file
-   loses to a later unconditional same-specificity rule (here, the plain
-   #start-nav { display: flex } above) regardless of its condition matching,
-   since same-specificity CSS is resolved by source order. */
-@media (min-width: 1024px) and (min-height: 900px) {
+/* 3 columns (2 rows) once there's room for them: 3 * the 9rem button
+   min-width + 2 gaps comfortably fits under 500px even at the phone tier's
+   16px root font-size (a bigger root font-size only makes buttons wider,
+   never narrower, so this keeps holding at every larger tier too), so
+   500px is a safe, purely-width threshold. Below it (a phone in portrait)
+   the plain 2-column grid above applies, giving the requested 3 rows x 2
+   columns fallback "sobald notwendig". */
+@media (min-width: 500px) {
   #start-nav {
-    display: grid;
     grid-template-columns: repeat(3, auto);
-    justify-content: center;
   }
 }
 

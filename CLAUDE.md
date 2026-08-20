@@ -102,6 +102,10 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   - `js/main.js` — wiring: click handlers call into `state.js`, then trigger
     re-renders via `ui.js`. Also owns the resolve animation timing
     (`CARD_ANIMATION_MS`, kept in sync with the CSS transition duration).
+  - `js/tutorial.js` — the optional guided walkthrough, see "Tutorial" below.
+  - `js/preload.js` — loaded last; preloads every card/champion/ability
+    image behind `#loading-screen` before the start screen appears, see
+    "Loading screen / asset preloading" below.
 - Everything user-facing (card names, buttons, messages) is in **English**.
 - Build incrementally: deck/shuffle → room mechanic → combat/weapon/potion
   logic → win/lose conditions → UI polish. Verify each step before moving on.
@@ -1175,6 +1179,41 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   relevant constant in `js/main.js`/`js/ui.js`, e.g. `CARD_ANIMATION_MS` or
   `WEAPON_ATTACK_OUT_MS`/`_IMPACT_MS`/`_RETURN_MS`) or the next coachmark can
   appear while the previous animation is still visibly finishing.
+
+## Loading screen / asset preloading (custom addition)
+
+- Opening `index.html` locally via `file://` (or from a fast local dev
+  server) loads every image effectively instantly, so nothing here showed up
+  during normal development. Once actually hosted (e.g.
+  lastdeckstanding.com), images arrive over a real network connection, and
+  cards/portraits used to visibly pop in blank-then-loaded on a fresh page
+  load as the browser fetched each PNG lazily on first render. `js/preload.js`
+  (loaded last, after every other script) fixes this: it preloads every
+  card/champion/ability image up front behind a `#loading-screen`, so by the
+  time the start screen appears every image is already sitting in the
+  browser's cache and renders instantly from then on, no more pop-in.
+- `#loading-screen` (`index.html`) is a third top-level screen alongside
+  `#start-screen`/`#game-screen`, direct child of `<body>`, same `.hidden`
+  toggling pattern, shown first (`#start-screen` now starts with `.hidden`
+  in the markup, unlike before this existed). It has its own heading (shares
+  the `#start-logo` look via a `#start-logo, #loading-logo` combined CSS
+  selector), a small progress bar (`#loading-bar`/`#loading-fill`), and a
+  percentage readout (`#loading-text`).
+- `collectPreloadImageUrls()` in `js/preload.js` gathers every image URL
+  straight from the existing data (`CARD_LIST`, `SHIELD_DAMAGED_IMAGES`,
+  `CHAMPIONS`, `ABILITY_ICONS`) rather than a separately hand-maintained
+  list, so a newly added card, champion, or ability image is automatically
+  preloaded too. **Keep it this way** rather than hand-listing paths. If a
+  future asset type is added outside those four sources (e.g. a new data
+  file following the "Keep the gallery in sync" pattern elsewhere in this
+  file), add it to `collectPreloadImageUrls()` in the same change, the same
+  discipline as keeping the galleries themselves in sync.
+- Each image is loaded via a plain `new Image()` and resolves the preload on
+  either `onload` or `onerror`, so one broken/missing image can't hang the
+  loading screen forever, it just won't be warm in the cache (same as if
+  this preloader didn't exist). A `PRELOAD_TIMEOUT_MS` (8s) fallback also
+  force-finishes the whole preload if something stalls without ever firing
+  either event, for the same reason.
 
 ## Local dev / preview
 

@@ -7,7 +7,19 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="start-screen">
+  <!-- Shown first, before #start-screen: preloads every card/champion/
+       ability image (js/preload.js) so a freshly hosted page (real network
+       latency, not the instant file:// load used during local dev) never
+       shows cards popping in blank-then-loaded on the first game. Exactly
+       one of #loading-screen/#start-screen/#game-screen is ever visible at
+       a time, same .hidden pattern as the other two. -->
+  <div id="loading-screen">
+    <h1 id="loading-logo">Last Deck Standing</h1>
+    <div id="loading-bar"><div id="loading-fill"></div></div>
+    <p id="loading-text">Loading... 0%</p>
+  </div>
+
+  <div id="start-screen" class="hidden">
     <h1 id="start-logo">Last Deck Standing</h1>
     <p id="start-tagline">A dungeon-crawling card game</p>
     <button id="start-new-game-btn">New Game</button>
@@ -204,5 +216,6 @@
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>
   <script src="js/tutorial.js"></script>
+  <script src="js/preload.js"></script>
 </body>
 </html>
