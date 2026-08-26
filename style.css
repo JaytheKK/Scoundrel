@@ -828,6 +828,80 @@ button:disabled::before {
   opacity: 0.9;
 }
 
+/* Shields gallery tiles get the exact same treatment as Weapons above —
+   same structure, same tuning (10% art shrink, tight tile padding, wider
+   grid column, enlarged hex-box font, display-font name) — just pointed
+   at the shield frame asset (images/frames/shield.png) and .card--shield's
+   own --art-* / --hex-* percentages (21.6% / 17% / 79.4% / 72% and 41% /
+   73.4% / 60.2% / 88.5%) instead of the weapon frame's. See the Weapons
+   block above for the reasoning behind each individual rule; it isn't
+   repeated here. */
+#gallery-grid.gallery-grid--shields {
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.gallery-item[data-kind='shields'] {
+  background-color: transparent;
+  gap: 0.3rem;
+  padding: 0.2rem;
+}
+
+.gallery-item[data-kind='shields'] .gallery-item-portrait {
+  position: relative;
+  width: 100%;
+  max-width: none;
+  height: auto;
+  aspect-ratio: 100 / 140;
+  background-color: transparent;
+  background-image: url('images/frames/shield.png');
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.gallery-item[data-kind='shields'] .gallery-item-art {
+  position: absolute;
+  left: 21.6%;
+  top: 17%;
+  right: 20.6%;
+  bottom: 28%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.gallery-item[data-kind='shields'] .gallery-item-art img {
+  width: auto;
+  height: auto;
+  max-width: 90%;
+  max-height: 90%;
+  object-fit: contain;
+}
+
+.gallery-item[data-kind='shields'] .gallery-item-name {
+  color: var(--text);
+  font-family: var(--font-display);
+}
+
+.gallery-item[data-kind='shields'] .gallery-item-rank {
+  position: absolute;
+  left: 41%;
+  top: 73.4%;
+  right: 39.8%;
+  bottom: 11.5%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--card-text);
+  opacity: 0.9;
+}
+
 /* --- gallery item detail popup (opened by clicking a weapon/monster tile) -
    Sits on top of #gallery-overlay (z-index 300), so it needs a higher one
    of its own — everything else reuses the exact same dimmed-backdrop +
