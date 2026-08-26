@@ -316,11 +316,11 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     "Champions" from the start screen (`#gallery-overlay`, kind
     `'champions'`) gives its tiles the same `images/frames/champion.png`
     background, `aspect-ratio`, and parchment-inset padding as
-    `#champion-select-overlay` above, rather than the plain cream
-    `.gallery-item` background Monsters still uses — that's a small flat
-    icon tile with no frame art of its own, so only Champions gets this
-    treatment here (Weapons and Shields each get their own, different
-    frame treatment, see below). Toggled via a `.gallery-grid--champions`
+    `#champion-select-overlay` above. This is a different frame treatment
+    from Weapons/Shields/Monsters below (they each reuse a real in-game
+    card frame instead), and Champions is the only kind whose gallery tile
+    matches its own dedicated champion-select screen rather than a
+    `.card--*` type. Toggled via a `.gallery-grid--champions`
     class (`renderGallery()` in `js/ui.js` sets it on `#gallery-grid`
     whenever `kind === 'champions'`) and a `.gallery-item[data-kind=
     'champions']` attribute selector (`data-kind` was already being set on
@@ -447,16 +447,26 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     `images/frames/shield.png` and `.card--shield`'s own `--art-*`/
     `--hex-*` percentages (`21.6%/17%/79.4%/72%` and `41%/73.4%/60.2%/
     88.5%`) instead of the weapon frame's numbers. Implemented by
-    generalizing `buildGalleryItem()`'s `kind === 'weapons'` checks (both
+    generalizing `buildGalleryItem()`'s `kind === 'weapons'` check (both
     the `.gallery-item-art` wrapper-div step and the "nest the rank inside
-    the portrait" step) into a shared `usesCardFrame = kind === 'weapons'
-    || kind === 'shields'` flag, and adding a second `.gallery-grid--
-    shields` / `.gallery-item[data-kind='shields']` CSS block mirroring
-    the weapons one rule-for-rule. **When a third kind needs this same
-    card-frame gallery treatment, extend `usesCardFrame` the same way
-    rather than adding another parallel `kind === '...'` branch** — the
-    structural JS logic is now shared, only the frame image and the 8
-    `--art-*`/`--hex-*` numbers actually differ per kind.
+    the portrait" step) into a shared `usesCardFrame` flag, and adding a
+    second `.gallery-grid--shields` / `.gallery-item[data-kind='shields']`
+    CSS block mirroring the weapons one rule-for-rule. Monsters got the
+    same treatment right after, by the same request pattern, extending
+    `usesCardFrame` to `kind === 'weapons' || kind === 'shields' || kind
+    === 'monsters'` and adding a third matching `.gallery-grid--monsters` /
+    `.gallery-item[data-kind='monsters']` block, pointed at
+    `images/frames/monster.png` and `.card--monster`'s own `--art-*`/
+    `--hex-*` percentages (`15%/14%/85%/71%` and `40.2%/75.4%/59.9%/89.3%`
+    — identical to the weapon frame's own art box, since the two frames
+    share the same rail/hexagon layout, see "Card frame artwork" above).
+    Monsters is now the only kind with all 13 ranks (2-14, vs. Weapons'
+    9 and Shields' 3) using this treatment, and it was a drop-in fit at
+    that item count — nothing about the layout needed to change for the
+    larger grid. **Any future kind needing this same card-frame gallery
+    treatment should extend `usesCardFrame` and add one matching CSS block
+    the same way** — the structural JS logic is fully shared now, only the
+    frame image and the 8 `--art-*`/`--hex-*` numbers differ per kind.
   - **Portrait placeholder for missing artwork:** `fillPortrait()` in
     `js/ui.js` is the shared null-image fallback for any portrait-shaped
     slot (gallery tile, gallery detail popup, champion-select tile,

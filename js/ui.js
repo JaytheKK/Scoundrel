@@ -652,12 +652,12 @@ function buildGalleryItem(kind, image, name, key, rankLabel) {
   item.dataset.kind = kind;
   item.dataset.key = key;
 
-  // Weapons and Shields both get the real in-game card frame (see
-  // .gallery-item[data-kind='weapons']/[data-kind='shields'] in
-  // style.css) instead of the plain flat icon tile Monsters still use —
-  // this needs two structural differences from the plain-tile layout
-  // below, so both are gated on the same flag.
-  const usesCardFrame = kind === 'weapons' || kind === 'shields';
+  // Weapons, Shields, and Monsters all get the real in-game card frame
+  // (see .gallery-item[data-kind='weapons']/[data-kind='shields']/
+  // [data-kind='monsters'] in style.css) instead of the plain flat icon
+  // tile — this needs two structural differences from the plain-tile
+  // layout below, so all three are gated on the same flag.
+  const usesCardFrame = kind === 'weapons' || kind === 'shields' || kind === 'monsters';
 
   const portrait = document.createElement('div');
   portrait.className = 'gallery-item-portrait';
@@ -718,12 +718,13 @@ function renderGallery(kind) {
   // style.css) — same frame art and aspect-ratio as the champion-select
   // screen, since Weapons/Monsters/Shields only ever need small icon tiles.
   grid.classList.toggle('gallery-grid--champions', kind === 'champions');
-  // Weapons and Shields get the same illustrated-card-frame treatment as
-  // Champions, each with its own frame/positioning (see
-  // .gallery-item[data-kind='weapons']/[data-kind='shields'] in
-  // style.css) — Monsters still uses the plain flat icon tile.
+  // Weapons, Shields, and Monsters each get the same illustrated-card-frame
+  // treatment as Champions, each with its own frame/positioning (see
+  // .gallery-item[data-kind='weapons']/[data-kind='shields']/
+  // [data-kind='monsters'] in style.css).
   grid.classList.toggle('gallery-grid--weapons', kind === 'weapons');
   grid.classList.toggle('gallery-grid--shields', kind === 'shields');
+  grid.classList.toggle('gallery-grid--monsters', kind === 'monsters');
 
   if (kind === 'weapons') {
     title.textContent = 'Weapons';

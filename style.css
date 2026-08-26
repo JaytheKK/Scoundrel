@@ -902,6 +902,81 @@ button:disabled::before {
   opacity: 0.9;
 }
 
+/* Monsters gallery tiles get the exact same treatment as Weapons/Shields
+   above — same structure, same tuning — just pointed at the monster frame
+   asset (images/frames/monster.png) and .card--monster's own --art-* /
+   --hex-* percentages (15% / 14% / 85% / 71% and 40.2% / 75.4% / 59.9% /
+   89.3% — identical to .card--weapon's own art box, since "Card frame
+   artwork" in CLAUDE.md notes the monster/weapon frames share the same
+   rail/hexagon layout) instead of the weapon frame's. See the Weapons
+   block above for the reasoning behind each individual rule; it isn't
+   repeated here. */
+#gallery-grid.gallery-grid--monsters {
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.gallery-item[data-kind='monsters'] {
+  background-color: transparent;
+  gap: 0.3rem;
+  padding: 0.2rem;
+}
+
+.gallery-item[data-kind='monsters'] .gallery-item-portrait {
+  position: relative;
+  width: 100%;
+  max-width: none;
+  height: auto;
+  aspect-ratio: 100 / 140;
+  background-color: transparent;
+  background-image: url('images/frames/monster.png');
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.gallery-item[data-kind='monsters'] .gallery-item-art {
+  position: absolute;
+  left: 15%;
+  top: 14%;
+  right: 15%;
+  bottom: 29%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.gallery-item[data-kind='monsters'] .gallery-item-art img {
+  width: auto;
+  height: auto;
+  max-width: 90%;
+  max-height: 90%;
+  object-fit: contain;
+}
+
+.gallery-item[data-kind='monsters'] .gallery-item-name {
+  color: var(--text);
+  font-family: var(--font-display);
+}
+
+.gallery-item[data-kind='monsters'] .gallery-item-rank {
+  position: absolute;
+  left: 40.2%;
+  top: 75.4%;
+  right: 40.1%;
+  bottom: 10.7%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--card-text);
+  opacity: 0.9;
+}
+
 /* --- gallery item detail popup (opened by clicking a weapon/monster tile) -
    Sits on top of #gallery-overlay (z-index 300), so it needs a higher one
    of its own — everything else reuses the exact same dimmed-backdrop +
