@@ -12,8 +12,8 @@
 //
 // Deliberately its own last-loaded script rather than folded into main.js:
 // it only needs read access to data already defined by the earlier scripts
-// (CARD_LIST, SHIELD_DAMAGED_IMAGES, CHAMPIONS, ABILITY_ICONS), no game or
-// rendering logic of its own, so it stays out of main.js's "wiring" role.
+// (CARD_LIST, CHAMPIONS, ABILITY_ICONS), no game or rendering logic of its
+// own, so it stays out of main.js's "wiring" role.
 // ---------------------------------------------------------------------------
 
 // If a single image somehow never fires load or error (a stalled request,
@@ -34,7 +34,6 @@ function collectPreloadImageUrls() {
   CARD_LIST.forEach((card) => {
     if (card.image) urls.add(card.image);
   });
-  Object.values(SHIELD_DAMAGED_IMAGES).forEach((url) => urls.add(url));
   CHAMPIONS.forEach((champion) => {
     if (champion.image) urls.add(champion.image);
   });
@@ -70,7 +69,7 @@ function runPreload() {
   function updateProgress() {
     const pct = total === 0 ? 100 : Math.round((loaded / total) * 100);
     if (fill) fill.style.width = `${pct}%`;
-    if (text) text.textContent = `Loading... ${pct}%`;
+    if (text) text.textContent = t('loadingText', { pct });
   }
 
   function finish() {

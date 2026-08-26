@@ -22,27 +22,81 @@ const FRAGILE_MAX_USES = 2;
 // not to render on every system/font, while a plain letter always does and
 // stays consistent with the rest of the game's simple, text/symbol-based UI
 // (e.g. the ⚔ empty-weapon-slot icon). The full name is always available via
-// the badge's tooltip and #weapon-status, so a single letter is enough.
+// the badge's tooltip and #weapon-status, so a single letter is enough. The
+// letters themselves stay fixed (V/E/S/F) regardless of language — they're a
+// compact internal code, not required to match the translated name's first
+// letter, the same way a game icon doesn't need to spell out its own label.
+//
+// name/description are per-language (see js/i18n.js), keyed in
+// WEAPON_EFFECT_TEXT below. Every existing call site reads WEAPON_EFFECTS[id]
+// .name/.description as a plain property (fillCardFace()/renderWeaponSlot()
+// in js/ui.js), not through a function, so each entry below uses a getter —
+// same reasoning and pattern as CHAMPIONS in js/champion-icons.js — to stay
+// live-reactive to a language switch without touching those call sites.
+const WEAPON_EFFECT_TEXT = {
+  en: {
+    vampiric: {
+      name: 'Vampiric',
+      description: 'Heals 1 HP whenever this weapon defeats a monster.',
+    },
+    electric: {
+      name: 'Electric',
+      description: 'Every other revealed monster loses 1 strength whenever this weapon is used in a fight.',
+    },
+    sturdy: {
+      name: 'Sturdy',
+      description: "This weapon's usable strength can never drop by more than 2 per fight.",
+    },
+    fragile: {
+      name: 'Fragile',
+      description: `Breaks after ${FRAGILE_MAX_USES} uses, no matter which monster it's used on.`,
+    },
+  },
+  de: {
+    vampiric: {
+      name: 'Vampirisch',
+      description: 'Heilt 1 LP, wenn diese Waffe ein Monster besiegt.',
+    },
+    electric: {
+      name: 'Elektrisch',
+      description: 'Jedes andere aufgedeckte Monster verliert 1 Stärke, wenn diese Waffe in einem Kampf eingesetzt wird.',
+    },
+    sturdy: {
+      name: 'Robust',
+      description: 'Die einsetzbare Stärke dieser Waffe kann pro Kampf nie um mehr als 2 sinken.',
+    },
+    fragile: {
+      name: 'Zerbrechlich',
+      description: `Zerbricht nach ${FRAGILE_MAX_USES} Anwendungen, egal gegen welches Monster.`,
+    },
+  },
+};
+
+function weaponEffectText(id, field) {
+  const table = WEAPON_EFFECT_TEXT[getLang()] || WEAPON_EFFECT_TEXT.en;
+  return table[id][field];
+}
+
 const WEAPON_EFFECTS = {
   vampiric: {
-    name: 'Vampiric',
     icon: 'V',
-    description: 'Heals 1 HP whenever this weapon defeats a monster.',
+    get name() { return weaponEffectText('vampiric', 'name'); },
+    get description() { return weaponEffectText('vampiric', 'description'); },
   },
   electric: {
-    name: 'Electric',
     icon: 'E',
-    description: 'Every other revealed monster loses 1 strength whenever this weapon is used in a fight.',
+    get name() { return weaponEffectText('electric', 'name'); },
+    get description() { return weaponEffectText('electric', 'description'); },
   },
   sturdy: {
-    name: 'Sturdy',
     icon: 'S',
-    description: "This weapon's usable strength can never drop by more than 2 per fight.",
+    get name() { return weaponEffectText('sturdy', 'name'); },
+    get description() { return weaponEffectText('sturdy', 'description'); },
   },
   fragile: {
-    name: 'Fragile',
     icon: 'F',
-    description: `Breaks after ${FRAGILE_MAX_USES} uses, no matter which monster it's used on.`,
+    get name() { return weaponEffectText('fragile', 'name'); },
+    get description() { return weaponEffectText('fragile', 'description'); },
   },
 };
 

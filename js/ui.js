@@ -48,7 +48,7 @@ function fillCardFace(el, card) {
     const badge = document.createElement('div');
     badge.className = 'card-effect-badge';
     badge.textContent = effect.icon;
-    badge.title = `${effect.name} — ${effect.description}`;
+    badge.title = `${effect.name}: ${effect.description}`;
     el.appendChild(badge);
   }
 
@@ -138,11 +138,11 @@ function renderRoom() {
 
     const tagline = document.createElement('p');
     tagline.id = 'room-empty-tagline';
-    tagline.textContent = 'The dungeon awaits...';
+    tagline.textContent = t('roomEmptyTagline');
 
     const cta = document.createElement('button');
     cta.id = 'room-start-btn';
-    cta.textContent = 'New Game';
+    cta.textContent = t('newGame');
 
     empty.appendChild(tagline);
     empty.appendChild(cta);
@@ -154,7 +154,7 @@ function renderRoom() {
 }
 
 function renderDeckCount() {
-  document.getElementById('deck-count').textContent = `Deck: ${state.deck.length} cards left`;
+  document.getElementById('deck-count').textContent = t('deckCount', { n: state.deck.length });
 }
 
 /** Fills the small circular portrait next to the HP bar with the currently
@@ -165,7 +165,7 @@ function renderChampionBadge() {
   const badge = document.getElementById('champion-badge');
   const champ = championById(state.champion);
   fillPortrait(badge, champ && champ.image, champ && champ.name, champ ? champ.name.charAt(0) : '?');
-  badge.title = champ ? `${champ.name} — ${champ.description}` : '';
+  badge.title = champ ? `${champ.name}: ${champ.description}` : '';
 }
 
 /** Fills #ability-btn with the current champion's active-ability icon (see
@@ -185,7 +185,7 @@ function renderAbilityButton() {
     icon.alt = '';
   }
   document.getElementById('ability-btn').title = champ
-    ? `${champ.name}'s ability (${abilityManaCostFor(champ.id)} mana)`
+    ? t('championAbilityTitle', { name: champ.name, cost: abilityManaCostFor(champ.id) })
     : '';
 }
 
@@ -327,15 +327,17 @@ function championAbilityProgress() {
   if (state.champion === 'paladin') {
     const total = 5;
     const filled = state.monstersDefeated === 0 ? 0 : ((state.monstersDefeated - 1) % total) + 1;
-    return { total, filled, label: `${filled} / ${total} kills until Paladin's heal` };
+    return { total, filled, label: t('paladinProgress', { filled, total }) };
   }
   if (state.champion === 'rogue') {
     const total = 2;
-    return { total, filled: Math.min(state.fleeStreak, total), label: `${state.fleeStreak} / ${total} rooms fled in a row` };
+    const filled = Math.min(state.fleeStreak, total);
+    return { total, filled, label: t('rogueProgress', { filled: state.fleeStreak, total }) };
   }
   if (state.champion === 'herbalist') {
     const total = 2;
-    return { total, filled: Math.min(state.potionsDrunkThisRoom, total), label: `${state.potionsDrunkThisRoom} / ${total} potions healed this room` };
+    const filled = Math.min(state.potionsDrunkThisRoom, total);
+    return { total, filled, label: t('herbalistProgress', { filled: state.potionsDrunkThisRoom, total }) };
   }
   return null;
 }
@@ -400,7 +402,7 @@ function renderHp() {
   const pct = Math.max(0, Math.min(100, (state.hp / state.maxHp) * 100));
   const fill = document.getElementById('hp-fill');
   fill.style.width = `${pct}%`;
-  document.getElementById('hp-text').textContent = `${state.hp} / ${state.maxHp} HP`;
+  document.getElementById('hp-text').textContent = t('hpText', { hp: state.hp, maxHp: state.maxHp });
   // Low-health pulse, purely a style hint (see .hp-bar--low in style.css).
   document.getElementById('hp-bar').classList.toggle('hp-bar--low', pct > 0 && pct <= 25);
 }
@@ -492,9 +494,9 @@ function renderWeaponSlot() {
   slot.classList.toggle('weapon-slot-inactive', !state.useWeaponPreference);
 
   if (!state.useWeaponPreference) {
-    status.textContent = 'Fighting bare-handed';
+    status.textContent = t('fightingBareHanded');
   } else if (!state.equippedWeapon) {
-    status.textContent = 'No weapon equipped';
+    status.textContent = t('noWeaponEquipped');
   } else {
     // Berserker's Frenzy (see fightMonster()/isWeaponUsableOn() in
     // js/state.js) lifts the degrade restriction entirely while active —
@@ -503,12 +505,12 @@ function renderWeaponSlot() {
     const frenzied = state.champion === 'berserker' && state.berserkerFrenzyCharges > 0;
     const restriction =
       frenzied
-        ? `Frenzy overrides the degrade limit (${state.berserkerFrenzyCharges} left)`
+        ? t('frenzyOverrides', { n: state.berserkerFrenzyCharges })
         : state.weaponMaxMonster === null
-          ? 'Can defeat any monster'
-          : `Can only defeat monsters weaker than ${state.weaponMaxMonster}`;
+          ? t('canDefeatAny')
+          : t('canOnlyDefeatWeaker', { n: state.weaponMaxMonster });
     const effect = state.equippedWeapon.effect && WEAPON_EFFECTS[state.equippedWeapon.effect];
-    status.textContent = effect ? `${restriction} — ${effect.name}: ${effect.description}` : restriction;
+    status.textContent = effect ? `${restriction}. ${effect.name}: ${effect.description}` : restriction;
   }
 
   renderWeaponFragileBar();
@@ -536,7 +538,7 @@ function renderWeaponFragileBar() {
 
   const filled = Math.max(0, state.weaponFragileUsesRemaining);
   bar.classList.remove('hidden');
-  bar.title = `${filled} / ${FRAGILE_MAX_USES} uses left before this weapon breaks`;
+  bar.title = t('fragileBarTitle', { filled, total: FRAGILE_MAX_USES });
   bar.innerHTML = '';
   for (let i = 0; i < FRAGILE_MAX_USES; i++) {
     const segment = document.createElement('div');
@@ -547,11 +549,7 @@ function renderWeaponFragileBar() {
 
 /** Mirrors renderWeaponSlot() for the shield slot — shields don't have a
  * status line or toggle to keep in sync (no "using shield" preference),
- * just the slot's own display. Once the equipped shield has taken damage
- * (rank < baseRank — it's still equipped, so rank is always > 0 here; a
- * shield that hits 0 unequips itself, see fightMonster() in js/state.js)
- * this also swaps in its "used"/cracked artwork (see shieldDamagedImageFor()
- * in js/shield-icons.js) instead of the pristine artwork. */
+ * just the slot's own display. */
 function renderShieldSlot() {
   const slot = document.getElementById('shield-slot-card');
 
@@ -562,14 +560,10 @@ function renderShieldSlot() {
     slot.innerHTML = '<div class="shield-icon">S</div>';
   } else {
     const shield = state.equippedShield;
-    const isDamaged = shield.rank < shield.baseRank;
     slot.className = `card card--shield card--tier-${cardTier(shield.rank)}`;
     slot.dataset.suit = shield.suit;
     applyGlowColor(slot, shield);
-    const displayCard = isDamaged
-      ? { ...shield, image: shieldDamagedImageFor(shield.baseRank) || shield.image }
-      : shield;
-    fillCardFace(slot, displayCard);
+    fillCardFace(slot, shield);
   }
 }
 
@@ -590,10 +584,10 @@ function renderFleeButton() {
   btn.title =
     state.fleeStreak >= maxFleeStreak
       ? maxFleeStreak > 1
-        ? "Can't flee three rooms in a row"
-        : "Can't flee two rooms in a row"
+        ? t('fleeCantThrice')
+        : t('fleeCantTwice')
       : state.room.length !== 4
-        ? 'Can only flee a full, untouched room'
+        ? t('fleeOnlyFullRoom')
         : '';
 }
 
@@ -612,7 +606,7 @@ function renderGameOverBanner() {
   overlay.classList.toggle('gameover-won', state.outcome === 'won');
   overlay.classList.toggle('gameover-lost', state.outcome === 'lost');
   document.getElementById('gameover-text').textContent =
-    state.outcome === 'won' ? 'Victory' : 'Defeat';
+    state.outcome === 'won' ? t('victory') : t('defeat');
 }
 
 // --- start-screen galleries (Champions/Weapons/Monsters) -------------------
@@ -727,28 +721,28 @@ function renderGallery(kind) {
   grid.classList.toggle('gallery-grid--monsters', kind === 'monsters');
 
   if (kind === 'weapons') {
-    title.textContent = 'Weapons';
+    title.textContent = t('galleryTitleWeapons');
     for (let rank = 2; rank <= 10; rank++) {
       grid.appendChild(
         buildGalleryItem('weapons', `images/weapons/${rank}.png`, weaponNameFor(rank), rank)
       );
     }
   } else if (kind === 'monsters') {
-    title.textContent = 'Monsters';
+    title.textContent = t('galleryTitleMonsters');
     for (let rank = 2; rank <= 14; rank++) {
       grid.appendChild(
         buildGalleryItem('monsters', `images/monsters/${rank}.png`, monsterNameFor(rank), rank)
       );
     }
   } else if (kind === 'shields') {
-    title.textContent = 'Shields';
+    title.textContent = t('galleryTitleShields');
     for (let rank = 3; rank <= 5; rank++) {
       grid.appendChild(
         buildGalleryItem('shields', `images/shields/${rank}.png`, shieldNameFor(rank), rank)
       );
     }
   } else {
-    title.textContent = 'Champions';
+    title.textContent = t('galleryTitleChampions');
     CHAMPIONS.forEach((champ) => {
       grid.appendChild(buildGalleryItem('champions', champ.image, champ.name, champ.id, ''));
     });
@@ -767,12 +761,12 @@ function renderGalleryDetail(kind, key) {
     image = `images/weapons/${key}.png`;
     name = weaponNameFor(key);
     description = weaponDescriptionFor(key);
-    subtitle = `Strength ${RANK_LABELS[key]}`;
+    subtitle = t('strengthLabel', { n: RANK_LABELS[key] });
   } else if (kind === 'monsters') {
     image = `images/monsters/${key}.png`;
     name = monsterNameFor(key);
     description = monsterDescriptionFor(key);
-    subtitle = `Strength ${RANK_LABELS[key]}`;
+    subtitle = t('strengthLabel', { n: RANK_LABELS[key] });
   } else if (kind === 'shields') {
     image = `images/shields/${key}.png`;
     name = shieldNameFor(key);
@@ -780,13 +774,13 @@ function renderGalleryDetail(kind, key) {
     // Shields block damage rather than dealing/healing it, so their number
     // is labeled "Block" here instead of "Strength" (unlike weapons/
     // monsters) — see js/shield-icons.js.
-    subtitle = `Block ${RANK_LABELS[key]}`;
+    subtitle = t('blockLabel', { n: RANK_LABELS[key] });
   } else {
     const champ = championById(key);
     image = champ ? champ.image : null;
     name = champ ? champ.name : '';
     description = champ ? champ.description : '';
-    subtitle = 'Passive Ability';
+    subtitle = t('passiveAbilityLabel');
   }
 
   const portrait = document.getElementById('gallery-detail-image');
@@ -835,7 +829,40 @@ function renderChampionSelect() {
   CHAMPIONS.forEach((champ) => grid.appendChild(buildChampionSelectItem(champ)));
 }
 
+// --- language (see js/i18n.js for getLang()/setLang()/t()) -----------------
+
+/** Applies the current language to every static piece of markup in
+ * index.html — button labels, headings, aria-labels, and the #rules text —
+ * via data-i18n/data-i18n-html/data-i18n-aria attributes set on those
+ * elements. Called once on page load and again whenever the language is
+ * switched from the Options screen (see applyLanguage() in js/main.js).
+ * Doesn't touch anything already rendered from `state` (the room, HP bar,
+ * weapon slot, etc.) — that's renderAll()'s job, called separately right
+ * after this by applyLanguage(). */
+function applyStaticI18n() {
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach((el) => {
+    el.innerHTML = t(el.dataset.i18nHtml);
+  });
+  document.querySelectorAll('[data-i18n-aria]').forEach((el) => {
+    el.setAttribute('aria-label', t(el.dataset.i18nAria));
+  });
+}
+
+/** Highlights whichever of the two language buttons in #options-overlay
+ * matches getLang(). Called from renderAll() (harmless before the overlay's
+ * ever been opened) and right after a language switch. */
+function renderLanguageButtons() {
+  const lang = getLang();
+  document.querySelectorAll('.lang-btn').forEach((btn) => {
+    btn.classList.toggle('lang-btn--active', btn.dataset.lang === lang);
+  });
+}
+
 function renderAll() {
+  renderLanguageButtons();
   renderChampionBadge();
   renderAbilityButton();
   renderAbilityInfo();

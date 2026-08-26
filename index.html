@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,15 +21,16 @@
 
   <div id="start-screen" class="hidden">
     <h1 id="start-logo">Last Deck Standing</h1>
-    <p id="start-tagline">A dungeon-crawling card game</p>
-    <button id="start-new-game-btn">New Game</button>
+    <p id="start-tagline" data-i18n="startTagline">A dungeon-crawling card game</p>
+    <button id="start-new-game-btn" data-i18n="newGame">New Game</button>
     <div id="start-nav">
-      <button id="champions-btn">Champions</button>
-      <button id="weapons-btn">Weapons</button>
-      <button id="shields-btn">Shields</button>
-      <button id="monsters-btn">Monsters</button>
-      <button id="anleitung-btn">How to Play</button>
-      <button id="tutorial-btn">Tutorial</button>
+      <button id="champions-btn" data-i18n="champions">Champions</button>
+      <button id="weapons-btn" data-i18n="weapons">Weapons</button>
+      <button id="shields-btn" data-i18n="shields">Shields</button>
+      <button id="monsters-btn" data-i18n="monsters">Monsters</button>
+      <button id="anleitung-btn" data-i18n="howToPlay">How to Play</button>
+      <button id="tutorial-btn" data-i18n="tutorial">Tutorial</button>
+      <button id="options-btn" data-i18n="options">Options</button>
     </div>
   </div>
 
@@ -37,7 +38,7 @@
     <h1>Last Deck Standing</h1>
 
     <div id="controls">
-      <button id="menu-btn" aria-label="Open menu">
+      <button id="menu-btn" aria-label="Open menu" data-i18n-aria="openMenuAria">
         <span class="hamburger-icon"><span></span><span></span><span></span></span>
       </button>
       <span id="deck-count">Deck: 0 cards left</span>
@@ -57,7 +58,7 @@
 
     <div id="room"></div>
 
-    <button id="flee-btn">Flee Room</button>
+    <button id="flee-btn" data-i18n="fleeRoom">Flee Room</button>
 
     <p id="message"></p>
 
@@ -74,33 +75,34 @@
         </div>
         <div id="ability-wrap">
           <div id="mana-ring"></div>
-          <button id="ability-btn" type="button" aria-label="Champion ability">
+          <button id="ability-btn" type="button" aria-label="Champion ability" data-i18n-aria="championAbilityAria">
             <img id="ability-icon" class="ability-icon" alt="">
           </button>
-          <button id="ability-cancel-btn" class="hidden" type="button" aria-label="Cancel targeting">✕</button>
-          <div id="ability-info-btn" tabindex="0" aria-label="Ability info">i</div>
+          <button id="ability-cancel-btn" class="hidden" type="button" aria-label="Cancel targeting" data-i18n-aria="cancelTargetingAria">✕</button>
+          <div id="ability-info-btn" tabindex="0" aria-label="Ability info" data-i18n-aria="abilityInfoAria">i</div>
           <div id="ability-info-popup" role="tooltip">
             <div id="ability-info-name"></div>
             <div id="ability-info-text"></div>
           </div>
         </div>
       </div>
-      <p id="weapon-status">No weapon equipped</p>
+      <p id="weapon-status" data-i18n="noWeaponEquipped">No weapon equipped</p>
       <label class="toggle-wrapper" for="weapon-toggle">
         <input type="checkbox" id="weapon-toggle" checked>
-        <span>Using weapon</span>
+        <span data-i18n="weaponToggleLabel">Using weapon</span>
       </label>
     </div>
   </div>
 
   <div id="menu-overlay" class="hidden">
     <div id="menu-panel">
-      <button id="menu-close-btn" aria-label="Close menu">✕</button>
+      <button id="menu-close-btn" aria-label="Close menu" data-i18n-aria="closeMenuAria">✕</button>
       <h2 id="menu-title">Last Deck Standing</h2>
-      <button id="new-game-btn">New Game</button>
-      <button id="back-to-menu-btn">Main Menu</button>
+      <button id="new-game-btn" data-i18n="newGame">New Game</button>
+      <button id="menu-options-btn" data-i18n="options">Options</button>
+      <button id="back-to-menu-btn" data-i18n="mainMenu">Main Menu</button>
 
-      <div id="rules">
+      <div id="rules" data-i18n-html="rulesHtml">
         <h3>The Dungeon Deck</h3>
         <p>47 cards, each with its own artwork and a strength from 2 to 14.</p>
         <ul>
@@ -168,13 +170,13 @@
     <div id="gameover-banner">
       <span id="gameover-text">Victory</span>
     </div>
-    <button id="play-again-btn">Play Again</button>
-    <button id="gameover-menu-btn">Main Menu</button>
+    <button id="play-again-btn" data-i18n="playAgain">Play Again</button>
+    <button id="gameover-menu-btn" data-i18n="mainMenu">Main Menu</button>
   </div>
 
   <div id="gallery-overlay" class="hidden">
     <div id="gallery-panel">
-      <button id="gallery-close-btn" aria-label="Close">✕</button>
+      <button id="gallery-close-btn" aria-label="Close" data-i18n-aria="close">✕</button>
       <h2 id="gallery-title">Gallery</h2>
       <div id="gallery-grid"></div>
     </div>
@@ -182,7 +184,7 @@
 
   <div id="gallery-detail-overlay" class="hidden">
     <div id="gallery-detail-panel">
-      <button id="gallery-detail-close-btn" aria-label="Close">✕</button>
+      <button id="gallery-detail-close-btn" aria-label="Close" data-i18n-aria="close">✕</button>
       <div id="gallery-detail-image"></div>
       <h2 id="gallery-detail-title"></h2>
       <p id="gallery-detail-rank"></p>
@@ -192,9 +194,26 @@
 
   <div id="champion-select-overlay" class="hidden">
     <div id="champion-select-panel">
-      <button id="champion-select-close-btn" aria-label="Close">✕</button>
-      <h2 id="champion-select-title">Choose your Champion</h2>
+      <button id="champion-select-close-btn" aria-label="Close" data-i18n-aria="close">✕</button>
+      <h2 id="champion-select-title" data-i18n="chooseChampionTitle">Choose your Champion</h2>
       <div id="champion-select-grid"></div>
+    </div>
+  </div>
+
+  <!-- Options overlay (language settings) — reuses #menu-overlay/
+       #gallery-overlay's exact chrome, see the shared selectors in
+       style.css, and openOptions()/closeOptions() in js/main.js. -->
+  <div id="options-overlay" class="hidden">
+    <div id="options-panel">
+      <button id="options-close-btn" aria-label="Close" data-i18n-aria="close">✕</button>
+      <h2 id="options-title" data-i18n="optionsTitle">Options</h2>
+      <div id="options-section-language">
+        <h3 data-i18n="languageLabel">Language</h3>
+        <div id="language-buttons">
+          <button type="button" class="lang-btn" data-lang="de">Deutsch</button>
+          <button type="button" class="lang-btn" data-lang="en">English</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -202,12 +221,13 @@
        top-level overlay elements (same pattern as #gameover-overlay etc.)
        rather than children of #game-screen, since they must stay above
        everything while the tutorial runs. -->
-  <button id="tutorial-skip-btn" class="hidden" type="button">Skip Tutorial ✕</button>
+  <button id="tutorial-skip-btn" class="hidden" type="button" data-i18n="skipTutorial">Skip Tutorial ✕</button>
   <div id="tutorial-coachmark" class="hidden">
     <p id="tutorial-coachmark-text"></p>
     <button id="tutorial-next-btn" class="hidden" type="button">Next</button>
   </div>
 
+  <script src="js/i18n.js"></script>
   <script src="js/cards.js"></script>
   <script src="js/monster-icons.js"></script>
   <script src="js/potion-icons.js"></script>

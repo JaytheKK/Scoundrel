@@ -23,34 +23,65 @@
 // The actual gameplay logic for each passive lives in js/state.js
 // (fightMonster()/drinkPotion()/fleeRoom()), gated on `state.champion`
 // matching the id below — this file only holds the display data.
+//
+// name/description are per-language (see js/i18n.js) but every existing call
+// site reads them as a plain `champ.name`/`champ.description` property, not
+// through a function — CHAMPIONS below uses a getter for each so that plain
+// property access still works everywhere, while staying live-reactive to a
+// language switch (the getter re-reads the current language every time it's
+// accessed, rather than freezing in whatever language was active when the
+// object was built).
 // ---------------------------------------------------------------------------
 
-const CHAMPIONS = [
-  {
-    id: 'paladin',
-    name: 'Paladin',
-    description: 'Every 5 monsters you defeat, you heal 2 HP',
-    image: 'images/champions/paladin.png',
-  },
-  {
-    id: 'herbalist',
-    name: 'Herbalist',
-    description: 'You can drink two potions per room instead of one',
-    image: 'images/champions/herbalist.png',
-  },
-  {
-    id: 'rogue',
-    name: 'Rogue',
-    description: 'You are allowed to flee two rooms in a row instead of one',
-    image: 'images/champions/rogue.png',
-  },
-  {
-    id: 'berserker',
-    name: 'Berserker',
-    description: 'Fighting bare-handed, you take 2 less damage from monsters',
-    image: 'images/champions/berserker.png',
-  },
+const CHAMPION_BASE = [
+  { id: 'paladin', image: 'images/champions/paladin.png' },
+  { id: 'herbalist', image: 'images/champions/herbalist.png' },
+  { id: 'rogue', image: 'images/champions/rogue.png' },
+  { id: 'berserker', image: 'images/champions/berserker.png' },
 ];
+
+const CHAMPION_NAMES = {
+  en: {
+    paladin: 'Paladin',
+    herbalist: 'Herbalist',
+    rogue: 'Rogue',
+    berserker: 'Berserker',
+  },
+  de: {
+    paladin: 'Paladin',
+    herbalist: 'Kräuter\u00ADkundige',
+    rogue: 'Schurke',
+    berserker: 'Berserker',
+  },
+};
+
+const CHAMPION_DESCRIPTIONS = {
+  en: {
+    paladin: 'For every 5 monsters you defeat, you heal 2 HP',
+    herbalist: 'You can drink two potions per room instead of one',
+    rogue: 'You are allowed to flee two rooms in a row instead of one',
+    berserker: 'Fighting bare-handed, you take 2 less damage from monsters',
+  },
+  de: {
+    paladin: 'Für alle 5 besiegten Monster heilst du 2 LP',
+    herbalist: 'Du kannst zwei Tränke pro Raum trinken statt nur einen',
+    rogue: 'Du darfst zwei Räume hintereinander fliehen statt nur einen',
+    berserker: 'Im bloßhändigen Kampf erleidest du 2 weniger Schaden von Monstern',
+  },
+};
+
+const CHAMPIONS = CHAMPION_BASE.map((base) => ({
+  id: base.id,
+  image: base.image,
+  get name() {
+    const table = CHAMPION_NAMES[getLang()] || CHAMPION_NAMES.en;
+    return table[base.id];
+  },
+  get description() {
+    const table = CHAMPION_DESCRIPTIONS[getLang()] || CHAMPION_DESCRIPTIONS.en;
+    return table[base.id];
+  },
+}));
 
 function championById(id) {
   return CHAMPIONS.find((c) => c.id === id) || null;

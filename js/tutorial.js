@@ -95,84 +95,78 @@ let tutorialTargetEl = null;
 const TUTORIAL_STEPS = [
   {
     targetType: 'info',
-    text:
-      "Welcome to Scoundrel! This short tutorial walks you through one real, pre-arranged dungeon run so you can see every rule in action. Click Start to begin.",
+    textKey: 'tutorialWelcome',
   },
   {
     targetType: 'card',
     targetKey: 'spades-5',
-    text:
-      "This is a Monster card. Its number is how much damage it deals. You have no weapon yet, so click it to fight bare-handed and take full damage.",
+    textKey: 'tutorialStep1',
     advanceDelayMs: 600,
   },
   {
     targetType: 'card',
     targetKey: 'diamonds-6',
-    text: "This is a Weapon card. Click it to equip it, it'll reduce damage from monsters you fight next.",
+    textKey: 'tutorialStep2',
     advanceDelayMs: 700,
   },
   {
     targetType: 'card',
     targetKey: 'clubs-9',
-    text:
-      "Fight this monster with your weapon equipped: damage = monster strength minus weapon strength. Click it to see the difference.",
+    textKey: 'tutorialStep3',
     advanceDelayMs: 1800,
   },
   {
     targetType: 'card',
     targetKey: 'hearts-8',
-    text:
-      "Only 3 of the 4 room cards get resolved each round. The 4th, like this Health Potion, carries into the next room. Click it to drink and heal HP.",
+    textKey: 'tutorialStep4',
     advanceDelayMs: 600,
   },
   {
     targetType: 'card',
     targetKey: 'hearts-3',
-    text: "Only the first potion in a room actually heals. This one won't, but it still needs to be resolved. Click it to see.",
+    textKey: 'tutorialStep5',
     advanceDelayMs: 600,
   },
   {
     targetType: 'card',
     targetKey: 'clubs-11',
-    text:
-      "This monster (11) is stronger than the last one your weapon defeated (9), so the weapon can't be used on it, that's its wear rule. Click it to fight bare-handed.",
+    textKey: 'tutorialStep6',
     advanceDelayMs: 600,
   },
   {
     targetType: 'card',
     targetKey: 'shields-5',
-    text: "Shields are a third equippable item. Click to equip it, it'll block some incoming damage and has its own durability.",
+    textKey: 'tutorialStep7',
     advanceDelayMs: 700,
   },
   {
     targetType: 'card',
     targetKey: 'spades-7',
-    text: "Fight this one, your shield will absorb whatever damage still gets through after your weapon.",
+    textKey: 'tutorialStep8',
     advanceDelayMs: 1800,
   },
   {
     targetType: 'card',
     targetKey: 'spades-10',
-    text: "This hits harder than your shield has durability left, watch it shatter after blocking what it can.",
+    textKey: 'tutorialStep9',
     advanceDelayMs: 900,
   },
   {
     targetType: 'element',
     targetKey: 'flee-btn',
-    text: "You can avoid an entire room once, but not twice in a row. Click 'Flee Room' to send this whole room to the bottom of the deck.",
+    textKey: 'tutorialStep10',
     advanceDelayMs: 400,
   },
   {
     targetType: 'card',
     targetKey: 'hearts-7',
-    text: "Notice 'Flee Room' is now disabled. You can't flee two rooms in a row. For now, drink this potion to heal back up.",
+    textKey: 'tutorialStep11',
     advanceDelayMs: 600,
   },
   {
     targetType: 'element',
     targetKey: 'ability-wrap',
-    text:
-      "Every champion has an active ability, powered by mana (the ring around this button) gained from clearing or fleeing rooms, filled early here so you can try it now. Paladin's Blessing reduces your next 3 hits by 2 damage each. Click to activate it.",
+    textKey: 'tutorialStep12',
     advanceDelayMs: 400,
     before() {
       // Normally mana only fills gradually via gainMana() (js/state.js) as
@@ -186,14 +180,13 @@ const TUTORIAL_STEPS = [
   {
     targetType: 'card',
     targetKey: 'spades-9',
-    text: 'Now fight this monster. Blessing will cut the damage you take by 2.',
+    textKey: 'tutorialStep13',
     advanceDelayMs: 600,
   },
   {
     targetType: 'info',
     isFinal: true,
-    text:
-      "That's the essentials: monsters, weapons and their wear, potions and their limit, shields, fleeing, and your champion's ability. You're ready, good luck in the real dungeon!",
+    textKey: 'tutorialFinal',
   },
 ];
 
@@ -257,11 +250,11 @@ function showTutorialStep(index) {
 
   const coachmark = document.getElementById('tutorial-coachmark');
   const nextBtn = document.getElementById('tutorial-next-btn');
-  document.getElementById('tutorial-coachmark-text').textContent = step.text;
+  document.getElementById('tutorial-coachmark-text').textContent = t(step.textKey);
   coachmark.classList.remove('hidden');
 
   if (step.targetType === 'info') {
-    nextBtn.textContent = step.isFinal ? 'Finish' : index === 0 ? 'Start Tutorial' : 'Next';
+    nextBtn.textContent = step.isFinal ? t('tutorialFinish') : index === 0 ? t('tutorialStart') : t('tutorialNext');
     nextBtn.classList.remove('hidden');
     positionCoachmarkCenter();
     return;

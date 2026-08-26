@@ -73,9 +73,16 @@
      to mean the graphic looked too big inside its frame, not that the whole
      slot (frame, hexagon, value number) should shrink. The slot itself is
      back to its normal --weapon-slot-scale size; only the art box shrinks,
-     staying centered on the same point. 0.9 = 10% smaller, tune from here
+     staying centered on the same point. 0.85 = 15% smaller (bumped down
+     from an initial 0.9/10% on a follow-up request), tune from here
      if asked again. */
-  --weapon-shield-art-scale: 0.9;
+  --weapon-shield-art-scale: 0.85;
+  /* Same idea as --weapon-shield-art-scale above, but for monster cards
+     (which previously had no shrink at all) — a request to make "the
+     monster graphics, not the card" 10% smaller. Applied the same way:
+     a transform: scale() on .card--monster's .card-art only, staying
+     centered on the same point, frame/hexagon/value number untouched. */
+  --monster-art-scale: 0.75;
   --stack-gap: 0.5rem;
 }
 
@@ -300,7 +307,8 @@ button:disabled::before {
 
 #menu-overlay,
 #gallery-overlay,
-#champion-select-overlay {
+#champion-select-overlay,
+#options-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.65);
@@ -314,13 +322,15 @@ button:disabled::before {
 
 #menu-overlay.hidden,
 #gallery-overlay.hidden,
-#champion-select-overlay.hidden {
+#champion-select-overlay.hidden,
+#options-overlay.hidden {
   display: none;
 }
 
 #menu-panel,
 #gallery-panel,
-#champion-select-panel {
+#champion-select-panel,
+#options-panel {
   position: relative;
   background: linear-gradient(180deg, var(--surface), #17171b);
   border: 1px solid var(--border);
@@ -352,7 +362,8 @@ button:disabled::before {
 
 #menu-close-btn,
 #gallery-close-btn,
-#champion-select-close-btn {
+#champion-select-close-btn,
+#options-close-btn {
   position: absolute;
   top: 0.6rem;
   right: 0.6rem;
@@ -362,7 +373,8 @@ button:disabled::before {
 
 #menu-title,
 #gallery-title,
-#champion-select-title {
+#champion-select-title,
+#options-title {
   font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.6rem;
@@ -371,6 +383,7 @@ button:disabled::before {
 }
 
 #menu-panel #new-game-btn,
+#menu-panel #menu-options-btn,
 #menu-panel #back-to-menu-btn {
   display: block;
   width: 100%;
@@ -423,6 +436,35 @@ button:disabled::before {
 
 #rules strong {
   color: var(--text);
+}
+
+/* --- options overlay (language settings) — see js/i18n.js/openOptions() in
+   js/main.js. #options-panel/#options-close-btn/#options-title reuse the
+   shared #menu-overlay/#gallery-overlay/#champion-select-overlay chrome
+   (see above); only this section's own content is styled here. ----------- */
+
+#options-section-language h3 {
+  font-family: var(--font-ui);
+  color: var(--accent);
+  font-size: 1rem;
+  margin: 0 0 0.6rem;
+  text-align: center;
+}
+
+#language-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+/* Highlights whichever language is currently active (renderLanguageButtons()
+   in js/ui.js toggles this based on getLang()) — same accent-colored,
+   filled-in treatment used elsewhere for an active/selected state (e.g.
+   .ability-segment--filled), rather than introducing a new one here. */
+.lang-btn--active {
+  background: var(--accent);
+  color: #17171b;
+  border-color: var(--accent);
 }
 
 /* --- main/start screen ------------------------------------------------------
@@ -511,8 +553,8 @@ button:disabled::before {
 /* Always a fixed grid, never flex-wrap. flex-wrap only wraps once a row
    actually runs out of room, so on a wide-but-short laptop (plenty of
    width, but failing the html-font-size tier's min-height gate a bit
-   further up this file) it used to happily fit all 6 buttons on one row
-   instead of the intended 3x2/2x3 grid, since nothing about button width
+   further up this file) it used to happily fit every nav button on one row
+   instead of the intended multi-row grid, since nothing about button width
    depends on that height gate. A grid with an explicit column count is
    controlled by width alone, so it can't make that mistake regardless of
    viewport height. Deliberately its own width-only breakpoint below, not
@@ -527,13 +569,24 @@ button:disabled::before {
   margin-top: 0.5rem;
 }
 
-/* All 6 buttons the same size, sized to fit the widest label ("How to
+/* Every nav button the same size, sized to fit the widest label ("How to
    Play") rather than each hugging its own text. min-width (not width) so a
-   future 7th button with an even longer label just grows this instead of
+   future button with an even longer label just grows this instead of
    truncating/wrapping. In rem so it scales with the root font-size same as
    everything else (see "Responsive sizing" in CLAUDE.md). */
 #start-nav button {
   min-width: 9rem;
+}
+
+/* The 7th nav button (Options) starts its own row centered, rather than
+   falling into the grid's normal left-to-right auto-placement (which would
+   land it in column 1, flush left, as the lone item on an otherwise-empty
+   final row). "grid-column: 1 / -1" spans it across every column regardless
+   of how many the current breakpoint has (2 or 3, see the media query
+   below), and justify-self centers it within that full-width span. */
+#options-btn {
+  grid-column: 1 / -1;
+  justify-self: center;
 }
 
 /* 3 columns (2 rows) once there's room for them: 3 * the 9rem button
@@ -770,12 +823,13 @@ button:disabled::before {
 .gallery-item[data-kind='weapons'] .gallery-item-art img {
   width: auto;
   height: auto;
-  /* 90% rather than 100%, a deliberate 10% shrink of just the weapon
+  /* 85% rather than 100%, a deliberate 15% shrink of just the weapon
      artwork itself (not the card/frame) — request via screenshot
-     comparison. .gallery-item-art still centers it via flexbox either
-     way, so this only pulls the art in from the edges of its box. */
-  max-width: 90%;
-  max-height: 90%;
+     comparison, bumped down again from an initial 90%/10% on a follow-up
+     request. .gallery-item-art still centers it via flexbox either way,
+     so this only pulls the art in from the edges of its box. */
+  max-width: 85%;
+  max-height: 85%;
   object-fit: contain;
 }
 
@@ -876,8 +930,10 @@ button:disabled::before {
 .gallery-item[data-kind='shields'] .gallery-item-art img {
   width: auto;
   height: auto;
-  max-width: 90%;
-  max-height: 90%;
+  /* 85%, matching the weapons block's own 15% shrink (bumped down from
+     90%/10%) — see the comment there for why. */
+  max-width: 85%;
+  max-height: 85%;
   object-fit: contain;
 }
 
@@ -951,8 +1007,15 @@ button:disabled::before {
 .gallery-item[data-kind='monsters'] .gallery-item-art img {
   width: auto;
   height: auto;
-  max-width: 90%;
-  max-height: 90%;
+  /* 80%, matching --monster-art-scale on the real in-game card (see
+     .card--monster .card-art further down) — both "10% kleiner" requests
+     were actually meant for this gallery tile, not the real card, but got
+     misapplied to the card instead since this 90% happened to already
+     equal the first request's target by coincidence. Bumped from 90% to
+     80% here now to actually deliver what was asked, matching the card's
+     final value so the two stay visually consistent with each other. */
+  max-width: 80%;
+  max-height: 80%;
   object-fit: contain;
 }
 
@@ -1946,11 +2009,22 @@ button:disabled::before {
    scale() on top of the existing --art-* box, rather than recomputing that
    box's percentages, so the shrink amount stays a single easy-to-tune
    number and the artwork stays centered on the exact same point (transform-
-   origin defaults to the element's own center). Monster/potion cards are
-   unaffected; only weapon/shield were reported as looking too big. */
+   origin defaults to the element's own center). Potion cards are
+   unaffected; weapon/shield were reported as looking too big, and monster
+   later got its own separate --monster-art-scale below for the same
+   reason, just requested/tuned independently. */
 .card--weapon .card-art,
 .card--shield .card-art {
   transform: scale(var(--weapon-shield-art-scale));
+}
+
+/* Same mechanism as .card--weapon/.card--shield above, but monster's own
+   scale value (see --monster-art-scale in :root) — kept as a separate
+   variable rather than reusing --weapon-shield-art-scale since it was
+   requested and tuned independently and there's no reason its number
+   should have to move in lockstep with the weapon/shield one. */
+.card--monster .card-art {
+  transform: scale(var(--monster-art-scale));
 }
 
 .card-suit-symbol {

@@ -76,7 +76,7 @@ function handleBackstabClick(cardId) {
   if (!card) return;
 
   if (card.type !== 'monster') {
-    renderMessage('Choose a monster to backstab, or click ✕ to cancel.');
+    renderMessage(t('backstabHint'));
     return;
   }
 
@@ -455,6 +455,54 @@ document.getElementById('menu-overlay').addEventListener('click', (event) => {
   if (event.target.id === 'menu-overlay') closeMenu();
 });
 
+// --- options (language) ------------------------------------------------------
+// Reuses #menu-overlay/#gallery-overlay's exact chrome (see the shared
+// selectors in style.css) rather than duplicating it, same as every other
+// overlay in this project. Reachable from the start screen's own "Options"
+// button and from a matching button inside the in-game hamburger menu — the
+// latter closes the menu first (see openMenu()/closeMenu() above) so only
+// one dimmed overlay is ever showing at a time, the same single-overlay-swap
+// pattern "Anleitung" already uses for the rules text.
+
+function openOptions() {
+  renderLanguageButtons();
+  document.getElementById('options-overlay').classList.remove('hidden');
+}
+
+function closeOptions() {
+  document.getElementById('options-overlay').classList.add('hidden');
+}
+
+/** Switches the active language, re-applies it to every static piece of UI
+ * (buttons, headings, the rules text — see applyStaticI18n() in js/ui.js),
+ * and re-renders everything currently driven by `state` so an in-progress
+ * game (message, weapon status, HP text, etc.) updates immediately too.
+ * renderAll() is safe to call even before any game has started — it just
+ * redraws the empty-room call-to-action and the default equipment-slot
+ * placeholders with the new language's text, same as it always does. */
+function applyLanguage(lang) {
+  setLang(lang);
+  document.documentElement.lang = lang;
+  applyStaticI18n();
+  renderAll();
+}
+
+document.getElementById('options-btn').addEventListener('click', openOptions);
+document.getElementById('menu-options-btn').addEventListener('click', () => {
+  closeMenu();
+  openOptions();
+});
+document.getElementById('options-close-btn').addEventListener('click', closeOptions);
+
+// Clicking the dimmed backdrop (not the panel itself) closes Options.
+document.getElementById('options-overlay').addEventListener('click', (event) => {
+  if (event.target.id === 'options-overlay') closeOptions();
+});
+
+document.querySelectorAll('.lang-btn').forEach((btn) => {
+  btn.addEventListener('click', () => applyLanguage(btn.dataset.lang));
+});
+
 // --- start screen galleries (Champions/Weapons/Monsters) + Anleitung -------
 // "Anleitung" reuses the same rules overlay as the in-game hamburger menu
 // (#menu-overlay) rather than duplicating the rules text anywhere else.
@@ -550,10 +598,18 @@ document.addEventListener('keydown', (event) => {
     closeGalleryDetail();
     closeGallery();
     closeChampionSelect();
+    closeOptions();
   }
 });
 
 // --- initial page load -------------------------------------------------------
+// Apply the stored (or default) language to the static UI before anything
+// else renders, so the very first paint — start screen, empty room, equipment
+// slots — already shows the right language instead of flashing English first.
+document.documentElement.lang = getLang();
+applyStaticI18n();
+renderLanguageButtons();
+
 // state starts with an empty room (no game started yet); render that empty
 // state (the New Game call-to-action) and the flee button's disabled look
 // instead of relying on the static HTML markup to already match it.

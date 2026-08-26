@@ -411,10 +411,14 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     element rather than the outermost styled box, check the outer box's
     background too, not just the element the frame image is actually on.**
     Two further tuning passes since, both by request:
-    - The artwork itself (not the frame/card) is deliberately shrunk 10%
-      inside its box — `.gallery-item[data-kind='weapons'] .gallery-item-art
-      img`'s `max-width`/`max-height` are `90%`, not `100%`; still centered
-      by the same flex parent either way.
+    - The artwork itself (not the frame/card) is deliberately shrunk inside
+      its box — `.gallery-item[data-kind='weapons'] .gallery-item-art
+      img`'s `max-width`/`max-height` started at `90%` (10% shrink), later
+      turned down to `85%` (15% shrink) on a follow-up request that also
+      re-tuned `--weapon-shield-art-scale` (see below) by the same amount,
+      not `100%`; still centered by the same flex parent either way. The
+      shields gallery block carries the identical `85%` for the same
+      reason (see below).
     - `.gallery-item[data-kind='weapons']`'s own padding was cut from the
       base `.gallery-item`'s `0.5rem` down to `0.2rem`, and its grid column
       widened from an initial `5.5rem` to `7.5rem` (`#gallery-grid.gallery-
@@ -857,23 +861,20 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
       times would otherwise leave 6 duplicate ids in the DOM for the
       animation's duration, which risks `getElementById('shield-slot-card')`
       calls elsewhere resolving to a shard instead of the real slot.
-- **"Used" state while damaged but not broken:** once an equipped shield's
-  `rank` drops below its `baseRank` (it took damage this fight but survived
-  — see the block logic above), `renderShieldSlot()` swaps its artwork to a
-  second, cracked version of the same shield — `shieldDamagedImageFor(baseRank)`
-  in `js/shield-icons.js`, pointing at `images/shields/<rank>-damaged.png`
-  (cropped from a second user-supplied sheet, `images/BrokenShieldIcons.jpeg`,
-  same layout/order as `images/ShieldIcons.jpeg` — see "Shield artwork"
-  below). Still keyed off `baseRank`, not `rank` — same identity-vs-current-
-  strength split as everywhere else, just swapping in a second art asset
-  instead of only changing the displayed number. Implemented by building a
-  shallow `{ ...shield, image: <damaged path> }` copy and passing *that* to
-  `fillCardFace()` rather than the real shield card object, so `state`
-  itself never holds a "damaged" image path — only the render call does.
-  (An earlier version also added a static crack-line overlay across the
-  whole card face on top of this artwork swap — deliberately dropped, not
-  wanted; if a similar overlay effect is ever requested again, don't assume
-  this is what was meant.)
+- **No separate "damaged" artwork anymore.** An earlier version swapped an
+  equipped shield's artwork to a second, cracked image
+  (`shieldDamagedImageFor(baseRank)` in `js/shield-icons.js`, pointing at
+  `images/shields/<rank>-damaged.png`) once `rank` dropped below `baseRank`
+  but before it broke. Removed when the shield artwork was replaced with
+  new single-image-per-rank renders (see "Shield artwork" below) — there's
+  only one image per shield now, so a damaged shield just shows its normal
+  artwork with its current (lower) rank number, same as a weakened monster
+  does (`weakenMonster()` in `js/state.js`). `renderShieldSlot()` in
+  `js/ui.js` now always passes the real shield object straight to
+  `fillCardFace()`, no damaged-image branch. If a "visibly damaged" look is
+  ever wanted again, it needs a new art asset per rank (or a CSS-only
+  effect, e.g. a crack overlay) rather than assuming this old swap
+  mechanism still exists.
 - The Shields gallery (`shields-btn` on `#start-screen`, sits between
   Weapons and Monsters) follows the same `renderGallery()`/
   `renderGalleryDetail()` pattern as Weapons/Monsters, with one deliberate
@@ -886,21 +887,47 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
 
 - `images/monsters/<rank>.png` (2-14, one file per rank — both suits of a
   given rank share the same monster and image) are transparent-background
-  black silhouette PNGs, assigned automatically in `makeCard()` in
-  `js/cards.js`. They came from a user-supplied sprite sheet
-  (`images/MonstersIcons.jpeg`, kept as the source reference) that was
-  cropped and alpha-masked with a Python/PIL script (see git history for
-  the exact script — it wasn't kept as a project file since it's a one-off
-  tool, not part of the running game).
-- **Known mismatch, already corrected for:** two of the sprite sheet's
-  printed labels don't match their artwork — the box labeled "Brutmutter
-  (Riesenspinne)" is visually a golem, and the box labeled "Spinnennetz" is
-  visually the giant spider. The rank assignment follows what's actually
-  drawn: rank 10 (Golem) uses the "Brutmutter" artwork, rank 12 (Brood
-  Mother) uses the "Spinnennetz" artwork. If more monster art is added
-  later from the same or a similar sheet, double-check the artwork against
-  `MONSTER_NAMES` in `js/monster-icons.js` rather than trusting a printed
-  label.
+  full-color renders, assigned automatically in `makeCard()` in
+  `js/cards.js`. **Replaced entirely** from an earlier shared sprite-sheet
+  crop (black silhouette PNGs cut from one `images/MonstersIcons.jpeg`
+  sheet) with 13 individually user-supplied renders, one per rank, kept as
+  source reference: `images/monsters/Slime.jpeg` → 2, `Skeleton.jpeg` → 3,
+  `Wolf.jpeg` → 4, `SkeletonWarrior.jpeg` → 5 (Armored Skeleton),
+  `Gargoyle.jpeg` → 6, `ShadowAssassin.jpeg` → 7, `FireElemental.jpeg` → 8,
+  `Minotaur.jpeg` → 9, `NatureGolem.jpeg` → 10 (Golem), `LichKing.jpeg` → 11
+  (The Lich), `BroodMother.jpeg` → 12, `Dragon.jpeg` → 13, and
+  `DemonLord.jpeg` → 14 — this last slot's name was also changed from
+  "Cthulhu" to "Demon Lord" ("Dämonenfürst") in `MONSTER_NAMES`/
+  `MONSTER_DESCRIPTIONS` (`js/monster-icons.js`) to match the new artwork,
+  since a Lovecraftian description no longer fit a demonic-knight portrait.
+  This mapping was given directly by the user, not inferred from filenames.
+  The earlier "known mismatch" issue from the old shared sprite sheet (two
+  printed labels not matching their artwork) no longer applies now that
+  every rank has its own individually-named, individually-supplied file —
+  there's no shared sheet left to mislabel.
+- **Same background-removal/crop pipeline as the weapon and shield art**
+  (see "Weapon artwork"/"Shield artwork" below): the user pre-flattened
+  each render's own background to transparency before handing it over (an
+  RGBA PNG per monster, not a checkerboard-JPEG this time), so no
+  color-threshold alpha reconstruction was needed here. The only cleanup
+  step actually needed was a **tight crop to each image's own alpha
+  bounding box** (plus a small ~12px pad) before saving as `<rank>.png` —
+  every supplied file arrived on a shared, uniform 500x500 canvas, and
+  several of them (most visibly Slime and Skeleton, whose poses are much
+  wider-short or taller-thin than a square) left a lot of that canvas
+  empty around the actual creature. Left uncropped, `object-fit: contain`
+  sizes against the **full canvas**, not the creature's own silhouette, so
+  a mostly-empty canvas renders the creature far smaller inside the card's
+  `--art-*` box than a tightly-cropped one would — this is the same root
+  cause documented under "Shields are much smaller than weapons" further
+  down, just caught here before it shipped rather than after a user report
+  (checked here specifically because that shield incident was fresh).
+  Verified defect-free the same way as the weapon/shield crops: an
+  automated "thick mid-alpha blob" scan (zero hits across all 13) plus a
+  manual composite check against both the dark in-game background and the
+  light card/gallery background, focusing on the most detailed silhouettes
+  (Dragon, Gargoyle, NatureGolem) where a stray fragment would be most
+  likely.
 - The card face shows only the artwork (or suit symbol) plus the card's
   plain numeric value at the bottom (`.card-value-label`) — no rank text in
   the middle of the card. **No J/Q/K/A letters anywhere in the game, full
@@ -994,45 +1021,296 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
 
 ### Weapon artwork
 
-- `images/weapons/<rank>.png` (2-10, one file per rank) came from a
-  user-supplied sheet (`images/WeaponsIcons.jpeg`, kept as source
-  reference), cropped like the monster art (forced to black, alpha-masked).
-  That sheet had thin box-border-line fragments left behind by a naive crop
-  in some corners, so the crop script also keeps only the largest connected
-  shape per icon (via `scipy.ndimage.label`) and discards the rest — worth
-  reusing that step for any future sprite-sheet crop, not just re-cropping
-  tighter. Names are the sheet's own (e.g. "Mjölnir", "Excalibur"), in
-  `WEAPON_NAMES` in `js/weapon-icons.js`.
+- `images/weapons/<rank>.png` (2-10, one file per rank) originally came from
+  a user-supplied sheet (`images/WeaponsIcons.jpeg`), replaced entirely by 9
+  individually user-supplied renders, one per rank, kept as source
+  reference: `images/weapons/WoodenClub.jpeg` → 2, `DamagedSword.jpeg` → 3,
+  `Spear.jpeg` → 4, `Sword.jpeg` → 5, `BattleAxe.jpeg` → 6,
+  `FlamingBroadSword.jpeg` → 7, `DarkScythe.jpeg` → 8, `Jonathan.jpeg` → 9
+  (Mjölnir — the file is just named after whoever/whatever generated it, the
+  artwork itself is a lightning-wreathed hammer, matching the name), and
+  `Excalibur.jpeg` → 10. Names are in `WEAPON_NAMES` in
+  `js/weapon-icons.js`.
+- **Same source format and crop technique as the shield renders** (see
+  "Shield artwork" above): each is a single subject on its own canvas with a
+  checkerboard "transparency" pattern baked into the actual JPEG pixels
+  (two reference colors read straight off a background-only image row),
+  not a real alpha channel. This batch's checkerboard wasn't uniform across
+  images the way the shields' was, though — some renders use a light
+  gray/white checker, others a darker gray one, so the two reference colors
+  are always re-derived per image rather than hardcoded once.
+  - **A third gotcha beyond the two already documented for shields (naive
+    per-pixel thresholding leaving a hollow line-drawing on low-contrast
+    fills; alpha blur bleeding raw background color past the mask edge,
+    fixed by clamping the blurred alpha to zero outside the hard mask):**
+    every one of these 9 canvases also carries a very faint, full-canvas
+    grid mesh at every checkerboard cell boundary (almost certainly
+    anti-aliasing/JPEG ringing right at the checker's own edges, not a
+    deliberate watermark), plus a handful of small isolated compression-
+    artifact blobs (~5000-9000px) scattered well outside the actual weapon.
+    Both are faint enough to clear the foreground-vs-background color
+    threshold, and the grid mesh is dense enough to connect literally
+    everything on the canvas into one giant blob at the raw threshold
+    stage — so the real weapon's own "biggest connected component" already
+    includes this mesh and every stray blob it touches, before any closing
+    step even runs. Fixed with a small `binary_opening` (5x5, enough to
+    erase the mesh's thin 1-2px lines while leaving every real brushstroke
+    intact) applied immediately after thresholding and, critically,
+    **before** isolating to the single biggest component — isolating first
+    strips away everything not part of the real weapon; isolating only
+    *after* a later closing/fill step is too late, since by then the
+    weld between the weapon and a stray blob may already be solid and no
+    longer separable by opening alone (an earlier version of the crop
+    script isolated-then-closed with a large kernel and still leaked stray
+    checker squares through the final alpha on 2 of the 9 images, because
+    the large closing re-welded a stray back onto the isolated shape
+    before the final size-based filtering ever got a chance to exclude it).
+  - **The 5x5 opening wasn't strong enough on 2 of the 9 images**
+    (`DarkScythe`, `Excalibur`) to fully sever the connecting mesh — a
+    slightly thicker-than-usual bridge left a couple of stray squares
+    still attached to the isolated shape even after the fix above. Bumped
+    to a 6x6 opening for just those two (a plain per-image override dict
+    in the crop script, keyed by filename), which does sever the bridge,
+    at the cost of also punching a scatter of small holes through their
+    own fine engraved filigree (visible as a "speckled" intermediate mask,
+    not final output) — an acceptable trade since the pipeline's existing
+    big-closing-then-fill-holes step (below) was already designed to
+    solidify exactly this kind of small internal gap back to solid before
+    the final crop, so the speckling never reaches the saved PNG.
+  - **The existing large closing step (25x25, carried over from the
+    shield's low-contrast metal-plate case) actively harmed one image.**
+    `FlamingBroadSword`'s flame overlay has real, deliberate gaps between
+    individual flame tongues (background genuinely should show through
+    there) — the 25px closing welded those gaps shut, which pulled raw
+    checkerboard-colored pixels into the alpha-opaque region right where
+    the flames don't touch. Fixed with the same per-image override
+    mechanism, dropping just this one image's closing kernel to 9x9 (large
+    enough to smooth jagged pixel edges, small enough to leave every real
+    gap between flame tongues open). **Lesson for any future crop reusing
+    this pipeline: a kernel size tuned for one image's specific defect
+    (a low-contrast fill needing aggressive bridging, or a faint mesh
+    needing aggressive erasing) is not safe to assume for every other
+    image in the same batch — check each result individually against the
+    page's actual background color, the same way every crop in this file
+    has been verified, rather than trusting one shared kernel size for a
+    whole batch.**
+  - **Found later via playtesting (a zoomed-in screenshot): `DarkScythe`,
+    `Jonathan`, and `Excalibur` still each had a faint gray checker-remnant
+    patch surviving right at the edge of the real weapon, invisible at
+    normal card scale but obvious zoomed in.** Root cause turned out to be
+    different from, and more stubborn than, the mesh/stray-blob issue
+    above: on these 3 images specifically, a soft gradient (halo/shadow)
+    directly touches the weapon's own silhouette with no thin bridge to
+    sever, so no amount of `binary_opening` on the boolean mask can
+    separate it (opening only removes features *thinner* than its kernel;
+    a blob of substantial width sitting flush against the real edge isn't
+    thin, it's just weakly-colored). Confirmed by checking the pixel data
+    directly: the patch's alpha was fully opaque (up to 255) with an RGB
+    only mildly different from the checker reference colors, not a low
+    "ghost" alpha as first assumed. **Fixed with a border flood-fill
+    instead of a global threshold**: classify a generous, permissive
+    "background-ish" band (`bg_diff <= tolerance`, tolerance well above the
+    normal ~22 cutoff), then `scipy.ndimage.label` it and keep only the
+    components that actually touch the canvas border as real background —
+    this reaches all the way through a gradient halo that's contiguous
+    with the open background outside the object (regardless of how wide
+    it is), while a plain global threshold at the same tolerance would
+    also have to accept that tolerance *everywhere*, including deep inside
+    the object where it isn't safe. `DarkScythe` (tol 60) and `Jonathan`
+    (tol 55) both cleaned up perfectly this way, with no other side
+    effects anywhere on the artwork.
+  - **`Excalibur` couldn't use the same flood-fill fix on its own** — its
+    blade has a razor-thin bright chrome highlight running along the edge
+    (especially right at the tip), and that highlight's own color is close
+    enough to the checker board's light reference that any tolerance loose
+    enough to flood through the pommel-area halo *also* floods through a
+    thin antialiased dip in the highlight itself, once at the very tip
+    (severing it into a separate, discarded component so the tip's last
+    sliver vanished) and once further down the blade (punching a small
+    hole straight through the highlight). No single global tolerance
+    threaded that needle.
+  - **Two more defects surfaced later, found only by compositing over the
+    card's actual light parchment background instead of the page's own
+    dark background.** All of this crop work had only ever been verified
+    against the dark page `--bg` (matching the room-card/weapon-slot
+    rendering) — a semi-transparent gray checker remnant is invisible
+    there but glaringly obvious on the light `--card-bg` parchment behind
+    a gallery tile's `.gallery-item-portrait`, which is exactly where a
+    user screenshot of the Weapons gallery caught it. **Always composite
+    over both the dark in-game background *and* the light card/gallery
+    background when checking a crop for leftover artifacts** — a defect
+    invisible on one can be obvious on the other, and this batch had one
+    of each:
+    - `DarkScythe`'s flood-fill fix (tol 60, above) had an unintended side
+      effect: the blade's own deliberate negative-space cutouts (a jagged
+      V-notch along the top edge, plus the round/crescent holes further
+      in) sit far enough inside the silhouette that the border flood
+      couldn't always reach them reliably (local anti-aliasing/mesh noise
+      right at a narrow cutout's mouth can make a few of its pixels read
+      as "not quite background" even at a loose tolerance), so they were
+      coming out partially solid instead of staying transparent, invisible
+      against the dark page background but a plain gray patch against
+      parchment.
+    - `Excalibur` (independently) had a genuine dark-fill hole: a thin gold
+      sun-ray flourish reaches close to the blade's real outer edge, and
+      the *dark blade material* immediately behind it is, by color alone,
+      close enough to the checker board's own dark reference to fail the
+      strict threshold too — normally `binary_fill_holes` patches this
+      kind of internal gap back to solid once it's fully enclosed, but
+      because this gap is so close to the true edge it isn't reliably
+      enclosed, so a real notch stayed cut into solid blade material,
+      landing right next to the sun emblem, easy to miss unless zoomed in.
+    - **Fixed both at once** by changing what "foreground" means going
+      into the closing/fill-holes step: instead of picking either the
+      strict mask (tolerance ~22) or the loose flood-filled mask alone,
+      take their **intersection** (a pixel only counts as foreground if
+      *both* methods agree) before the biggest-component/closing/fill
+      pipeline runs. This works for every failure mode at once, because
+      each method is uniquely reliable at a different one: the strict
+      mask correctly treats a design cutout as background (it was never
+      the problem there), so intersecting with it silently overrides
+      flood's occasional false positive inside a cutout; the flood mask
+      correctly treats a shadow/halo blob as background, so intersecting
+      with it silently overrides strict's false positive there too. Only
+      `Excalibur`'s genuine dark-fill hole still needed a second fix on
+      top: since the ray-tip gap plainly isn't enclosed within a normal
+      25px closing kernel, bumping just that one image's closing kernel to
+      55px (`DarkScythe`/`Jonathan` stayed at the normal 25px — a bigger
+      kernel is not free, it risks bridging *real* negative-space gaps
+      shut too, and 55px visibly did that to nothing else here only
+      because 25px was already enough for every other gap in this image)
+      successfully bridges across the narrow opening so `fill_holes` can
+      solidify the interior correctly. The old pommel-area-rectangle
+      surgical patch this replaced is gone entirely — the intersection
+      approach needs no manually hand-picked region at all. **Lesson for
+      any future case of a real gradient halo touching the object
+      silhouette, PLUS any enclosed real detail whose own color happens to
+      be background-like:** compute both a strict and a loose mask and
+      **intersect** them rather than trying to find one tolerance value
+      that's simultaneously loose enough to clear a halo and tight enough
+      to protect every enclosed real feature — such a single value may not
+      exist, but the intersection of two different-tolerance masks fixes
+      both classes of error from opposite directions simultaneously,
+      leaving only a genuine "both methods agree it's a gap, but it isn't"
+      case (like Excalibur's ray-tip fill) needing a per-image closing
+      kernel bump.
 - Weapons don't (yet) have their own type-specific flourish the way potions
   get the life-pulse — they currently only get the shared tier system plus
   their own glow color via `glowRgb` (see above). If weapons get a
   distinguishing animation/effect later, add it the same way the potion
   pulse was added: a new class + keyframes layered on top of, not
   replacing, the tier system.
+- **Superseded, kept for historical reference only:** every checkerboard-
+  background crop/alpha-reconstruction technique documented above (the
+  reference-color sampling, strict-vs-flood mask intersection, per-image
+  closing kernels, etc.) describes how the current `2.png`-`10.png` files
+  *used to be* produced from raw `.jpeg` renders. The user has since
+  started pre-removing each render's background themselves before handing
+  the file over (an already-transparent RGBA PNG, no checkerboard baked
+  in), so none of that reconstruction is run anymore for a fresh weapon
+  replacement — the only remaining step is the plain "crop to the alpha
+  channel's own bounding box, plus a small pad" step described under
+  "Monster artwork" above (needed because a pre-transparentized PNG can
+  still ship on an oversized canvas with a lot of empty space around the
+  actual item, which undersizes it once `object-fit: contain` sizes
+  against the full canvas). The debugging techniques above are still worth
+  keeping on file in case a future asset ever again arrives as a
+  checkerboard-baked JPEG instead.
 
 ### Shield artwork
 
-- `images/shields/<rank>.png` (3-5, one file per rank) came from a
-  user-supplied sheet (`images/ShieldIcons.jpeg`, kept as source reference:
-  left-to-right an oak-leaf kite shield, a round Viking-style shield, and a
-  heraldic lion-crest shield, assigned ranks 3/4/5 respectively), cropped
-  with the **champion-style contrast-stretch alpha** (`alpha = clip((darkness
-  − LOW) / (HIGH − LOW), 0, 1) × 255`, `LOW≈12, HIGH≈90`), not the plain
-  monster/weapon `alpha = 255 − min(R,G,B)` formula — the shield sheet is
-  thin line art like the champion sheet, not solid silhouette fills like
-  monsters/weapons, so it needed the same fix for faint anti-aliased lines
-  going near-invisible (see "Champion artwork" below for the full
-  explanation of why). A tiny-pixel-count floor (~8px) on connected
-  components dropped JPEG noise while keeping every real stroke, same as
-  the champion crop. Names are in `SHIELD_NAMES` in `js/shield-icons.js`.
-- `images/shields/<rank>-damaged.png` (3-5) is a second, cracked/battered
-  version of each shield (see "'Used' state while damaged but not broken"
-  above), cropped from `images/BrokenShieldIcons.jpeg` — a second
-  user-supplied sheet, same left-to-right layout/order as `ShieldIcons.jpeg`
-  so the same crop script (column-group splitting + the champion-style
-  contrast-stretch alpha) could be reused unchanged, just pointed at the
-  new source file and a `<rank>-damaged.png` output name instead of
-  `<rank>.png`.
+- `images/shields/<rank>.png` (3-5, one file per rank) came from three
+  individually user-supplied renders, one per shield, kept as source
+  reference: `images/shields/WoodenShieldDamaged.jpeg` → rank 3 (Oaken
+  Shield), `images/shields/WoodenRobustShield.jpeg` → rank 4 (Round
+  Shield), `images/shields/MetalLionShield.jpeg` → rank 5 (Lion Crest
+  Shield) — this mapping was given directly by the user, not inferred from
+  the filenames (the rank-3 source is literally named "Damaged" because
+  it's drawn with a visible crack across the rim, but it's used as that
+  shield's one and only artwork, not as a damaged-state variant — see
+  below). This replaced an earlier version that cropped all 3 (plus a
+  parallel set of "-damaged" variants) from two shared 1x3 sprite sheets;
+  those sheets and the damaged variants are gone now, replaced entirely by
+  this one-image-per-shield set.
+- **Different source format from every other sprite-sheet crop in this
+  file, needing a different crop technique.** Earlier art (monsters,
+  weapons, champions, the old shield sheets, card frames) was cropped from
+  one big sheet with a plain white/light background. These 3 are each
+  already a single subject on their own canvas, but with a **checkerboard
+  "transparency" pattern baked into the actual JPEG pixels** instead of
+  real alpha (JPEG can't hold an alpha channel, so whatever tool rendered
+  these flattened its own transparency-preview checkerboard into the
+  output). The checkerboard alternates between two solid colors at a fixed
+  ~47px period; sampling a background-only image row (e.g. row 5, always
+  clear of the subject) gives the two reference colors directly, no manual
+  color-picking needed.
+  - **Naive per-pixel "is this pixel close to a checker color" thresholding
+    is not enough by itself.** It cleanly separated foreground from
+    background for the two wood-toned shields (their whole face contrasts
+    well against the dark/gray checker), but the metal Lion shield's flat
+    gray plate is close enough in tone to the checker's own gray square
+    that large interior regions matched the background reference and got
+    excluded, leaving only the high-contrast linework (frame ring, knotwork
+    grooves, the lion figure, rivets) as foreground, a hollow line-drawing
+    instead of a solid silhouette with holes punched through the plate.
+  - **Fixed with a two-stage morphological approach, not a lower/smarter
+    threshold:** stage 1 does the naive per-pixel threshold just to locate
+    roughly where the subject sits on the canvas (union bbox of every
+    component above a small size floor, plus generous padding); stage 2
+    re-runs the threshold restricted to that cropped sub-region only (so
+    faint unrelated noise elsewhere on the huge canvas can't interfere),
+    applies `scipy.ndimage.binary_closing` with a fairly large (~25px)
+    square structuring element to bridge the gaps between the linework
+    strokes into one connected blob, keeps only the largest resulting
+    component, then `binary_fill_holes` to solidify it into one filled
+    silhouette. A final small opening+closing pass (~9px) smooths the
+    blocky staircase edge the large closing step leaves behind. **Any
+    future crop of a similar "checkerboard-background single-object
+    render" should use this same two-stage closing approach, not assume a
+    plain color-distance threshold will produce a solid shape** — whether
+    it does depends entirely on how much the subject's own coloring happens
+    to contrast with the checker pattern, which isn't something to rely on.
+  - Alpha is fully binary (0 or 255) from the filled mask, then feathered
+    with a small (~2.5px) Gaussian blur on the alpha channel only, same
+    "soft-mask, not soft-color" edge treatment used elsewhere in this file.
+    Verified with the same technique used for earlier crops when no live
+    screenshot tool was available: compositing the result over the page's
+    actual `--bg` color (`#16161a`) in Pillow and confirming no white/gray
+    halo band at the edge.
+  - Names are in `SHIELD_NAMES` in `js/shield-icons.js`.
+- **Superseded, kept for historical reference only, same as "Weapon
+  artwork" above:** the checkerboard-JPEG crop pipeline just described was
+  for the *first* version of these 3 files. The user has since replaced
+  all 3 a second time with already-transparent, user-background-removed
+  PNGs (no checkerboard, no reconstruction needed) — same "just crop to
+  the alpha bounding box" step as the current weapon/monster pipeline.
+- **Bug found from this second replacement: shields rendered much smaller
+  than weapons in both the real card and the gallery tile, even though
+  both use the same `--weapon-shield-art-scale` shrink.** Root cause
+  wasn't the CSS scale at all — the new shield PNGs shipped on a 677x369
+  canvas, but each shield's actual painted content only occupied a roughly
+  square ~330x330 area centered in it, with wide empty transparent margins
+  left and right. `object-fit: contain` sizes against the **full image
+  canvas**, not the visible silhouette, so that leftover empty canvas
+  space made the visible shield render far smaller inside the card's
+  `--art-*` box than a same-quality weapon PNG (which had little to no
+  such padding) did. Confirmed by comparing each file's full canvas size
+  against its own alpha channel's bounding box before concluding it was a
+  content-padding issue rather than a CSS/scale issue. Fixed the same way
+  as any future case of this: crop each file down to its own alpha bbox
+  (plus a small ~10-12px pad) before saving as `<rank>.png`, discarding
+  the excess transparent canvas entirely. Verified by simulating the exact
+  `--art-*`-box-plus-`object-fit:contain` math in Pillow for both a
+  weapon and a shield card side by side (rendered near-identical apparent
+  size afterward) rather than trusting a browser screenshot, since no
+  screenshot tool was available in that session. **Whenever a new item
+  render arrives already pre-transparentized by the user, always compare
+  its full canvas size against its own alpha bounding box before placing
+  it** — a big gap between the two silently undersizes the item in-game
+  even though the PNG itself looks fine opened directly in an image
+  viewer (which shows the true pixels either way, canvas padding
+  included, so it's easy to not notice there either unless you specifically
+  check the bbox numbers).
 
 ### Card frame artwork
 
@@ -1148,6 +1426,59 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   re-tune its `--art-*`/`--hex-*` box the same way** — don't assume the
   monster/weapon numbers apply, since they only happen to match because
   those two source frames were laid out identically.
+- **The item artwork inside a weapon/shield card can be shrunk independently
+  of the `--art-*` box itself** via `--weapon-shield-art-scale` (`:root` in
+  `style.css`), a plain `transform: scale()` applied to `.card-art` only on
+  `.card--weapon`/`.card--shield` (monster/potion untouched) — added after
+  a report that the weapon/shield artwork looked too big inside its frame,
+  when the actual `--art-*` box itself was fine. Scaling `.card-art` after
+  it's already positioned keeps the artwork centered on the exact same
+  point rather than needing the box's own percentages recomputed. Started
+  at `0.9` (10% smaller), turned down to `0.85` (15% smaller) on a
+  follow-up request, together with the matching `85%` bump on the Weapons/
+  Shields gallery tiles' own art shrink (see above) so the real in-game
+  cards and their gallery tiles stay visually consistent. **This is a
+  single easy-to-tune number, kept in `:root` specifically so a future
+  "make it smaller/bigger again" request only needs this one value
+  changed**, not a recomputation of any frame's `--art-*` percentages.
+- **Monster cards got their own separate, later, independently-tuned
+  version of the same mechanism: `--monster-art-scale`** (`:root`), applied
+  via `.card--monster .card-art { transform: scale(var(--monster-art-scale)); }`
+  right alongside the weapon/shield rule. Kept as its own variable rather
+  than folded into `--weapon-shield-art-scale` since it was requested
+  separately and there's no reason the two should be forced to move
+  together.
+  - **Misread, then corrected, which kind of gallery the request meant:**
+    the original ask was "Mache die Monster Graphiken (nicht die Karte)
+    10% kleiner" — "nicht die Karte" was (reasonably, by analogy with the
+    identically-phrased weapon/shield request further up, which really did
+    mean "the art inside the card, not the whole card frame") read as "the
+    monster art inside the real in-game card, not the card frame around
+    it," so `--monster-art-scale` was added to the *real* in-game card as
+    described above. The Monsters gallery tile's own
+    `.gallery-item-art img` (`max-width`/`max-height`) was deliberately
+    left untouched at its existing `90%`, reasoned at the time to already
+    coincidentally equal the requested 10%-smaller target. A follow-up "es
+    sieht aus als hätte nichts geändert... mache es nochmal um so viel
+    kleiner" (about what turned out to still be the real card, now at
+    `0.8`) was answered the same way, still only touching the real card.
+    Only after that did the user clarify **both requests were actually
+    about the Monsters gallery view** ("die Monster Grafiken unter
+    'Monsters', die Galerie") — "nicht die Karte" meant not the real
+    gameplay card at all, i.e. the opposite kind of "not the card" from
+    the weapon/shield precedent's meaning. The real in-game card's
+    `--monster-art-scale: 0.8` was kept as-is (reported as looking fine),
+    and the actually-intended gallery change was applied at that point:
+    `.gallery-item[data-kind='monsters'] .gallery-item-art img`'s
+    `max-width`/`max-height` bumped from `90%` to `80%`, matching the real
+    card's own final `0.8` so the two ended up visually consistent with
+    each other despite the two changes reaching that point by an
+    unintentionally roundabout path. **Lesson: when a phrase like "not the
+    card" repeats a pattern from an earlier, different request, don't
+    assume it carries the same meaning again — confirm which surface
+    (real gameplay card vs. a start-screen gallery) is actually meant,
+    especially when, as happened here, a coincidental existing value can
+    make the wrong interpretation look like it was already satisfied.**
 - The old fixed top-color-bar-free tier border/glow system, the
   `hasAura()` pulsing aura, and the potion life-pulse (see "No flat
   top-color bar" and related notes above) are all untouched by this
@@ -1741,11 +2072,11 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   selector), a small progress bar (`#loading-bar`/`#loading-fill`), and a
   percentage readout (`#loading-text`).
 - `collectPreloadImageUrls()` in `js/preload.js` gathers every image URL
-  straight from the existing data (`CARD_LIST`, `SHIELD_DAMAGED_IMAGES`,
-  `CHAMPIONS`, `ABILITY_ICONS`) rather than a separately hand-maintained
+  straight from the existing data (`CARD_LIST`, `CHAMPIONS`,
+  `ABILITY_ICONS`) rather than a separately hand-maintained
   list, so a newly added card, champion, or ability image is automatically
   preloaded too. **Keep it this way** rather than hand-listing paths. If a
-  future asset type is added outside those four sources (e.g. a new data
+  future asset type is added outside those three sources (e.g. a new data
   file following the "Keep the gallery in sync" pattern elsewhere in this
   file), add it to `collectPreloadImageUrls()` in the same change, the same
   discipline as keeping the galleries themselves in sync.
@@ -1755,6 +2086,144 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   this preloader didn't exist). A `PRELOAD_TIMEOUT_MS` (8s) fallback also
   force-finishes the whole preload if something stalls without ever firing
   either event, for the same reason.
+
+## Localization / Options screen (custom addition, not part of the original
+Scoundrel rules)
+
+- The game is fully bilingual, German and English, and defaults to
+  **German** for a first-time visitor. The player switches languages from
+  a new **Options** screen (`#options-overlay`), reachable from an
+  "Optionen"/"Options" button on the start screen's nav row (alongside
+  Champions/Weapons/Shields/Monsters/Anleitung/Tutorial) and from a
+  matching button inside the in-game hamburger menu (`#menu-options-btn`,
+  between "New Game" and "Main Menu"). The latter closes the menu first
+  (`closeMenu()`) before opening Options, the same single-overlay-swap
+  pattern "Anleitung" already uses for the rules text, so two dimmed
+  overlays are never stacked on top of each other. `#options-overlay`
+  reuses `#menu-overlay`/`#gallery-overlay`/`#champion-select-overlay`'s
+  exact shared chrome (dimmed backdrop, panel, close button, title — the
+  same selector groups in `style.css` just got `#options-overlay`/
+  `#options-panel`/`#options-close-btn`/`#options-title` added to them)
+  rather than duplicating it, following that section's existing pattern.
+- **`js/i18n.js`** is the mechanism: `getLang()`/`setLang(lang)` read/write
+  the player's choice to `localStorage` (key `scoundrel-lang`, wrapped in
+  try/catch since `localStorage` can throw in some contexts, e.g. private
+  browsing), falling back to `'de'` if nothing is stored yet or storage
+  itself is unavailable. `t(key, vars)` looks up `key` in the `I18N` table
+  for the current language (falling back to English, then to the bare key
+  itself, if a translation is ever missing, so a forgotten key shows up as
+  visibly wrong text rather than a blank UI or a thrown error) and
+  substitutes any `{placeholder}` tokens it finds from `vars`. `i18n.js` is
+  loaded first, before every other script (`index.html`), specifically so
+  `getLang()`/`setLang()`/`t()` are guaranteed to exist by the time any
+  later script's top-level code runs.
+- **Every plain UI string that isn't tied to a specific card/champion/
+  effect's own data** (buttons, headings, aria-labels, the dynamic fight/
+  ability/flee messages built in `js/state.js`, and the full `#rules` HTML
+  block) lives in `I18N.en`/`I18N.de` in `js/i18n.js`. A card/champion/
+  effect's own name+description data (monster/weapon/shield/potion names
+  and gallery blurbs, champion names/descriptions, ability names/
+  descriptions, weapon-effect names/descriptions) instead lives in that
+  data's own file (`js/monster-icons.js`, `js/weapon-icons.js`,
+  `js/shield-icons.js`, `js/potion-icons.js`, `js/champion-icons.js`,
+  `js/ability-icons.js`, `js/weapon-effects.js`), each restructured to a
+  `{ en: {...}, de: {...} }` table read by `getLang()` at call time (e.g.
+  `MONSTER_NAMES[getLang()][rank]`) — this keeps a card's data and its
+  translations next to each other, the same file-per-concern split the
+  project already used before i18n existed, rather than moving every name
+  in the game into one giant `i18n.js` dictionary. Adding a third language
+  later means adding one more per-key entry to each of these tables, never
+  restructuring anything.
+- **`CHAMPIONS` (`js/champion-icons.js`) and `WEAPON_EFFECTS`
+  (`js/weapon-effects.js`) are accessed directly as plain properties**
+  (`champ.name`, `champ.description`, `WEAPON_EFFECTS[id].name`, `...
+  .description`) all over `js/ui.js`/`js/state.js`/`js/main.js`, not
+  through a function call the way `monsterNameFor(rank)` etc. are — so
+  simply storing a plain string on those objects would freeze it in
+  whatever language was active the moment the object was built (at script
+  load time, always before any language switch could happen). Both use a
+  JS **getter** instead (`get name() { return
+  CHAMPION_NAMES[getLang()][id]; }`, same idea for `WEAPON_EFFECTS`'
+  `name`/`description` via a shared `weaponEffectText()` helper) so every
+  existing call site keeps working completely unchanged, while the value
+  returned is re-read from the current language every single time it's
+  accessed — switching language live-updates anything already holding a
+  reference to one of these objects (e.g. `state.equippedWeapon`'s effect
+  badge) with no extra wiring needed. `ABILITY_DETAILS`
+  (`js/ability-icons.js`) does **not** need this trick, since
+  `abilityDetailsFor(championId)` is a plain function already re-read at
+  render time (`renderAbilityInfo()` in `js/ui.js`), same as
+  `monsterNameFor()`/etc. Weapon-effect badge icon letters (V/E/S/F)
+  deliberately stay fixed regardless of language — they're a compact
+  internal code, not required to match the translated name's own first
+  letter (e.g. Sturdy's German name "Robust" still shows badge "S").
+- **Applying a language to already-rendered content** is
+  `applyLanguage(lang)` in `js/main.js`: calls `setLang(lang)`, sets
+  `document.documentElement.lang`, `applyStaticI18n()` (below), then
+  `renderAll()` unconditionally — `renderAll()` is safe to call any time,
+  even before a game has started (it just redraws the empty-room
+  call-to-action and the default equipment-slot placeholders in the new
+  language), so there's no need to branch on which screen is currently
+  visible. The two language buttons in `#options-overlay`
+  (`.lang-btn[data-lang="de"]`/`[data-lang="en"]`) call this directly on
+  click. A gallery/champion-select/gallery-detail overlay doesn't need any
+  special-case refresh logic for a language switch mid-session, since
+  none of those screens can be open at the same time Options is (Options
+  is reachable only from the start screen's nav row or the in-game menu,
+  neither of which coexists with those other overlays) — each of them
+  already re-renders its content fresh from current data every time it's
+  opened (`renderGallery()`/`renderChampionSelect()`), so it naturally
+  picks up whatever language is active by the next time it's opened.
+- **`applyStaticI18n()`** (`js/ui.js`) is the one function that translates
+  every static piece of markup in `index.html` — it walks
+  `[data-i18n]` (sets `textContent`), `[data-i18n-html]` (sets `innerHTML`,
+  used only for `#rules`, whose translated value is a full HTML block
+  including its own `<h3>`/`<p>`/`<ul>`/`<strong>`/`<br>` structure, stored
+  as one string per language in `I18N.*.rulesHtml` rather than split into
+  one key per paragraph, since the nested tags don't translate cleanly
+  element-by-element) and `[data-i18n-aria]` (sets the `aria-label`
+  attribute). Called once on initial page load (before `renderRoom()`
+  etc., so the very first paint already shows the right language instead
+  of flashing English/German first) and again from `applyLanguage()` on
+  every switch. Any newly added static button/heading/aria-label should
+  get a `data-i18n*` attribute + a key in `I18N` the same way, rather than
+  being left as a hardcoded string — this is now a standing rule, the same
+  "keep the gallery in sync" discipline the project already applies to
+  monster/weapon/champion data elsewhere in this file.
+- **Dynamic gameplay messages** (`js/state.js`'s `fightMonster()`,
+  `drinkPotion()`, `equipWeapon()`/`equipShield()`, `fleeRoom()`,
+  `useAbility()`/`resolveBackstab()`/`cancelBackstab()`, and
+  `resolveCard()`'s win/lose suffixes) were rewritten from inline template
+  literals to `t('key', { ...vars })` calls, one key per distinct sentence/
+  suffix (e.g. `fightWithWeapon`/`fightBareHanded` for the two base fight
+  sentences, `fightFragileCrackingSingular`/`...Plural` for the one
+  German/English grammatical number distinction that needed handling —
+  computed by the caller picking whichever key applies, rather than
+  templating a raw count into an English-only "use/uses" fragment).
+  Deliberately **full-sentence templates per language, not fragment
+  concatenation** (e.g. no shared `{how}` fragment glued into one template
+  the way the original English-only code did) — German reorders and
+  reinflects a sentence around a clause like "with your weapon" /
+  "bare-handed" far more than simple word substitution can handle, so each
+  language's complete sentence is written out in full in `I18N.en`/`.de`
+  rather than assembled from smaller, language-neutral pieces.
+- **No em dashes were carried into any of the new/rewritten message
+  strings** (per this file's existing "No em dashes" convention above) —
+  every message that used to join two clauses with " — " now uses a comma
+  or a period instead (e.g. "Fought X with your Y, took N damage." /
+  "Hast X mit deiner Y bekämpft, N Schaden erlitten.").
+- **The Tutorial's coachmark text** (`js/tutorial.js`) follows the same
+  pattern: every `TUTORIAL_STEPS` entry has a `textKey` (e.g.
+  `tutorialStep1`) instead of an inline `text` string, and
+  `showTutorialStep()` calls `t(step.textKey)` when displaying it. The
+  Next/Start/Finish button labels are similarly looked up via `t()`
+  (`tutorialNext`/`tutorialStart`/`tutorialFinish`) rather than hardcoded.
+  Mid-tutorial language switching isn't specially handled (Options isn't
+  reachable from inside an active tutorial's dimmed UI except via
+  `#menu-btn`, which is deliberately exempt from the dimming — see
+  "Tutorial" below) — if a player does switch language that way, only the
+  *next* coachmark shown reflects the new language, which is an accepted,
+  minor edge case rather than something worth extra plumbing for.
 
 ## Local dev / preview
 

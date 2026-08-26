@@ -8,44 +8,54 @@
 // The actual block/durability logic lives in fightMonster() in js/state.js
 // (a shield's `rank` doubles as its remaining durability, same pattern as a
 // weapon's rank/baseRank split).
+//
+// Names and descriptions are keyed by language first (see js/i18n.js), so
+// shieldNameFor()/shieldDescriptionFor() always read the table for whatever
+// getLang() currently returns.
 // ---------------------------------------------------------------------------
 
 const SHIELD_NAMES = {
-  3: 'Oaken Shield',
-  4: 'Round Shield',
-  5: 'Lion Crest Shield',
+  en: {
+    3: 'Oaken Shield',
+    4: 'Round Shield',
+    5: 'Lion Crest Shield',
+  },
+  de: {
+    3: 'Eichenschild',
+    4: 'Rundschild',
+    5: 'Löwenwappenschild',
+  },
 };
 
 function shieldNameFor(rank) {
-  return SHIELD_NAMES[rank] || null;
+  const table = SHIELD_NAMES[getLang()] || SHIELD_NAMES.en;
+  return table[rank] || null;
 }
 
 // Short flavor blurb shown in the Shields gallery's detail popup (see
 // openGalleryDetail() in js/main.js) — not used anywhere else (card
 // tooltips only show the name, not this).
 const SHIELD_DESCRIPTIONS = {
-  3: 'A simple wooden shield, carved with an oak leaf.',
-  4: 'A sturdy round shield, banded with iron rivets.',
-  5: 'A knight\'s heraldic shield, emblazoned with a rampant lion.',
+  en: {
+    3: 'A simple wooden shield, carved with an oak leaf.',
+    4: 'A sturdy round shield, banded with iron rivets.',
+    5: "A knight's heraldic shield, emblazoned with a rampant lion.",
+  },
+  de: {
+    3: 'Ein einfacher Holzschild, mit einem Eichenblatt verziert.',
+    4: 'Ein robuster Rundschild, mit eisernen Nieten verstärkt.',
+    5: 'Der heraldische Schild eines Ritters, geschmückt mit einem aufgerichteten Löwen.',
+  },
 };
 
 function shieldDescriptionFor(rank) {
-  return SHIELD_DESCRIPTIONS[rank] || null;
+  const table = SHIELD_DESCRIPTIONS[getLang()] || SHIELD_DESCRIPTIONS.en;
+  return table[rank] || null;
 }
 
-// A second artwork per rank, showing the same shield cracked/battered —
-// swapped in by renderShieldSlot() (js/ui.js) once an equipped shield has
-// taken damage but hasn't broken yet (rank < baseRank, still above 0).
-// Keyed off baseRank like the normal artwork, not the current rank — same
-// "identity vs. current strength" split used everywhere else (see
-// weakenMonster() in js/state.js), just with a second image asset instead
-// of only a number change.
-const SHIELD_DAMAGED_IMAGES = {
-  3: 'images/shields/3-damaged.png',
-  4: 'images/shields/4-damaged.png',
-  5: 'images/shields/5-damaged.png',
-};
-
-function shieldDamagedImageFor(baseRank) {
-  return SHIELD_DAMAGED_IMAGES[baseRank] || null;
-}
+// A shield used to swap to a second, cracked/battered artwork once it had
+// taken damage but hadn't broken yet (rank < baseRank) — see
+// renderShieldSlot() in js/ui.js. Removed when the shield artwork was
+// replaced with new single-image renders (one per rank, no separate
+// damaged variant) — a damaged shield now just shows its normal artwork at
+// its current (lower) rank number, same as a weakened monster does.

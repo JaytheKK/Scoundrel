@@ -279,7 +279,7 @@ function useAbility() {
   if (state.champion === 'rogue') {
     if (state.rogueTargeting) return null;
     state.rogueTargeting = true;
-    return { message: `${champ.name} readies a Backstab — choose a monster to strike.`, targeting: true };
+    return { message: t('abilityRogueReady', { name: champ.name }), targeting: true };
   }
 
   state.mana = 0;
@@ -288,7 +288,7 @@ function useAbility() {
     // See paladinResistCharges in the state object above and the damage
     // reduction in fightMonster() below.
     state.paladinResistCharges = 3;
-    return { message: `${champ.name} calls down a blessing — the next 3 hits deal 2 less damage.` };
+    return { message: t('abilityPaladinBlessing', { name: champ.name }) };
   }
 
   if (state.champion === 'herbalist') {
@@ -296,8 +296,8 @@ function useAbility() {
     state.hp += healed;
     const message =
       healed > 0
-        ? `${champ.name} channels nature's grace — healed ${healed} HP.`
-        : `${champ.name} channels nature's grace — already at full health, no effect.`;
+        ? t('abilityHerbalistHealed', { name: champ.name, healed })
+        : t('abilityHerbalistFull', { name: champ.name });
     return { message, healed };
   }
 
@@ -305,10 +305,10 @@ function useAbility() {
     // See berserkerFrenzyCharges in the state object above and
     // isWeaponUsableOn()/fightMonster() below.
     state.berserkerFrenzyCharges = 4;
-    return { message: `${champ.name} flies into a frenzy — the weapon ignores its degrade limit for the next 4 fights.` };
+    return { message: t('abilityBerserkerFrenzy', { name: champ.name }) };
   }
 
-  return { message: `${champ.name}'s ability isn't implemented yet — mana spent.` };
+  return { message: t('abilityNotImplemented', { name: champ.name }) };
 }
 
 /** Backs out of Rogue's Backstab targeting mode (armed by useAbility()
@@ -317,7 +317,7 @@ function useAbility() {
 function cancelBackstab() {
   if (!state.rogueTargeting) return null;
   state.rogueTargeting = false;
-  return { message: 'Backstab cancelled.' };
+  return { message: t('backstabCancelled') };
 }
 
 /** Resolves Rogue's Backstab once a monster has actually been chosen (see
@@ -342,7 +342,7 @@ function resolveBackstab(cardId) {
   const monsterLabel = monsterNameFor(card.baseRank) || card.name;
   weakenMonster(card, 6);
 
-  return { message: `${champ.name} backstabs ${monsterLabel} for 6 damage!`, cardId };
+  return { message: t('backstabHit', { name: champ.name, monster: monsterLabel }), cardId };
 }
 
 /** Whether the equipped weapon may currently be used against this monster
@@ -523,7 +523,6 @@ function fightMonster(card, useWeapon = true) {
   // weakenMonster()) still shows the right creature.
   const monsterLabel = monsterNameFor(card.baseRank) || card.name;
   const weaponLabel = weaponUsable ? weaponNameFor(weapon.baseRank) || weapon.name : null;
-  const how = weaponUsable ? ` with your ${weaponLabel}` : ' bare-handed';
   // Vampiric only heals if the weapon actually defeated the monster within
   // its normal degrade limit — true on a fresh weapon's first swing
   // (weaponMaxMonster was null, so any monster counts as "under the limit"),
@@ -539,45 +538,48 @@ function fightMonster(card, useWeapon = true) {
   // breakFragileWeapon() above for why this only *reports* the break rather
   // than unequipping the weapon here directly.
   const weaponBroke = weaponUsable && weapon.effect === 'fragile' && state.weaponFragileUsesRemaining <= 0;
+  message = weaponUsable
+    ? t('fightWithWeapon', { monster: monsterLabel, weapon: weaponLabel, damage })
+    : t('fightBareHanded', { monster: monsterLabel, damage });
   if (vampiricHeals) {
     state.hp = Math.min(state.hp + 1, state.maxHp);
-    message = `Fought ${monsterLabel}${how} — took ${damage} damage. Vampiric weapon healed 1 HP.`;
+    message += t('fightVampiricSuffix');
   } else if (weaponUsable && weapon.effect === 'electric') {
-    message = `Fought ${monsterLabel}${how} — took ${damage} damage. Electric surge weakened the other monsters!`;
-  } else {
-    message = `Fought ${monsterLabel}${how} — took ${damage} damage.`;
+    message += t('fightElectricSuffix');
   }
   if (weaponUsable && weapon.effect === 'fragile') {
     message += weaponBroke
-      ? ` Your fragile ${weaponLabel} shatters!`
-      : ` Your fragile ${weaponLabel} is cracking (${state.weaponFragileUsesRemaining} use${state.weaponFragileUsesRemaining === 1 ? '' : 's'} left).`;
+      ? t('fightFragileShattered', { weapon: weaponLabel })
+      : state.weaponFragileUsesRemaining === 1
+        ? t('fightFragileCrackingSingular', { weapon: weaponLabel })
+        : t('fightFragileCrackingPlural', { weapon: weaponLabel, n: state.weaponFragileUsesRemaining });
   }
   if (paladinHeal > 0) {
-    message += ` Paladin's faith healed ${paladinHeal} HP.`;
+    message += t('paladinHealSuffix', { n: paladinHeal });
   }
   if (paladinResisted) {
     message +=
       state.paladinResistCharges > 0
-        ? ` Blessing absorbed 2 damage (${state.paladinResistCharges} left).`
-        : ' Blessing absorbed 2 damage — it has faded.';
+        ? t('blessingAbsorbedLeft', { n: state.paladinResistCharges })
+        : t('blessingAbsorbedFaded');
   }
   if (frenzyActive) {
     const left = state.berserkerFrenzyCharges;
     if (frenzyOverrode) {
       message += left > 0
-        ? ` Frenzy overpowered the weapon's limit (${left} left).`
-        : " Frenzy overpowered the weapon's limit — it has faded.";
+        ? t('frenzyOverpoweredLeft', { n: left })
+        : t('frenzyOverpoweredFaded');
     } else {
       message += left > 0
-        ? ` Frenzy is active (${left} left).`
-        : ' Frenzy has faded.';
+        ? t('frenzyActiveLeft', { n: left })
+        : t('frenzyFaded');
     }
   }
   if (blocked > 0) {
     const shieldLabel = shieldNameFor(shieldBefore.baseRank) || shieldBefore.name;
     message += shieldBroke
-      ? ` Your ${shieldLabel} blocked ${blocked} damage and shattered!`
-      : ` Your ${shieldLabel} blocked ${blocked} damage.`;
+      ? t('shieldBlockedShattered', { shield: shieldLabel, n: blocked })
+      : t('shieldBlocked', { shield: shieldLabel, n: blocked });
   }
 
   // shieldBlocked/shieldBroke let the caller (applyResolve() in js/main.js)
@@ -597,7 +599,7 @@ function equipWeapon(card) {
   // where this counts down, and breakFragileWeapon() for what happens at 0).
   state.weaponFragileUsesRemaining = card.effect === 'fragile' ? FRAGILE_MAX_USES : null;
   const weaponLabel = weaponNameFor(card.baseRank) || card.name;
-  return { message: `Equipped ${weaponLabel}.` };
+  return { message: t('equippedWeapon', { weapon: weaponLabel }) };
 }
 
 /** Actually breaks the currently-equipped Fragile weapon: unequips it and
@@ -630,7 +632,7 @@ function breakFragileWeapon() {
 function equipShield(card) {
   state.equippedShield = card;
   const shieldLabel = shieldNameFor(card.baseRank) || card.name;
-  return { message: `Equipped ${shieldLabel}.` };
+  return { message: t('equippedShield', { shield: shieldLabel }) };
 }
 
 function drinkPotion(card) {
@@ -639,12 +641,12 @@ function drinkPotion(card) {
   const potionLabel = potionNameFor(card.baseRank) || card.name;
   const maxHealingPotions = state.champion === 'herbalist' ? 2 : 1;
   if (state.potionsDrunkThisRoom >= maxHealingPotions) {
-    return { message: `Drank ${potionLabel} — already healed this room, no effect.` };
+    return { message: t('potionNoEffect', { potion: potionLabel }) };
   }
   const healed = Math.min(card.rank, state.maxHp - state.hp);
   state.hp += healed;
   state.potionsDrunkThisRoom += 1;
-  return { message: `Drank ${potionLabel} — healed ${healed} HP.` };
+  return { message: t('potionHealed', { potion: potionLabel, n: healed }) };
 }
 
 /**
@@ -671,7 +673,7 @@ function resolveCard(cardId, options = {}) {
   if (state.hp <= 0) {
     state.gameOver = true;
     state.outcome = 'lost';
-    result.message += ' You died!';
+    result.message += t('diedSuffix');
     return result;
   }
 
@@ -685,7 +687,7 @@ function resolveCard(cardId, options = {}) {
   if (!monstersRemain) {
     state.gameOver = true;
     state.outcome = 'won';
-    result.message += ' All monsters defeated, the dungeon is cleared — you win!';
+    result.message += t('winAllMonstersSuffix');
     return result;
   }
 
@@ -701,7 +703,7 @@ function resolveCard(cardId, options = {}) {
   if (state.room.length === 0 && state.deck.length === 0) {
     state.gameOver = true;
     state.outcome = 'won';
-    result.message += ' The dungeon is cleared — you win!';
+    result.message += t('winDungeonClearedSuffix');
   }
 
   return result;
@@ -716,7 +718,7 @@ function fleeRoom() {
   if (state.gameOver) return null;
 
   if (state.room.length !== 4) {
-    return { message: "You can only flee a full room, before fighting anything in it." };
+    return { message: t('fleeOnlyFullRoomMessage') };
   }
 
   // Normally you can't flee two rooms in a row; the Rogue champion raises
@@ -725,10 +727,7 @@ function fleeRoom() {
   const maxFleeStreak = state.champion === 'rogue' ? 2 : 1;
   if (state.fleeStreak >= maxFleeStreak) {
     return {
-      message:
-        maxFleeStreak > 1
-          ? "You can't flee three rooms in a row."
-          : "You can't flee two rooms in a row.",
+      message: maxFleeStreak > 1 ? t('fleeCantThriceMessage') : t('fleeCantTwiceMessage'),
     };
   }
 
@@ -740,5 +739,5 @@ function fleeRoom() {
   state.potionsDrunkThisRoom = 0;
   gainMana(); // room changed (fled) — see gainMana() above
 
-  return { message: 'You fled the room — it was sent to the bottom of the deck.' };
+  return { message: t('fledSuccess') };
 }

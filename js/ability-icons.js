@@ -54,28 +54,52 @@ function abilityManaCostFor(championId) {
 // resolveBackstab() in js/state.js — see "Champion Active Abilities" in
 // CLAUDE.md). Used by the info popup on #ability-info-btn
 // (renderAbilityInfo() in js/ui.js) and by the rules text in #rules
-// (index.html) — keep both in sync with this file whenever an ability's
-// actual behavior changes, the same "don't let docs drift from the real
-// mechanic" rule the rest of the project follows.
+// (index.html, via js/i18n.js's rulesHtml) — keep all three in sync
+// whenever an ability's actual behavior changes, the same "don't let docs
+// drift from the real mechanic" rule the rest of the project follows.
+// Keyed by language first (see js/i18n.js), like every other name/
+// description table — abilityDetailsFor() reads the table for whatever
+// getLang() currently returns.
 const ABILITY_DETAILS = {
-  paladin: {
-    name: 'Blessing',
-    description: 'The next 3 hits that would deal damage are reduced by 2 each.',
+  en: {
+    paladin: {
+      name: 'Blessing',
+      description: 'The next 3 hits that would deal damage are reduced by 2 each.',
+    },
+    herbalist: {
+      name: "Nature's Grace",
+      description: 'Instantly heals 5 HP.',
+    },
+    rogue: {
+      name: 'Backstab',
+      description: 'Choose a monster to strike it for 6 damage.',
+    },
+    berserker: {
+      name: 'Frenzy',
+      description: 'For the next 4 weapon fights, the weapon ignores its degrade limit and can strike any monster.',
+    },
   },
-  herbalist: {
-    name: "Nature's Grace",
-    description: 'Instantly heals 5 HP.',
-  },
-  rogue: {
-    name: 'Backstab',
-    description: 'Choose a monster to strike it for 6 damage.',
-  },
-  berserker: {
-    name: 'Frenzy',
-    description: "For the next 4 weapon fights, the weapon ignores its degrade limit and can strike any monster.",
+  de: {
+    paladin: {
+      name: 'Segen',
+      description: 'Die nächsten 3 Treffer, die Schaden verursachen würden, werden um je 2 verringert.',
+    },
+    herbalist: {
+      name: 'Gnade der Natur',
+      description: 'Heilt sofort 5 LP.',
+    },
+    rogue: {
+      name: 'Hinterhalt',
+      description: 'Wähle ein Monster, um ihm 6 Schaden zuzufügen.',
+    },
+    berserker: {
+      name: 'Raserei',
+      description: 'Für die nächsten 4 Waffenkämpfe ignoriert die Waffe ihre Abnutzungsgrenze und kann jedes Monster treffen.',
+    },
   },
 };
 
 function abilityDetailsFor(championId) {
-  return ABILITY_DETAILS[championId] || null;
+  const table = ABILITY_DETAILS[getLang()] || ABILITY_DETAILS.en;
+  return table[championId] || null;
 }
