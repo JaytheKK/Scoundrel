@@ -60,11 +60,11 @@ function abilityManaCostFor(championId) {
 const ABILITY_DETAILS = {
   paladin: {
     name: 'Blessing',
-    description: 'The next 3 hits that would deal damage are reduced by 3 each.',
+    description: 'The next 3 hits that would deal damage are reduced by 2 each.',
   },
   herbalist: {
     name: "Nature's Grace",
-    description: 'Instantly heals 3 HP.',
+    description: 'Instantly heals 5 HP.',
   },
   rogue: {
     name: 'Backstab',
@@ -72,7 +72,7 @@ const ABILITY_DETAILS = {
   },
   berserker: {
     name: 'Frenzy',
-    description: "For the next 3 weapon fights, the weapon ignores its degrade limit and can strike any monster.",
+    description: "For the next 4 weapon fights, the weapon ignores its degrade limit and can strike any monster.",
   },
 };
 

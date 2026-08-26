@@ -172,7 +172,7 @@ const TUTORIAL_STEPS = [
     targetType: 'element',
     targetKey: 'ability-wrap',
     text:
-      "Every champion has an active ability, powered by mana (the ring around this button) gained from clearing or fleeing rooms, filled early here so you can try it now. Paladin's Blessing reduces your next 3 hits by 3 damage each. Click to activate it.",
+      "Every champion has an active ability, powered by mana (the ring around this button) gained from clearing or fleeing rooms, filled early here so you can try it now. Paladin's Blessing reduces your next 3 hits by 2 damage each. Click to activate it.",
     advanceDelayMs: 400,
     before() {
       // Normally mana only fills gradually via gainMana() (js/state.js) as
@@ -186,7 +186,7 @@ const TUTORIAL_STEPS = [
   {
     targetType: 'card',
     targetKey: 'spades-9',
-    text: 'Now fight this monster. Blessing will cut the damage you take by 3.',
+    text: 'Now fight this monster. Blessing will cut the damage you take by 2.',
     advanceDelayMs: 600,
   },
   {

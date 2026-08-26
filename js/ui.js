@@ -683,6 +683,11 @@ function renderGallery(kind) {
   const grid = document.getElementById('gallery-grid');
   grid.innerHTML = '';
   grid.classList.remove('hidden');
+  // Champions get bigger, illustrated-card-frame tiles (see the
+  // .gallery-grid--champions / .gallery-item[data-kind='champions'] rules in
+  // style.css) — same frame art and aspect-ratio as the champion-select
+  // screen, since Weapons/Monsters/Shields only ever need small icon tiles.
+  grid.classList.toggle('gallery-grid--champions', kind === 'champions');
 
   if (kind === 'weapons') {
     title.textContent = 'Weapons';

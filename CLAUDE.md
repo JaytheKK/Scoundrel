@@ -235,6 +235,114 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     logic the same way unless/until champions get numerous or complex
     enough to warrant their own `js/champion-effects.js` (mirroring
     `js/weapon-effects.js`).
+  - **Champion-select tile frame:** each tile's background is an
+    illustrated frame, `images/frames/champion.png`, following the exact
+    same "stretched `background-image`" pattern as the in-game
+    `.card--monster`/`--weapon`/`--potion`/`--shield` frames (see "Card
+    frame artwork" below) — cropped from a user-supplied ornate carved
+    wood/metal card border (`images/champions/ChampionCardIcon.jpeg`, kept
+    as source reference) tightly to its own true outer edge (measured by
+    gradient-based edge detection plus eyeballed correction, same as the
+    other frames) so none of the sheet's surrounding wood-plank photo
+    background is left in the file. Unlike the 4 in-game frames, this one
+    is **not** alpha-masked or corner-rounded — the source crop already
+    fills its whole rectangle with painted content edge to edge (no white/
+    background halo to remove), so `.champion-select-item`'s own
+    `border-radius` just clips a few opaque, similarly-dark corner pixels
+    off the image, which reads as nothing.
+    `.champion-select-item` locks `aspect-ratio: 1617 / 2098` (the frame's
+    own native ratio) rather than letting the tile's old content-driven
+    shape freely stretch the background to fit, the way the 4 in-game
+    frames do — those all share a roughly card-shaped ~0.71 ratio close
+    enough to `.card`'s own 100:140 box that a stretch is invisible, but
+    this frame's tall, narrow ratio was different enough from the tile's
+    old shape (~0.88) that stretching visibly squashed the carved corner
+    details.
+    **Gotcha, found via playtesting (reported as the card looking "cut
+    off" at the edges) — twice needed re-cropping:** the crop was first
+    tightened by eye until no wood-plank background was visible at any
+    corner, which looked done, but "no wood visible" only proves the crop
+    is somewhere *inside* the frame's own dark carved border, not that
+    it's sitting exactly *on* the true outer edge — the border material
+    and the wood backdrop are both dark brown, so a crop that had already
+    eaten 40-130px into the molding on every side still looked clean at a
+    glance. Found precisely the second time via per-pixel brightness
+    sampling along straight (non-corner) edge sections: wood grain reads
+    as a noisy ~70-110 gray value, then drops sharply below 25 right at
+    the frame's true outer shadow line — cross-checked against zoomed,
+    gridded crops of all 4 edges before trusting the numbers. **Any future
+    recrop of `images/frames/champion.png` should use that same per-pixel
+    brightness-threshold method, not an eyeballed "corners look wood-free"
+    check** — and must re-measure `aspect-ratio` and the padding below
+    together, they're only valid as a matched pair.
+    `padding: 15.2% 14.8% 15.8% 15.2%` approximates the frame's blank
+    parchment inset (hand-measured off the corrected crop, same method as
+    the `--art-`/`--hex-` boxes below), so the existing portrait + name +
+    desc flex column sits inside the parchment instead of overlapping the
+    carved border; `justify-content: center` centers that column inside
+    whatever parchment room is left over, rather than pinning it to the
+    top and leaving all the slack as a gap underneath. `.champion-select-
+    portrait` is now sized as a percentage of the tile (`62%` width, with
+    `aspect-ratio: 1 / 1`) instead of a fixed `rem` box, so the portrait
+    scales with the tile itself — this grid's columns vary fairly widely
+    in width (`minmax(11rem, 1fr)`), and a fixed size looked too small in
+    a wide column or cramped in a narrow one.
+    - **Gotcha, found via playtesting (reported as the card frame looking
+      "cropped" at the top/bottom):** `#champion-select-grid`'s default
+      `align-items` is `stretch` (CSS Grid's own default) — left
+      unset, every tile in a row gets stretched to match whichever sibling
+      has the tallest natural content (Rogue's/Berserker's longer
+      description text wraps to more lines than Paladin's/Herbalist's),
+      which hands a tile a block size that's already definite from the
+      grid track itself. Once a size is definite from an outside source
+      like that, `aspect-ratio` no longer does anything for that axis — it
+      only fills in a size that's otherwise `auto` — so the frame image
+      (`background-size: 100% 100%`, which always exactly fills its box)
+      silently stretched/shifted out of its intended proportions instead of
+      erroring. Fixed with `align-items: start` on `#champion-select-grid`,
+      so every tile sizes itself purely from its own content + `aspect-
+      ratio`, independent of whatever its row siblings need. **Any future
+      grid of `aspect-ratio`-locked tiles needs this same override** —
+      CSS Grid's stretch-by-default silently defeats `aspect-ratio` on a
+      grid item the moment row siblings differ in natural height, with no
+      warning anywhere.
+    - `.champion-select-desc` also carries its own small `padding: 0 0.4rem`
+      on top of `.champion-select-item`'s parchment-inset padding — without
+      it, a wrapped line's first/last letter could land flush against the
+      parchment edge (reported as looking "pressed against the card
+      border"). The item's own padding only guarantees the *card frame*
+      isn't overlapped; it doesn't give the text itself any margin.
+  - **Champions gallery reuses the champion-select tile frame:** opening
+    "Champions" from the start screen (`#gallery-overlay`, kind
+    `'champions'`) gives its tiles the same `images/frames/champion.png`
+    background, `aspect-ratio`, and parchment-inset padding as
+    `#champion-select-overlay` above, rather than the plain cream
+    `.gallery-item` background Weapons/Monsters/Shields still use — those
+    are small flat icon tiles with no frame art of their own, so only
+    Champions gets this treatment. Toggled via a `.gallery-grid--champions`
+    class (`renderGallery()` in `js/ui.js` sets it on `#gallery-grid`
+    whenever `kind === 'champions'`) and a `.gallery-item[data-kind=
+    'champions']` attribute selector (`data-kind` was already being set on
+    every tile by `buildGalleryItem()`, so no new markup was needed).
+    **Gotcha:** the override rules must be written as
+    `#gallery-grid.gallery-grid--champions` / `.gallery-item[data-kind=
+    'champions']` and not a bare `.gallery-grid--champions` class selector
+    — `#gallery-grid`'s own base rule is an id selector (specificity 100),
+    which beats a bare class selector (specificity 10) regardless of
+    source order, so a bare-class override silently loses the cascade and
+    the base `grid-template-columns`/etc. keep applying. Also gives this
+    grid its own wider column (`minmax(8.5rem, 1fr)` vs the base grid's
+    `minmax(4.5rem, 1fr)`, scaled down from champion-select's `11rem` in
+    the same proportion as this narrower `#gallery-panel` (`min(30rem,
+    100%)`) is to `#champion-select-panel` (`min(38rem, 100%)`)) and the
+    same `align-items: start` fix as champion-select's grid, for the same
+    stretch-defeats-aspect-ratio reason. Unlike champion-select's tiles,
+    the gallery tiles keep their existing "portrait + name only, click for
+    the full passive-ability text in `#gallery-detail-overlay`" structure
+    rather than also inlining the description — that separate detail-popup
+    flow is a deliberate, existing interaction pattern for this screen
+    (see `openGalleryDetail()` in `js/main.js`), not something this frame
+    reskin was meant to change.
   - **Portrait placeholder for missing artwork:** `fillPortrait()` in
     `js/ui.js` is the shared null-image fallback for any portrait-shaped
     slot (gallery tile, gallery detail popup, champion-select tile,

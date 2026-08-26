@@ -29,25 +29,25 @@ const CHAMPIONS = [
   {
     id: 'paladin',
     name: 'Paladin',
-    description: 'Every 5 monsters you defeat, you heal 3 HP.',
+    description: 'Every 5 monsters you defeat, you heal 2 HP',
     image: 'images/champions/paladin.png',
   },
   {
     id: 'herbalist',
     name: 'Herbalist',
-    description: 'You can drink two potions per room instead of just one.',
+    description: 'You can drink two potions per room instead of one',
     image: 'images/champions/herbalist.png',
   },
   {
     id: 'rogue',
     name: 'Rogue',
-    description: 'You are allowed to flee two rooms in a row instead of just one.',
+    description: 'You are allowed to flee two rooms in a row instead of one',
     image: 'images/champions/rogue.png',
   },
   {
     id: 'berserker',
     name: 'Berserker',
-    description: 'Fighting bare-handed, you take 2 less damage from every monster.',
+    description: 'Fighting bare-handed, you take 2 less damage from monsters',
     image: 'images/champions/berserker.png',
   },
 ];

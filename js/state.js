@@ -73,7 +73,7 @@ const state = {
                               // useAbility() below, then counts down by 1
                               // each of the next 3 times he'd take damage
                               // (see fightMonster()), reducing that hit by
-                              // 3 (min 0) each time. 0 = ability inactive —
+                              // 2 (min 0) each time. 0 = ability inactive —
                               // renderAbilityActiveGlow() (js/ui.js) reads
                               // this directly to show/hide the button's
                               // golden "still active" glow.
@@ -88,13 +88,13 @@ const state = {
                               // (cancelBackstab()) costs nothing, so the
                               // ability stays saved for later.
   berserkerFrenzyCharges: 0,  // Berserker's active ability ("Frenzy"): set to
-                              // 3 by useAbility() below. While > 0, the
+                              // 4 by useAbility() below. While > 0, the
                               // equipped weapon ignores weaponMaxMonster (the
                               // "only usable on a monster weaker than the
                               // last one it defeated" degrade rule) entirely
                               // — see isWeaponUsableOn() below — so a
                               // degraded weapon can strike anything again.
-                              // Counts down by 1 on every one of the next 3
+                              // Counts down by 1 on every one of the next 4
                               // weapon fights, whether or not the override
                               // was actually needed that fight (see the
                               // gotcha comment in fightMonster() — an
@@ -288,11 +288,11 @@ function useAbility() {
     // See paladinResistCharges in the state object above and the damage
     // reduction in fightMonster() below.
     state.paladinResistCharges = 3;
-    return { message: `${champ.name} calls down a blessing — the next 3 hits deal 3 less damage.` };
+    return { message: `${champ.name} calls down a blessing — the next 3 hits deal 2 less damage.` };
   }
 
   if (state.champion === 'herbalist') {
-    const healed = Math.min(3, state.maxHp - state.hp);
+    const healed = Math.min(5, state.maxHp - state.hp);
     state.hp += healed;
     const message =
       healed > 0
@@ -304,8 +304,8 @@ function useAbility() {
   if (state.champion === 'berserker') {
     // See berserkerFrenzyCharges in the state object above and
     // isWeaponUsableOn()/fightMonster() below.
-    state.berserkerFrenzyCharges = 3;
-    return { message: `${champ.name} flies into a frenzy — the weapon ignores its degrade limit for the next 3 fights.` };
+    state.berserkerFrenzyCharges = 4;
+    return { message: `${champ.name} flies into a frenzy — the weapon ignores its degrade limit for the next 4 fights.` };
   }
 
   return { message: `${champ.name}'s ability isn't implemented yet — mana spent.` };
@@ -412,7 +412,7 @@ function fightMonster(card, useWeapon = true) {
     // e.g. "1 left" indefinitely while the player keeps fighting freely.
     // Always spending a charge on every weapon fight while Frenzy is active
     // (regardless of whether it was needed) makes it a plain, predictable
-    // "next 3 weapon fights" counter instead — matching how Paladin's/
+    // "next 4 weapon fights" counter instead — matching how Paladin's/
     // Berserker's other counters behave. Don't reintroduce the
     // "only-if-it-mattered" version.
     if (frenzyActive) state.berserkerFrenzyCharges -= 1;
@@ -455,7 +455,7 @@ function fightMonster(card, useWeapon = true) {
 
   // Paladin's active ability (see useAbility() above): the next 3 times he
   // would take damage — weapon or bare-handed, doesn't matter, this runs
-  // after both branches above — each hit is reduced by 3 (never below 0)
+  // after both branches above — each hit is reduced by 2 (never below 0)
   // and burns one charge. Applied before the shield block below, same spot
   // Berserker's passive reduction lands, so a shield only ever blocks
   // whatever damage is still left after every other reduction. Only counts
@@ -464,7 +464,7 @@ function fightMonster(card, useWeapon = true) {
   // charge for nothing.
   let paladinResisted = false;
   if (state.champion === 'paladin' && state.paladinResistCharges > 0 && damage > 0) {
-    damage = Math.max(damage - 3, 0);
+    damage = Math.max(damage - 2, 0);
     state.paladinResistCharges -= 1;
     paladinResisted = true;
   }
@@ -495,7 +495,7 @@ function fightMonster(card, useWeapon = true) {
 
   state.hp = Math.max(state.hp - damage, 0);
 
-  // Paladin champion: every 5th monster defeated this game heals 3 HP.
+  // Paladin champion: every 5th monster defeated this game heals 2 HP.
   // Counted here (rather than in resolveCard) since this is the one place
   // both weapon and bare-handed fights funnel through, and a monster is
   // always "defeated" once its card resolves — there's no monster HP to
@@ -511,7 +511,7 @@ function fightMonster(card, useWeapon = true) {
     if (state.monstersDefeated % 5 === 0) {
       paladinCycleComplete = true;
       const hpBefore = state.hp;
-      state.hp = Math.min(state.hp + 3, state.maxHp);
+      state.hp = Math.min(state.hp + 2, state.maxHp);
       paladinHeal = state.hp - hpBefore;
     }
   }
@@ -558,8 +558,8 @@ function fightMonster(card, useWeapon = true) {
   if (paladinResisted) {
     message +=
       state.paladinResistCharges > 0
-        ? ` Blessing absorbed 3 damage (${state.paladinResistCharges} left).`
-        : ' Blessing absorbed 3 damage — it has faded.';
+        ? ` Blessing absorbed 2 damage (${state.paladinResistCharges} left).`
+        : ' Blessing absorbed 2 damage — it has faded.';
   }
   if (frenzyActive) {
     const left = state.berserkerFrenzyCharges;

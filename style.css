@@ -638,6 +638,56 @@ button:disabled::before {
   opacity: 0.85;
 }
 
+/* Champions gallery tiles reuse the exact same illustrated card frame as
+   the champion-select screen (images/frames/champion.png — see "Card frame
+   artwork"/"Champion-select tile frame" in CLAUDE.md for how it was cropped
+   and why aspect-ratio + this padding have to be changed together), rather
+   than the plain cream .gallery-item background Weapons/Monsters/Shields
+   still use — those are small flat icon tiles with no frame art of their
+   own, so only Champions (toggled via .gallery-grid--champions /
+   [data-kind='champions'], set from renderGallery() in js/ui.js) gets this
+   treatment. A wider column (8.5rem vs the base grid's 4.5rem) gives the
+   frame's tall aspect-ratio enough room to read as a card instead of a
+   cramped sliver — scaled down from champion-select's 11rem in the same
+   proportion as this narrower #gallery-panel (30rem) is to
+   #champion-select-panel (38rem). `align-items: start` is the same fix as
+   champion-select's grid (see CLAUDE.md): without it, CSS Grid's default
+   `stretch` would silently defeat this tile's `aspect-ratio` the moment a
+   row has tiles of differing natural height. */
+#gallery-grid.gallery-grid--champions {
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.gallery-item[data-kind='champions'] {
+  justify-content: center;
+  gap: 0.4rem;
+  aspect-ratio: 1617 / 2098;
+  padding: 15.2% 14.8% 15.8% 15.2%;
+  background-color: transparent;
+  background-image: url('images/frames/champion.png');
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Overrides the base .gallery-item-portrait's small fixed 3.6rem box —
+   percentage-sized instead, same reasoning as .champion-select-portrait
+   (this grid's columns aren't a fixed width either). */
+.gallery-item[data-kind='champions'] .gallery-item-portrait {
+  width: 62%;
+  max-width: none;
+  height: auto;
+  aspect-ratio: 1 / 1;
+}
+
+.gallery-item[data-kind='champions'] .gallery-item-name {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  min-height: 0;
+}
+
 /* --- gallery item detail popup (opened by clicking a weapon/monster tile) -
    Sits on top of #gallery-overlay (z-index 300), so it needs a higher one
    of its own — everything else reuses the exact same dimmed-backdrop +
@@ -738,16 +788,67 @@ button:disabled::before {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
   gap: 0.9rem;
+  /* Grid's default align-items is `stretch` — without overriding it, every
+     tile in a row gets stretched to match whichever sibling has the
+     tallest natural content (Rogue/Berserker's longer description text
+     wraps to more lines than Paladin/Herbalist's), which forces a tile's
+     block size to a definite value from the grid track itself. Once that
+     happens, `.champion-select-item`'s own `aspect-ratio` is no longer
+     "filling in" a missing dimension — CSS only applies aspect-ratio when
+     a size is otherwise auto — so the tile's own flex/aspect-ratio sizing
+     loses to the grid's stretch, silently breaking the frame image's
+     intended proportions (reported as the illustrated card frame looking
+     cropped/cut off at the top and bottom). `start` lets each tile size
+     itself purely from its own content + aspect-ratio, independent of
+     whatever its row siblings need. */
+  align-items: start;
 }
 
+/* Illustrated base frame (images/frames/champion.png, cropped from the
+   user-supplied images/champions/ChampionCardIcon.jpeg — an ornate carved
+   wood/metal card border around a blank parchment field, tightly cropped to
+   its own true outer edge so nothing of the sheet's surrounding wood-plank
+   background is left in the file) — same "stretched background-image"
+   pattern as .card--monster/--weapon/--potion/--shield further up, just for
+   this one tile type instead of a real playing card. Unlike those 4 (which
+   share a roughly card-shaped 100:140 box and so can freely stretch to fit),
+   this frame's own aspect ratio (1617:2098, tall and narrow) is different
+   enough from this tile's old content-driven shape that a free stretch
+   visibly squashed the carved corners — `aspect-ratio` below locks the tile
+   to the frame's native proportions instead, so the border art is never
+   distorted.
+   Gotcha hit while cropping this frame: the crop was first tightened by
+   eye until no wood-plank background was visible at any corner, which
+   looked done — but "no wood visible" only proves the crop is somewhere
+   *inside* the frame's own dark carved border, not that it's sitting
+   exactly *on* the true outer edge; the frame's border material and the
+   wood backdrop are both dark brown, so a crop that had already eaten 40-
+   130px into the molding on every side still looked clean at a glance
+   (reported as the card looking "cut off" at the edges once actually
+   played). Found precisely the second time via per-pixel brightness
+   sampling along straight (non-corner) edge sections — wood grain reads
+   as a noisy ~70-110 gray value, then drops sharply below 25 right at the
+   frame's true outer shadow line — cross-checked against zoomed, gridded
+   crops of all 4 edges before trusting the numbers. Padding approximates
+   the frame's blank parchment inset, re-measured directly off this
+   corrected crop (top ~15.2%, right ~14.8%, bottom ~15.8%, left ~15.2%,
+   same hand-tuned-by-eye method as the --art- / --hex- boxes elsewhere) —
+   **any future recrop of this file must re-measure both the `aspect-ratio`
+   and this padding together**, they're only valid as a matched pair. */
 .champion-select-item {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
-  padding: 1rem 0.75rem;
+  aspect-ratio: 1617 / 2098;
+  padding: 15.2% 14.8% 15.8% 15.2%;
   border-radius: var(--radius);
-  background: var(--card-bg);
+  background-color: transparent;
+  background-image: url('images/frames/champion.png');
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
   cursor: pointer;
   border: 1px solid transparent;
   transition: transform 0.15s ease, border-color 0.2s ease;
@@ -758,9 +859,14 @@ button:disabled::before {
   border-color: var(--accent);
 }
 
+/* Percentage-sized (not a fixed rem box like before) so the portrait scales
+   with the tile itself — this grid's columns can range fairly widely
+   (minmax(11rem, 1fr)), and a fixed size looked too small in a wide column
+   or cramped in a narrow one. */
 .champion-select-portrait {
-  width: 5rem;
-  height: 5rem;
+  width: 62%;
+  aspect-ratio: 1 / 1;
+  flex-shrink: 0;
 }
 
 .champion-select-portrait img {
@@ -779,12 +885,19 @@ button:disabled::before {
   color: var(--card-text);
 }
 
+/* Small extra horizontal breathing room on top of .champion-select-item's
+   own parchment-inset padding — without it, a wrapped line's first/last
+   letter can land flush against the parchment edge (reported as looking
+   "pressed against the card border"), since the item's padding only
+   guarantees the *card frame* isn't overlapped, not that text has any
+   margin of its own inside that. */
 .champion-select-desc {
   font-size: 0.78rem;
   line-height: 1.4;
   color: var(--card-text);
   opacity: 0.75;
   text-align: center;
+  padding: 0 0.4rem;
 }
 
 /* --- empty room state (before the first game / after the dungeon ends) ---- */
