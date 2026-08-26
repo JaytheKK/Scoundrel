@@ -317,9 +317,10 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     `'champions'`) gives its tiles the same `images/frames/champion.png`
     background, `aspect-ratio`, and parchment-inset padding as
     `#champion-select-overlay` above, rather than the plain cream
-    `.gallery-item` background Weapons/Monsters/Shields still use — those
-    are small flat icon tiles with no frame art of their own, so only
-    Champions gets this treatment. Toggled via a `.gallery-grid--champions`
+    `.gallery-item` background Monsters/Shields still use — those are small
+    flat icon tiles with no frame art of their own, so only Champions gets
+    this treatment (Weapons has its own, different frame treatment, see
+    below). Toggled via a `.gallery-grid--champions`
     class (`renderGallery()` in `js/ui.js` sets it on `#gallery-grid`
     whenever `kind === 'champions'`) and a `.gallery-item[data-kind=
     'champions']` attribute selector (`data-kind` was already being set on
@@ -343,6 +344,102 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     flow is a deliberate, existing interaction pattern for this screen
     (see `openGalleryDetail()` in `js/main.js`), not something this frame
     reskin was meant to change.
+  - **Weapons gallery reuses the real in-game weapon card frame, not a
+    new crop:** unlike Champions above (which needed its own new frame
+    asset cropped for it), opening "Weapons" from the start screen
+    (`#gallery-overlay`, kind `'weapons'`) reuses `images/frames/weapon.png`
+    (the exact same frame asset `.card--weapon` already uses for real room
+    cards, see "Card frame artwork" above) and the exact same `--art-*`/
+    `--hex-*` percentages `.card--weapon` already positions its artwork/
+    value number with (`15%/14%/85%/71%` and `40.3%/75.5%/59.7%/89.3%`,
+    written out as plain inset percentages in `style.css` since a gallery
+    tile isn't a `.card`) — no new cropping or re-measuring needed, since
+    it's the identical frame at the identical 100:140 box ratio. Toggled
+    the same way Champions' tiles are, via `.gallery-grid--weapons` /
+    `.gallery-item[data-kind='weapons']` (`renderGallery()` in `js/ui.js`).
+    Structured differently from the Champions frame on purpose: the weapon
+    frame's parchment is fully occupied by the artwork box sitting right
+    above the hexagon, with no spare room for a name line inside it the
+    way the taller Champion frame has, so here the frame background lives
+    on `.gallery-item-portrait` alone (doubling as the card box) and
+    `.gallery-item-name` stays below it, in normal flex flow, rather than
+    being pulled inside the frame like a Champion tile's name is.
+    **Gotcha (absolutely positioned `<img>` ignores its inset box):** the
+    artwork was first positioned by putting `left/top/right/bottom`
+    percentages directly on the `<img>` itself with `width/height: auto`,
+    mirroring `.card-art`'s box math — this looked right for a plain
+    `<div>` but silently broke for an `<img>`, because an absolutely
+    positioned *replaced* element (an image, unlike a div) sizes itself
+    from its own intrinsic pixel dimensions when width/height are auto,
+    not from the gap between its inset edges — the browser only adjusts
+    `left`/`right` to fit an already-decided size, it doesn't derive the
+    size from them. The artwork rendered at its full 240x240 source-image
+    size, overflowing the card entirely. Fixed the same way `.card-art`/
+    `.card-image` already solves this for real cards: a wrapper `<div>`
+    (`.gallery-item-art`, added around the `<img>` in `buildGalleryItem()`
+    only for `kind === 'weapons'`) takes the absolute inset box instead
+    (a non-replaced element's auto width/height DOES fill the gap between
+    insets, unlike a replaced element's), and the `<img>` inside it just
+    gets plain `max-width/max-height: 100%` to scale-to-fit and center via
+    flexbox — never position `left/right/top/bottom` directly on an `<img>`
+    expecting it to fill that box, always use a wrapper div for this
+    pattern. The value number is nested inside `.gallery-item-portrait`
+    too (rather than appended as a sibling like every other kind's rank
+    line), specifically so it can use the same `--hex-*` inset-box
+    positioning to land in the frame's hexagon — see the `kind === 'weapons'`
+    branch in `buildGalleryItem()`. Its font-size (`0.56rem`) was tuned
+    down from a first attempt at `0.68rem`, which left a 2-digit value like
+    "10" with zero pixel clearance against the hexagon's actual (small,
+    ~16-17px) box at this tile size — verified via `canvas.measureText()`
+    against the box's real rendered width, not just eyeballed.
+    **Second gotcha, user-reported via screenshot comparison against a real
+    in-game card (a plain rectangular white/cream box visible around the
+    frame and behind the name text, where a real card has none):** only
+    `.gallery-item-portrait` (the nested element the frame image itself
+    sits on) had been given `background-color: transparent` — the outer
+    `.gallery-item` tile itself, which is bigger (it also wraps the name
+    line below the frame) and still carried its own base `background:
+    var(--card-bg)` cream fill, was untouched, so that cream rectangle
+    kept showing behind/around the transparent-cornered frame and behind
+    the name text. This is the exact same "an opaque background-color
+    painted underneath a transparent-cornered frame image reads as a
+    leftover white box" issue already documented for real cards under
+    "Card frame artwork" above, just one level higher up the DOM here
+    (the outer tile, not the frame element's own corner mismatch) — fixed
+    by adding `background-color: transparent` to `.gallery-item[data-kind=
+    'weapons']` itself too. **Whenever a frame image sits on a nested
+    element rather than the outermost styled box, check the outer box's
+    background too, not just the element the frame image is actually on.**
+    Two further tuning passes since, both by request:
+    - The artwork itself (not the frame/card) is deliberately shrunk 10%
+      inside its box — `.gallery-item[data-kind='weapons'] .gallery-item-art
+      img`'s `max-width`/`max-height` are `90%`, not `100%`; still centered
+      by the same flex parent either way.
+    - `.gallery-item[data-kind='weapons']`'s own padding was cut from the
+      base `.gallery-item`'s `0.5rem` down to `0.2rem`, and its grid column
+      widened from an initial `5.5rem` to `7.5rem` (`#gallery-grid.gallery-
+      grid--weapons`) — reported (via a hover screenshot) as the tile
+      overall reading too small, with a visibly loose gap between the card
+      frame and the tile's own hover border (`.gallery-item:hover`'s
+      `border-color: var(--accent)`, drawn right at the tile's outer edge).
+    - **Real bug found from that same hover screenshot, not just a sizing
+      preference:** the name text under the hover-highlighted card looked
+      like empty space, as if the border enclosed a gap below the frame
+      with nothing in it. The name element was actually there and
+      correctly laid out — it just inherited `.gallery-item-name`'s base
+      `color: var(--card-text)` (`#1a1a1a`, near-black), a color chosen for
+      a name line sitting on `.gallery-item`'s own cream background. Once
+      that background was made transparent for the weapons frame (see
+      above), the same dark text was rendering directly on the dark page
+      background instead, at near-zero contrast, invisible rather than
+      merely small. Fixed with `.gallery-item[data-kind='weapons']
+      .gallery-item-name { color: var(--text); }` (`--text`, `#f0f0f0`, the
+      project's normal light body-text color). **Whenever a tile/element's
+      background changes from light to transparent/dark, re-check every
+      text color inside it that was implicitly relying on the old light
+      background for contrast — a color that was correct for a cream card
+      face can be silently unreadable once that face becomes transparent
+      and dark page background shows through instead.**
   - **Portrait placeholder for missing artwork:** `fillPortrait()` in
     `js/ui.js` is the shared null-image fallback for any portrait-shaped
     slot (gallery tile, gallery detail popup, champion-select tile,

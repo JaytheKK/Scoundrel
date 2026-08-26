@@ -688,6 +688,146 @@ button:disabled::before {
   min-height: 0;
 }
 
+/* Weapons gallery tiles reuse the exact same illustrated card frame the
+   real in-game weapon cards use (images/frames/weapon.png) plus the exact
+   same --art-* / --hex-* percentages .card--weapon already positions its
+   artwork/value number with (see "Card frame artwork" in CLAUDE.md, and
+   the .card--weapon rule further down this file for the source numbers) —
+   it's the identical frame asset at the identical 100:140 card box ratio,
+   so those already-tuned numbers are reused verbatim here, no new
+   cropping or re-measuring needed. Structured differently from the
+   Champions frame above on purpose: the weapon frame's parchment is fully
+   occupied by the artwork box sitting right above the hexagon, with no
+   spare room for a name line inside it the way the taller Champion frame
+   has, so here the frame lives on .gallery-item-portrait alone (which
+   doubles as the card box) and .gallery-item-name stays below it, in
+   normal flex flow, rather than pulled inside the frame. */
+#gallery-grid.gallery-grid--weapons {
+  /* Widened from an initial 5.5rem — reported as making the whole tile
+     (frame + hover outline) look too small/cramped, closer to
+     champions' own 8.5rem column now. */
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.gallery-item[data-kind='weapons'] {
+  /* Overrides .gallery-item's own cream background: unlike the champions
+     tile (whose frame background covers this same element), the weapon
+     frame sits on the smaller nested .gallery-item-portrait, so without
+     this the tile's own cream box would still show as a plain rectangle
+     around the frame and behind the name text below it — same "opaque
+     background left showing behind a transparent-cornered frame" issue
+     documented for real cards in "Card frame artwork" in CLAUDE.md, just
+     at the outer tile level instead of a card's own corner mismatch. */
+  background-color: transparent;
+  gap: 0.3rem;
+  /* Shrunk from the base .gallery-item's 0.5rem: at that padding the tile's
+     hover border (drawn right at the tile's outer edge, see .gallery-item
+     :hover) sat with a visibly empty gap all the way around the card
+     frame instead of hugging it, reported as "the card should fill the
+     yellow [hover outline]". A small padding is kept rather than 0 so the
+     frame doesn't touch the hover border exactly on pixel zero. */
+  padding: 0.2rem;
+}
+
+.gallery-item[data-kind='weapons'] .gallery-item-portrait {
+  position: relative;
+  width: 100%;
+  max-width: none;
+  height: auto;
+  aspect-ratio: 100 / 140;
+  background-color: transparent;
+  background-image: url('images/frames/weapon.png');
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Same --art-* box as .card--weapon (15% / 14% / 85% / 71%), reusing the
+   exact .card-art + .card-image wrapper-div pattern (see the comment on
+   .card-art further down this file) rather than positioning the <img>
+   itself: an absolutely positioned *replaced* element (an <img>) with
+   left/right/top/bottom all set but width/height left auto does NOT fill
+   that box the way a plain <div> would — it sizes to its own intrinsic
+   pixel dimensions instead and ignores the insets, which briefly showed
+   the weapon artwork rendered at full source-image size, overflowing the
+   card entirely. A wrapper div (non-replaced, so auto width/height DOES
+   fill the space between the insets) fixes this, with the <img> inside it
+   sized by plain max-width/max-height instead. */
+.gallery-item[data-kind='weapons'] .gallery-item-art {
+  position: absolute;
+  left: 15%;
+  top: 14%;
+  right: 15%;
+  bottom: 29%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.gallery-item[data-kind='weapons'] .gallery-item-art img {
+  width: auto;
+  height: auto;
+  /* 90% rather than 100%, a deliberate 10% shrink of just the weapon
+     artwork itself (not the card/frame) — request via screenshot
+     comparison. .gallery-item-art still centers it via flexbox either
+     way, so this only pulls the art in from the edges of its box. */
+  max-width: 90%;
+  max-height: 90%;
+  object-fit: contain;
+}
+
+/* Overrides the base .gallery-item-name's --card-text color (#1a1a1a, near
+   black) — that color was chosen for a name line sitting on .gallery-item's
+   own cream background, but this tile's background was made transparent
+   above, so the name now sits directly on the dark page background
+   instead, where near-black text is nearly invisible. This was the actual
+   cause of a hover screenshot looking like the gold outline enclosed a
+   patch of empty space below the card: the name text was still there and
+   correctly laid out, just unreadable against the dark background. */
+.gallery-item[data-kind='weapons'] .gallery-item-name {
+  color: var(--text);
+  /* Same display font as .champion-select-name/.champion-select-desc and
+     the champions gallery's own .gallery-item-name override, for the same
+     "dramatic one-off text" role described for var(--font-display) in
+     CLAUDE.md's Conventions — a weapon's flavor name (e.g. "Mjölnir") fits
+     that same category, unlike card numbers/HP which stay in the plain
+     body font for quick readability during play. */
+  font-family: var(--font-display);
+}
+
+/* Nested inside .gallery-item-portrait (see buildGalleryItem() in ui.js)
+   instead of sitting below it as a plain sibling, specifically so it can
+   be centered in the frame's hexagon via the same --hex-* box
+   .card-value-label uses (40.3% / 75.5% / 59.7% / 89.3%). */
+.gallery-item[data-kind='weapons'] .gallery-item-rank {
+  position: absolute;
+  left: 40.3%;
+  top: 75.5%;
+  right: 40.3%;
+  bottom: 10.7%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ui);
+  /* This hexagon box scales with the grid column (currently ~25-26px tall
+     at the widened 7.5rem column, see #gallery-grid.gallery-grid--weapons
+     above) — 0.9rem still leaves a comfortable margin on all sides for a
+     2-digit value like "10" at that box size (checked via
+     canvas.measureText() against the box's real rendered width, same
+     method used the first time this was tuned). Bumped up from an earlier
+     0.56rem, sized back when the column was still 5.5rem and this same
+     box was only ~16-17px tall — re-tune this again if the column width
+     ever changes, since a fixed rem value doesn't grow with the box on
+     its own. */
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--card-text);
+  opacity: 0.9;
+}
+
 /* --- gallery item detail popup (opened by clicking a weapon/monster tile) -
    Sits on top of #gallery-overlay (z-index 300), so it needs a higher one
    of its own — everything else reuses the exact same dimmed-backdrop +
