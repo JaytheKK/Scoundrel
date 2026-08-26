@@ -467,6 +467,87 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     treatment should extend `usesCardFrame` and add one matching CSS block
     the same way** — the structural JS logic is fully shared now, only the
     frame image and the 8 `--art-*`/`--hex-*` numbers differ per kind.
+  - **Bottom-edge gray bar fix (all 3 card-frame kinds):** user-reported via
+    screenshot — a flat, solid-looking light-gray horizontal bar across the
+    full width, right at the very bottom of every Weapon/Shield/Monster
+    gallery tile (not Champions). Root cause, found by simulating the exact
+    downscaled composite in Pillow (same technique used earlier for the
+    champion-select frame crop) since no live screenshot tool was available
+    in-session: `images/frames/weapon.png`/`shield.png`/`monster.png`/
+    `potion.png` each carry a thin strip of **fully-opaque** (`alpha ==
+    255`) gray/pink pixels right at their bottom edge (roughly the 93-97%
+    mark down the image height, confirmed by direct per-pixel sampling —
+    this is real painted content, not a transparency/alpha-blending
+    artifact), most likely a sliver of the original sprite sheet's own
+    drop-shadow that the crop caught as opaque frame content instead of
+    trimming away. At real in-game card sizes it's subtle enough to go
+    mostly unnoticed; downscaled to a small gallery tile it blurred into
+    the reported flat gray bar. **Deliberately not fixed by editing the
+    source PNGs or by cropping/positioning pixels away** — shields have
+    rivet/corner details sitting in that same bottom band (see
+    `.card--shield`'s corner icon boxes), and any pixel-row crop there
+    risks cutting into those, which the user explicitly flagged as a risk
+    to watch for. Fixed instead with a CSS-only dark gradient overlay, per
+    the user's own suggested fix ("dunkel grau machen dass es wie ein
+    Schatten aussieht, oder ganz entfernen"). Two follow-up rounds after
+    the first version shipped, both found via user screenshot:
+    - **Too weak, and squared off:** the first version was a plain
+      `inset: 0` `::after` with a single transparent→0.7-black ramp
+      spanning 91-100%. It wasn't dark enough at the halo's actual
+      position (~93-97%) to fully hide it, and — worse — a plain rectangle
+      doesn't know about the frame art's own rounded bottom corners
+      (transparent outside that rounded silhouette), so the overlay's
+      square corners visibly stuck out past the card's rounded shape as a
+      flat black patch, reported as "ein eckiger schwarzer Schatten...
+      passt gar nicht zur Karte." Fixed by (a) a steeper multi-stop
+      gradient that reaches strong opacity right at the halo's real
+      position instead of past it, and (b) `mask-image`/`-webkit-mask-
+      image` pointing at the exact same frame PNG already used as that
+      element's own `background-image` — `mask-image`'s default mode for
+      a plain image reference is alpha-based (`mask-mode: match-source`
+      resolves to `alpha`, not `luminance`, for an `<image>` source), so
+      the overlay is automatically clipped to nothing everywhere the frame
+      art itself is transparent, rounded corners included, with no
+      separate corner-radius math needed.
+    - **Too dark:** once the corners were fixed and the shadow's shape
+      actually read correctly, the peak opacity (0.92) looked too heavy/
+      gloomy overall. Lowered to 0.55 (`linear-gradient(to bottom,
+      transparent 90%, rgba(0,0,0,0.32) 93%, rgba(0,0,0,0.55) 96%,
+      rgba(0,0,0,0.55) 100%)`) — still enough to knock the halo's
+      ~140-brightness gray down into blending with the frame's own dark
+      border, just without the near-black look 0.92 had.
+    Every iteration was verified offline first (masking the gradient by
+    the source image's own alpha channel with Pillow/numpy, replicating
+    exactly what `mask-image: alpha` does) and sent to the user as a
+    rendered PNG before touching the CSS, then confirmed live via
+    computed-style checks in the browser, since no screenshot tool was
+    available in-session either time. The final gradient stops well above
+    the hexagon (`--hex-bottom` is 88.5-89.3% for all 3 gallery types) so
+    the value number is never dimmed, and shield rivets stay fully visible
+    at every step — only ever darkened, never cropped or altered.
+    **Same fix applied to real in-game cards too, by request** — all 4
+    types including potion (which carries the identical halo in
+    `images/frames/potion.png`, confirmed by the same per-pixel sampling).
+    Implemented as `.card--monster::before`/`.card--weapon::before`/
+    `.card--potion::before`/`.card--shield::before` (near the `.card--*`
+    frame-background rules, style.css) with the exact same masked
+    gradient — **`::before`, not `::after`, on purpose**: CLAUDE.md
+    elsewhere describes a `.card--potion::after` life-pulse glow and a
+    `.card--aura::after` pulsing aura as part of the strength-tier system,
+    but neither rule actually exists in style.css as of this change (that
+    part of the documentation is stale) — `::before` was still the
+    deliberate choice regardless, so this fix stays non-conflicting if
+    that pulse system is ever reintroduced, rather than fighting a future
+    `::after` rule over `background`. Since `fillCardFace()` reuses the
+    same `.card`/`.card--*` markup for the equipped weapon/shield slots
+    too, this fix applies there automatically with no separate rule
+    needed — verified live on `#shield-slot-card` after equipping.
+    **If a future frame asset shows the same artifact, prefer this same
+    masked-overlay approach over editing/cropping the source PNG**,
+    especially for any frame with fine corner/edge details (rivets, chain
+    links, etc.) near that edge — and prefer `::before` over `::after` on
+    any element unless you've confirmed nothing else already uses that
+    pseudo-element for something else.
   - **Portrait placeholder for missing artwork:** `fillPortrait()` in
     `js/ui.js` is the shared null-image fallback for any portrait-shaped
     slot (gallery tile, gallery detail popup, champion-select tile,

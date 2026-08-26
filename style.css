@@ -977,6 +977,98 @@ button:disabled::before {
   opacity: 0.9;
 }
 
+/* All 3 frame assets (weapon.png/shield.png/monster.png — not
+   champion.png, which has no shadow margin to begin with) carry a thin
+   band of fully-opaque gray/pink pixels right at their very bottom edge
+   (roughly the 93-97% mark down the image height, confirmed by direct
+   per-pixel sampling) — most likely a sliver of the original sprite
+   sheet's own drop-shadow that the crop caught as opaque content rather
+   than trimming away. At real in-game card sizes it's subtle enough to go
+   unnoticed, but downscaled to a small gallery tile it blurs into a flat,
+   solid-looking light-gray bar across the full width (reported via
+   screenshot). Fixed with a dark gradient overlay rather than editing the
+   source PNGs — shields have rivet/corner details sitting right in that
+   same bottom band (see .card--shield's own comments on its corner icon
+   boxes), and a pixel-level crop or flood-fill there risks cutting into
+   those; an overlay darkens the region into reading as an intentional
+   shadow without removing/altering any actual artwork underneath.
+   Two real bugs from the first version of this fix, both found via
+   screenshot after it shipped:
+   (1) The gradient wasn't dark enough at the halo's actual position
+   (~93-97% down) — a single transparent-to-0.7-black ramp spanning
+   91%-100% only reached ~0.3 alpha by 95%, nowhere near enough to hide a
+   fully-opaque ~140-brightness gray against the frame's own near-black
+   border. Fixed with steeper multi-stop timing (see the gradient below)
+   that reaches strong opacity well before 97%, actually inside the halo's
+   real position instead of past it.
+   (2) A plain `inset: 0` rectangle doesn't know about the frame art's own
+   rounded bottom corners (which are transparent outside that rounded
+   silhouette) — the overlay's own square corners stuck out past the
+   card's rounded shape into what should stay see-through, reading as a
+   flat black rectangle stuck on the card rather than a shadow that
+   belongs to it. Fixed with `mask-image`/`-webkit-mask-image` pointing at
+   the exact same frame PNG already used as this element's own
+   background-image: CSS mask-image defaults to alpha-based masking for a
+   plain image reference (`mask-mode: match-source` resolves to `alpha`
+   here, not `luminance`), so the overlay is now only ever painted where
+   the frame art itself is already opaque, and is automatically clipped to
+   nothing everywhere the frame is transparent — including its rounded
+   corners — with no separate corner-radius math needed. Both fixes were
+   verified offline first (masking the gradient by the source image's own
+   alpha channel in Pillow, same technique used throughout this file) since
+   no live screenshot tool was available in-session, then confirmed live
+   via computed-style checks in the browser.
+   Stops its ramp only after 90% (well past the hexagon, which ends at
+   88.5-89.3% down, see the --hex-* boxes above) so it never dims the
+   value number. */
+.gallery-item[data-kind='weapons'] .gallery-item-portrait::after,
+.gallery-item[data-kind='shields'] .gallery-item-portrait::after,
+.gallery-item[data-kind='monsters'] .gallery-item-portrait::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* Peak opacity lowered from an initial 0.92 to 0.55 — reported as
+     reading too dark/gloomy overall once the corner-masking fix above
+     landed and the shadow's shape actually looked right. 0.55 is still
+     enough to knock the halo's ~140-brightness gray down into blending
+     with the frame's own dark border, just without the heavier near-black
+     look 0.92 had. */
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 90%,
+    rgba(0, 0, 0, 0.32) 93%,
+    rgba(0, 0, 0, 0.55) 96%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+  pointer-events: none;
+}
+
+.gallery-item[data-kind='weapons'] .gallery-item-portrait::after {
+  mask-image: url('images/frames/weapon.png');
+  -webkit-mask-image: url('images/frames/weapon.png');
+}
+
+.gallery-item[data-kind='shields'] .gallery-item-portrait::after {
+  mask-image: url('images/frames/shield.png');
+  -webkit-mask-image: url('images/frames/shield.png');
+}
+
+.gallery-item[data-kind='monsters'] .gallery-item-portrait::after {
+  mask-image: url('images/frames/monster.png');
+  -webkit-mask-image: url('images/frames/monster.png');
+}
+
+.gallery-item[data-kind='weapons'] .gallery-item-portrait::after,
+.gallery-item[data-kind='shields'] .gallery-item-portrait::after,
+.gallery-item[data-kind='monsters'] .gallery-item-portrait::after {
+  mask-size: 100% 100%;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+}
+
 /* --- gallery item detail popup (opened by clicking a weapon/monster tile) -
    Sits on top of #gallery-overlay (z-index 300), so it needs a higher one
    of its own — everything else reuses the exact same dimmed-backdrop +
@@ -1757,6 +1849,77 @@ button:disabled::before {
   --hex-right: 60.2%;
   --hex-bottom: 88.5%;
   background-image: url('images/frames/shield.png');
+}
+
+/* Same bottom-edge shadow fix as the Weapons/Shields/Monsters gallery
+   tiles (see the near-identical .gallery-item[data-kind='...']
+   .gallery-item-portrait::after rules above for the full writeup of why
+   this exists — a thin band of fully-opaque gray/pink pixels baked into
+   each frame PNG's own bottom edge, most visible once anything shrinks
+   the card down, fixed with a masked dark gradient rather than editing
+   the source art). Applied here to real in-game cards too (all 4 types,
+   including potion — the same halo is present in images/frames/potion.png
+   as well, confirmed by the same per-pixel sampling method), by request.
+   Uses `::before`, not `::after`, on purpose: CLAUDE.md documents a
+   `.card--potion::after` life-pulse glow and a `.card--aura::after`
+   strongest-card pulsing aura as part of this same tier/glow system, but
+   as of this change neither rule actually exists in this file anymore
+   (checked directly — no `::after` selector here targets `.card--potion`
+   or `.card--aura`), so that documentation is stale. `::before` was still
+   the deliberate choice regardless, specifically so this fix stays
+   inert/non-conflicting if that pulse system is ever reintroduced — a
+   second `::after` rule matching the same element wouldn't add a second
+   visual layer, it would just lose the cascade fight over `background`
+   against whichever rule is more specific, silently breaking one effect
+   or the other. `::before` paints as the element's first "child", after
+   the element's own background-image but before .card-art/.card-value-
+   label in document order — irrelevant here in practice since this only
+   ever touches the bottom ~10% of the card, well below where any of those
+   sit (.card-art's own --art-bottom tops out at 72%, --hex-bottom at
+   88.5-89.3%, both safely clear of this gradient's 90% starting point). */
+.card--monster::before,
+.card--weapon::before,
+.card--potion::before,
+.card--shield::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 90%,
+    rgba(0, 0, 0, 0.32) 93%,
+    rgba(0, 0, 0, 0.55) 96%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+  background-size: 100% 100%;
+  mask-size: 100% 100%;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  pointer-events: none;
+}
+
+.card--monster::before {
+  mask-image: url('images/frames/monster.png');
+  -webkit-mask-image: url('images/frames/monster.png');
+}
+
+.card--weapon::before {
+  mask-image: url('images/frames/weapon.png');
+  -webkit-mask-image: url('images/frames/weapon.png');
+}
+
+.card--potion::before {
+  mask-image: url('images/frames/potion.png');
+  -webkit-mask-image: url('images/frames/potion.png');
+}
+
+.card--shield::before {
+  mask-image: url('images/frames/shield.png');
+  -webkit-mask-image: url('images/frames/shield.png');
 }
 
 /* Positions the item's artwork (or the suit-symbol fallback) over the
