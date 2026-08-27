@@ -42,6 +42,18 @@ const FRAME_IMAGE_URLS = [
   'images/frames/champion.png',
 ];
 
+/** The empty weapon/shield slot icons (SwordSymbolTransparent.png/
+ * ShieldSymbolTransparent.png in images/symbols/) are also applied purely
+ * via a hand-written <img>/CSS reference (renderWeaponSlot()/
+ * renderShieldSlot() in ui.js, not read from any card/champion data field),
+ * so like FRAME_IMAGE_URLS they need to be hand-listed here too. The 4
+ * weapon-effect badge images (WEAPON_EFFECTS in weapon-effects.js) ARE data
+ * fields already, so those are picked up automatically below instead. */
+const SYMBOL_IMAGE_URLS = [
+  'images/symbols/SwordSymbolTransparent.png',
+  'images/symbols/ShieldSymbolTransparent.png',
+];
+
 /** Every image URL the game can ever display, gathered straight from the
  * existing data rather than a separately hand-maintained list, so a newly
  * added card, champion, or ability is automatically preloaded too, nothing
@@ -60,7 +72,11 @@ function collectPreloadImageUrls() {
   Object.values(ABILITY_ICONS).forEach((url) => {
     if (url) urls.add(url);
   });
+  WEAPON_EFFECT_IDS.forEach((id) => {
+    if (WEAPON_EFFECTS[id].image) urls.add(WEAPON_EFFECTS[id].image);
+  });
   FRAME_IMAGE_URLS.forEach((url) => urls.add(url));
+  SYMBOL_IMAGE_URLS.forEach((url) => urls.add(url));
   return Array.from(urls);
 }
 

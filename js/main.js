@@ -602,6 +602,32 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
+// --- custom card-name hover tooltip ------------------------------------------
+// Delegated on <body> (not one listener per card) since room cards are torn
+// down and rebuilt on every render — a per-card listener would need
+// re-attaching every single time. Uses 'mouseover'/'mouseout' rather than
+// 'mouseenter'/'mouseleave' specifically because those two don't bubble, so
+// they can't be delegated; closest('[data-tooltip]') plus the
+// contains(relatedTarget) check below reproduces the same "only fires once
+// per actual enter/leave of the whole element" behavior mouseenter/mouseleave
+// would give for free on a direct (non-delegated) listener. Every element
+// that should show this tooltip (room cards, the equipped weapon/shield
+// slots) gets its text via a plain `data-tooltip` attribute — see
+// cardTooltipText()/renderCard()/renderWeaponSlot()/renderShieldSlot() in
+// js/ui.js — read here rather than duplicating that lookup logic.
+document.body.addEventListener('mouseover', (event) => {
+  const target = event.target.closest('[data-tooltip]');
+  if (target) showCardTooltip(target);
+});
+
+document.body.addEventListener('mouseout', (event) => {
+  const target = event.target.closest('[data-tooltip]');
+  // relatedTarget is where the pointer is going; if it's still somewhere
+  // inside the same tooltip-bearing element (e.g. onto its own artwork
+  // <img>), this isn't a real "leave" yet, so don't hide the tooltip.
+  if (target && !target.contains(event.relatedTarget)) hideCardTooltip();
+});
+
 // --- initial page load -------------------------------------------------------
 // Apply the stored (or default) language to the static UI before anything
 // else renders, so the very first paint — start screen, empty room, equipment

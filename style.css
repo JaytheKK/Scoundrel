@@ -1770,13 +1770,13 @@ button:disabled::before {
    description are in its title (tooltip) and in #weapon-status. */
 .card-effect-badge {
   position: absolute;
-  top: calc(4px * var(--card-scale));
-  left: calc(4px * var(--card-scale));
+  top: calc(18px * var(--card-scale));
+  left: calc(22px * var(--card-scale));
   width: calc(20px * var(--card-scale));
   height: calc(20px * var(--card-scale));
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(69, 69, 69, 0.382);
+  border: 1px solid rgba(255, 255, 255, 0.592);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1786,6 +1786,17 @@ button:disabled::before {
   line-height: 1;
   color: #fff;
   z-index: 1;
+}
+
+/* The badge's own illustrated icon (images/symbols/<Effect>SymbolTransparent
+   .png — see fillCardFace() in ui.js), replacing the earlier plain-letter
+   text that used to sit directly in .card-effect-badge. Shrunk to leave a
+   little of the badge's own dark circle showing as a border/frame around
+   it, rather than filling the circle edge to edge. */
+.card-effect-badge-icon {
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
 }
 
 .card:hover {
@@ -2233,6 +2244,21 @@ button:disabled::before {
   font-size: calc(13px * var(--card-scale) * var(--weapon-slot-scale));
 }
 
+/* .card-effect-badge (above) positions itself with plain --card-scale
+   pixel numbers, sized for a full room card — the weapon slot is smaller
+   than that (--weapon-slot-scale on top of --card-scale, same as the two
+   overrides above), so without this the badge lands too far down/right
+   relative to the slot's own (smaller) box the moment an effect weapon is
+   equipped. Same numbers as the base rule, just also multiplied by
+   --weapon-slot-scale. */
+#weapon-slot-card .card-effect-badge,
+#shield-slot-card .card-effect-badge {
+  top: calc(18px * var(--card-scale) * var(--weapon-slot-scale));
+  left: calc(22px * var(--card-scale) * var(--weapon-slot-scale));
+  width: calc(20px * var(--card-scale) * var(--weapon-slot-scale));
+  height: calc(20px * var(--card-scale) * var(--weapon-slot-scale));
+}
+
 /* No .card-image override here (unlike card-suit-symbol/card-value-label
    above): .card-image sizes itself via max-width/max-height: 100% of its
    .card-art wrapper, which is already positioned as a percentage of
@@ -2245,6 +2271,12 @@ button:disabled::before {
   border: 2px dashed var(--border);
   box-shadow: none;
   cursor: default;
+  /* .card's own justify-content: space-between pushes a lone flex child
+     (just the .slot-icon img here, no other content) to the top instead of
+     centering it — space-between only spreads space BETWEEN multiple
+     items, with a single item it collapses to flex-start. Override back to
+     center just for these two empty-slot placeholders. */
+  justify-content: center;
 }
 
 .weapon-slot-empty:hover,
@@ -2253,10 +2285,18 @@ button:disabled::before {
   transform: none;
 }
 
-.sword-icon,
-.shield-icon {
-  font-size: calc(36.8px * var(--card-scale) * var(--weapon-slot-scale));
-  color: var(--text-muted);
+/* Empty weapon/shield slot placeholder icon (images/symbols/SwordSymbol-
+   Transparent.png / ShieldSymbolTransparent.png) — replaces the earlier
+   plain "⚔"/"S" glyph now that real artwork exists for both. Sized the
+   same way the old glyph's font-size was, off the same scale tokens, so
+   the empty slot keeps its previous footprint at every breakpoint.
+   opacity dims it slightly, matching the old glyph's muted --text-muted
+   color, since the source art is otherwise full-strength. */
+.slot-icon {
+  width: calc(73.6px * var(--card-scale) * var(--weapon-slot-scale));
+  height: calc(73.6px * var(--card-scale) * var(--weapon-slot-scale));
+  object-fit: contain;
+  opacity: 0.55;
 }
 
 /* Champion active-ability button — sits to the right of the weapon slot,
@@ -2805,6 +2845,33 @@ body.tutorial-active .toggle-wrapper {
    need the same. */
 #tutorial-coachmark.hidden,
 #tutorial-skip-btn.hidden {
+  display: none;
+}
+
+/* Custom card-name hover tooltip (see cardTooltipText()/showCardTooltip()/
+   hideCardTooltip() in js/ui.js) — replaces the browser's own default
+   title-attribute tooltip with a small styled popup matching the rest of
+   the game's chrome, positioned in JS the same way #tutorial-coachmark is
+   above (plain left/top, since its anchor moves). pointer-events: none so
+   it never itself becomes the mouseover/mouseout target and interferes
+   with the hover it's meant to be reporting on. */
+#card-tooltip {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  max-width: min(14rem, 80vw);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  color: var(--text);
+  text-align: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+}
+
+#card-tooltip.hidden {
   display: none;
 }
 

@@ -18,14 +18,14 @@
 // place if this is ever rebalanced.
 const FRAGILE_MAX_USES = 2;
 
-// Badge icons are plain letters, not emoji — an emoji shield (🛡) turned out
-// not to render on every system/font, while a plain letter always does and
-// stays consistent with the rest of the game's simple, text/symbol-based UI
-// (e.g. the ⚔ empty-weapon-slot icon). The full name is always available via
-// the badge's tooltip and #weapon-status, so a single letter is enough. The
-// letters themselves stay fixed (V/E/S/F) regardless of language — they're a
-// compact internal code, not required to match the translated name's first
-// letter, the same way a game icon doesn't need to spell out its own label.
+// Badge icons are illustrated symbols (images/symbols/<Effect>SymbolTransparent.png,
+// user-supplied, background already removed) rather than emoji or plain
+// letters — an emoji shield (🛡) turned out not to render on every
+// system/font, and a plain letter badge (the original fallback) was later
+// replaced with real artwork once it was supplied. The full name is always
+// available via the badge's tooltip and #weapon-status. The images stay
+// fixed regardless of language — they're a visual icon, not required to
+// spell out the translated name's first letter.
 //
 // name/description are per-language (see js/i18n.js), keyed in
 // WEAPON_EFFECT_TEXT below. Every existing call site reads WEAPON_EFFECTS[id]
@@ -79,22 +79,22 @@ function weaponEffectText(id, field) {
 
 const WEAPON_EFFECTS = {
   vampiric: {
-    icon: 'V',
+    image: 'images/symbols/VampiricSymbolTransparent.png',
     get name() { return weaponEffectText('vampiric', 'name'); },
     get description() { return weaponEffectText('vampiric', 'description'); },
   },
   electric: {
-    icon: 'E',
+    image: 'images/symbols/ElectricSymbolTransparent.png',
     get name() { return weaponEffectText('electric', 'name'); },
     get description() { return weaponEffectText('electric', 'description'); },
   },
   sturdy: {
-    icon: 'S',
+    image: 'images/symbols/SturdySymbolTransparent.png',
     get name() { return weaponEffectText('sturdy', 'name'); },
     get description() { return weaponEffectText('sturdy', 'description'); },
   },
   fragile: {
-    icon: 'F',
+    image: 'images/symbols/FragileSymbolTransparent.png',
     get name() { return weaponEffectText('fragile', 'name'); },
     get description() { return weaponEffectText('fragile', 'description'); },
   },

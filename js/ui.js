@@ -47,7 +47,11 @@ function fillCardFace(el, card) {
     const effect = WEAPON_EFFECTS[card.effect];
     const badge = document.createElement('div');
     badge.className = 'card-effect-badge';
-    badge.textContent = effect.icon;
+    const icon = document.createElement('img');
+    icon.className = 'card-effect-badge-icon';
+    icon.src = effect.image;
+    icon.alt = effect.name;
+    badge.appendChild(icon);
     badge.title = `${effect.name}: ${effect.description}`;
     el.appendChild(badge);
   }
@@ -108,6 +112,19 @@ function applyGlowColor(el, card) {
   }
 }
 
+/** Builds the text for a card's custom hover tooltip (see #card-tooltip
+ * below): its flavor name, never the underlying poker-card name ("8 of
+ * Hearts") — falls back to that only for a hypothetical card with no
+ * flavor name at all (doesn't happen for any real card today) — plus its
+ * rolled effect's name in parentheses, if it has one. Shared by renderCard()
+ * and the equipped-weapon/shield slots (renderWeaponSlot()/
+ * renderShieldSlot()), so all three read from the same one place. */
+function cardTooltipText(card) {
+  const name = flavorNameFor(card) || card.name;
+  const effect = card.effect && WEAPON_EFFECTS[card.effect];
+  return effect ? `${name} (${effect.name})` : name;
+}
+
 function renderCard(card) {
   const el = document.createElement('div');
   el.className = `card card--${card.type} card--tier-${cardTier(card.rank)}`;
@@ -115,12 +132,11 @@ function renderCard(card) {
   el.dataset.suit = card.suit;
   el.dataset.id = card.id;
   applyGlowColor(el, card);
-  // Tooltip shows the flavor name only, never the underlying poker-card
-  // name ("8 of Hearts"). Falls back to it only for a hypothetical card
-  // with no flavor name at all (doesn't happen for any real card today).
-  const title = flavorNameFor(card) || card.name;
-  const effect = card.effect && WEAPON_EFFECTS[card.effect];
-  el.title = effect ? `${title} (${effect.name})` : title;
+  // A plain `data-tooltip` attribute, not the browser's native `title` —
+  // read by the custom #card-tooltip popup (see showCardTooltip() below)
+  // instead, so the name shows in the game's own styled bubble rather than
+  // the browser's default tooltip box.
+  el.dataset.tooltip = cardTooltipText(card);
   fillCardFace(el, card);
   return el;
 }
@@ -129,6 +145,13 @@ function renderCard(card) {
  * is fully cleared/lost), show a "New Game" call-to-action in its place
  * instead of leaving the room area blank. */
 function renderRoom() {
+  // The room's cards are about to be torn down and rebuilt from scratch, so
+  // any element the tooltip is currently anchored to (its dataset.tooltip
+  // attribute lives on the card element itself) is about to go stale or
+  // detached — hide it rather than leave it floating over nothing, or over
+  // a brand-new card it was never actually shown for. See showCardTooltip()/
+  // hideCardTooltip() further down.
+  hideCardTooltip();
   const roomEl = document.getElementById('room');
   roomEl.innerHTML = '';
 
@@ -476,15 +499,23 @@ function renderWeaponSlot() {
   const slot = document.getElementById('weapon-slot-card');
   const status = document.getElementById('weapon-status');
 
+  // Same reasoning as renderRoom()'s hideCardTooltip() call — this slot's
+  // own element is about to be repainted (a new weapon, or back to empty),
+  // so any tooltip currently anchored to it would otherwise be left
+  // showing stale or leftover text.
+  hideCardTooltip();
+
   if (!state.equippedWeapon) {
     slot.className = 'card weapon-slot-empty';
     slot.style.removeProperty('--edge-rgb');
     delete slot.dataset.suit;
-    slot.innerHTML = '<div class="sword-icon">⚔</div>';
+    delete slot.dataset.tooltip;
+    slot.innerHTML = '<img class="slot-icon" src="images/symbols/SwordSymbolTransparent.png" alt="">';
   } else {
     slot.className = `card card--weapon card--tier-${cardTier(state.equippedWeapon.rank)}`;
     if (hasAura(state.equippedWeapon)) slot.classList.add('card--aura');
     slot.dataset.suit = state.equippedWeapon.suit;
+    slot.dataset.tooltip = cardTooltipText(state.equippedWeapon);
     applyGlowColor(slot, state.equippedWeapon);
     fillCardFace(slot, state.equippedWeapon);
   }
@@ -553,18 +584,57 @@ function renderWeaponFragileBar() {
 function renderShieldSlot() {
   const slot = document.getElementById('shield-slot-card');
 
+  // See the matching call in renderWeaponSlot() above.
+  hideCardTooltip();
+
   if (!state.equippedShield) {
     slot.className = 'card shield-slot-empty';
     slot.style.removeProperty('--edge-rgb');
     delete slot.dataset.suit;
-    slot.innerHTML = '<div class="shield-icon">S</div>';
+    delete slot.dataset.tooltip;
+    slot.innerHTML = '<img class="slot-icon" src="images/symbols/ShieldSymbolTransparent.png" alt="">';
   } else {
     const shield = state.equippedShield;
     slot.className = `card card--shield card--tier-${cardTier(shield.rank)}`;
     slot.dataset.suit = shield.suit;
+    slot.dataset.tooltip = cardTooltipText(shield);
     applyGlowColor(slot, shield);
     fillCardFace(slot, shield);
   }
+}
+
+/** Positions and shows #card-tooltip above `el` (or below, if there isn't
+ * enough room), centered horizontally on it and clamped so it never runs
+ * off the left/right edge of the viewport — same approach as
+ * positionCoachmarkNear() in js/tutorial.js. Reads the name/effect text
+ * from el.dataset.tooltip, set by renderCard()/renderWeaponSlot()/
+ * renderShieldSlot() via cardTooltipText() above. This is a custom, styled
+ * popup (see #card-tooltip in style.css) rather than the browser's own
+ * default title-attribute tooltip, so it can match the game's own theme
+ * and fonts. Wired up from js/main.js via a delegated hover listener. */
+function showCardTooltip(el) {
+  const text = el.dataset.tooltip;
+  if (!text) return;
+
+  const tooltip = document.getElementById('card-tooltip');
+  tooltip.textContent = text;
+  tooltip.classList.remove('hidden');
+
+  const rect = el.getBoundingClientRect();
+  const ttRect = tooltip.getBoundingClientRect();
+
+  let left = rect.left + rect.width / 2 - ttRect.width / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - ttRect.width - 8));
+
+  let top = rect.top - ttRect.height - 10;
+  if (top < 8) top = rect.bottom + 10;
+
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function hideCardTooltip() {
+  document.getElementById('card-tooltip').classList.add('hidden');
 }
 
 function renderMessage(text) {
