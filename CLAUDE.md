@@ -45,17 +45,27 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   fleeing a second room straight after fleeing the first isn't normally
   allowed. From room 3 onward there's no restriction, exactly as before
   this feature existed.
+- **On top of that**, no monster dealt into those same first two rooms may
+  have strength (rank) 10 or higher — only ranks 2-9 are allowed there.
+  Even a single J/Q/K/A-strength monster (11-14), or a plain 10, can do
+  serious damage to a fresh, weaponless player on its own, so this is
+  checked as a second, independent condition (`hasStrongMonster()` in
+  `js/state.js`) alongside the monotype check (`isRoomMonotype()`),
+  combined in `isRoomSafe()`. A rank-10+ monster isn't removed from the
+  deck, only kept out of the first two rooms specifically, it's just as
+  likely to appear from room 3 onward as it always was, so total deck
+  composition and difficulty are unaffected.
 - Implemented as **rejection sampling, not a scripted/rigged deck** —
   `drawForRoom()` in `js/state.js` performs a full, fair Fisher–Yates
   reshuffle of the still-undealt portion of the deck and checks the room it
-  would produce (`isRoomTypeSafe()`); if that room is monotype, it
+  would produce (`isRoomSafe()`); if that room fails either check above, it
   reshuffles and checks again (capped at 100 attempts, which in practice is
   never come close to). Every attempt is a completely fair shuffle, so the
   result stays fully random and unpredictable, it only excludes the narrow
   slice of outcomes that would otherwise hand the player an unfair death
   through no fault of their own. Deck composition and overall difficulty
   are unaffected, only the order of the first two rooms is nudged, and only
-  away from that one specific shape — this does not make the game easier.
+  away from those specific shapes — this does not make the game easier.
 - `state.roomsDealt` counts how many rooms have been dealt so far this game
   (the initial deal counts as 1); `drawForRoom()` only applies the
   reshuffle-and-check loop while it's below `SAFE_ROOM_LIMIT` (2). This is
@@ -107,9 +117,14 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     SIL Open Font License — free for commercial use, see
     `fonts/LICENSE-fonts.txt`. Use `var(--font-display)` (Metamorphous) for
     dramatic one-off text (title, win/lose banner) and `var(--font-ui)`
-    (MedievalSharp) for buttons/UI chrome. Keep card numbers, HP/deck counts,
-    and status/message text in `var(--font-body)` (plain system font) —
-    decorative faces hurt quick readability for things read during play.
+    (MedievalSharp) for buttons/UI chrome. Card numbers stay in
+    `var(--font-body)` (plain system font) — a decorative face on a number
+    read at a glance mid-fight still hurts quick readability. HP/deck
+    counts and status/message text (`#hp-text`, `#deck-count`,
+    `#weapon-status`, `#message`) were originally kept in `var(--font-body)`
+    for the same reason, but were switched to `var(--font-ui)` by request,
+    to match the rest of the UI chrome now that the game has a busier
+    background image behind it.
   - `js/cards.js` — the 44 card definitions (data only)
   - `js/monster-icons.js` — `MONSTER_NAMES`, a plain rank (2-14) → creature
     name lookup used for the card tooltip (e.g. "7 of Clubs — Shadow

@@ -141,12 +141,29 @@ const SAFE_ROOM_LIMIT = 2;
  * happens two rooms running, no way to flee a second time either, since
  * fleeing twice in a row isn't normally allowed). A room of 4 weapons or 4
  * potions isn't dangerous the same way, but is equally called out by the
- * design brief as an unsatisfying way to open a run, so it's excluded too.
- * Cards.length < 4 (the tail end of the deck) is always considered safe —
- * nothing left to reshuffle into a better shape anyway. */
-function isRoomTypeSafe(cards) {
+ * design brief as an unsatisfying way to open a run, so it's excluded too. */
+function isRoomMonotype(cards) {
+  return cards.every((c) => c.type === cards[0].type);
+}
+
+/** True if any card in a room is a monster with strength (rank) 10 or
+ * higher — J/Q/K/A-strength monsters (11-14), plus a bare 10, hit hard
+ * enough on their own to seriously threaten a fresh, weaponless 20 HP
+ * player, so the first SAFE_ROOM_LIMIT rooms only ever deal monsters in
+ * the milder 2-9 range. A separate check from isRoomMonotype() above, not
+ * merged into it, so each half of the "no unfair start" rule stays easy to
+ * read and tweak on its own. */
+function hasStrongMonster(cards) {
+  return cards.some((c) => c.type === 'monster' && c.rank >= 10);
+}
+
+/** Combines both "no unfair start" checks above into the one predicate
+ * drawForRoom() below actually rejects-and-reshuffles on. Cards.length < 4
+ * (the tail end of the deck) is always considered safe — nothing left to
+ * reshuffle into a better shape anyway. */
+function isRoomSafe(cards) {
   if (cards.length < 4) return true;
-  return !cards.every((c) => c.type === cards[0].type);
+  return !isRoomMonotype(cards) && !hasStrongMonster(cards);
 }
 
 /** Draws `needed` cards for the next room from the front of state.deck,
@@ -154,8 +171,9 @@ function isRoomTypeSafe(cards) {
  * that room (e.g. the one leftover card carried over from the previous
  * room, or nothing for a fresh/fled room). For the first SAFE_ROOM_LIMIT
  * rooms of a real (non-tutorial) game, this rejects and reshuffles the
- * as-yet-undealt part of the deck until the resulting room isn't monotype
- * (see isRoomTypeSafe() above) before actually drawing.
+ * as-yet-undealt part of the deck until the resulting room passes
+ * isRoomSafe() above (not monotype, and no monster strength 10+) before
+ * actually drawing.
  *
  * This is rejection sampling, not a scripted or rigged deck: every attempt
  * is a full, fair Fisher–Yates shuffle, so the result stays completely
@@ -185,7 +203,7 @@ function drawForRoom(existingCards, needed, protectedTailCount = 0) {
       state.deck = [...reshuffled, ...state.deck.slice(shuffleEnd)];
       candidate = state.deck.slice(0, drawCount);
       attempts++;
-    } while (!isRoomTypeSafe([...existingCards, ...candidate]) && attempts < 100);
+    } while (!isRoomSafe([...existingCards, ...candidate]) && attempts < 100);
   }
 
   return state.deck.splice(0, drawCount);
