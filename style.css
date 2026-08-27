@@ -1723,11 +1723,13 @@ button:disabled::before {
      as barely-there against the new busy wood-grain page background
      (images/backgrounds/WoodenBackgroundDarkDetailed.jpeg) sitting behind
      it, the bar's unfilled segments all but disappeared into the grain.
-     A solid, opaque dark gray keeps the track clearly visible (both this
-     bar, the Paladin/Rogue/Herbalist passive-progress gauge, and the
-     Fragile weapon durability gauge, which reuses this same class) no
+     A solid, opaque dark gray (#2a2a2e) was tried next (both this bar, the
+     Paladin/Rogue/Herbalist passive-progress gauge, and the Fragile weapon
+     durability gauge, which reuses this same class), but that's still a
+     dark color sitting on a dark wood-grain background, by request it's a
+     light gray instead, which reads clearly against the dark backdrop no
      matter what's rendered underneath. */
-  background: #2a2a2e;
+  background: #c7c7ce;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
   transition: background 0.25s ease, box-shadow 0.25s ease;
 }
@@ -1914,6 +1916,58 @@ button:disabled::before {
   justify-content: center;
   gap: calc(0.5rem + 0.5rem * var(--card-scale));
   flex-wrap: nowrap; /* always keep the 4 room cards on one row, sized to fit */
+  /* Small breathing room from #champion-badge/#hp-bar-wrapper above.
+     Mostly matters at the phone tier: --card-scale is small there, so the
+     badge's own fixed rem size overlapped almost directly into the top of
+     the room cards with no visible gap at all (reported via screenshot).
+     At the bigger tablet/desktop --card-scale values there was already a
+     comfortable gap from the box model alone, so this is a small top-up
+     everywhere rather than a phone-only fix. Zeroed back out in the
+     max-height:480px safety tier at the very end of this file, which has
+     no vertical headroom to spare for it (see that block's own comment). */
+  margin-top: 0.35rem;
+}
+
+/* --- Phone-tier 2x2 room grid (custom addition on top of the responsive
+   system further up) ---------------------------------------------------
+   The base/phone tier below (--card-scale: 0.78, unconditional, top of
+   file) already sits right at the horizontal ceiling for 4 cards on one
+   row (0.8 was already shown to overflow a 360px-wide phone, see the
+   comment on that tier), so there's no room left to grow a single-row
+   phone layout further. But a phone in portrait has plenty of *vertical* slack
+   left over once cards are that small (measured via
+   #game-screen/#room bounding rects at 375x667: only ~65% of the
+   viewport height was actually in use), which a single row can never
+   spend since it's capped by width, not height. This tier spends that
+   leftover vertical room on a 2x2 grid instead, at a meaningfully bigger
+   --card-scale, for any phone-width, portrait-ish viewport with enough
+   height to fit two rows.
+   Gated on min-height so a short phone (e.g. a viewport around ~568px
+   tall) falls back to the single-row phone tier above instead, which is
+   already verified safe all the way down to the max-height:480px net,
+   two rows of these bigger cards would not fit there. 0.9 plus this
+   min-height were both chosen by measuring #game-screen's real height at
+   the standard 375x667 iPhone SE viewport and leaving a deliberate ~35px
+   safety margin below 667px, then re-checked at 360x667 (narrower
+   Android baseline) and 390x844/393x852 (larger modern phones) with no
+   scrolling in either axis at any of them.
+   Placed after the base #room rule above (not up with the other tiers
+   near the top of the file) on purpose: this and the base rule share the
+   same #room id selector (identical specificity), so with both wrapped
+   in @media blocks of otherwise-equal specificity, only source order
+   decides the winner, so this one needs to come after the base rule to
+   actually override it. */
+@media (max-width: 639px) and (min-height: 650px) {
+  :root {
+    --card-scale: 0.9;
+  }
+
+  #room {
+    display: grid;
+    grid-template-columns: repeat(2, calc(100px * var(--card-scale)));
+    justify-content: center;
+    gap: calc(0.35rem + 0.35rem * var(--card-scale));
+  }
 }
 
 /* Card size is driven by --card-scale (see the responsive breakpoints
@@ -3167,5 +3221,14 @@ body.tutorial-active .toggle-wrapper {
   #start-new-game-btn {
     font-size: 0.95rem;
     padding: 0.4rem 1.4rem;
+  }
+
+  /* #room's new margin-top (see that rule further up) has to be zeroed
+     out here specifically, this tier has no vertical headroom to spare
+     for it at all, per this block's own doc comment above (0.46 already
+     overflowed a 360px-tall landscape window at this tier's own
+     --card-scale). */
+  #room {
+    margin-top: 0;
   }
 }

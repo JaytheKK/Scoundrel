@@ -611,7 +611,9 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     `--weapon-slot-scale` tokens (via `calc()`), decoupled from the root
     font-size — cards have a hard constraint plain text doesn't (all 4 room
     cards must fit on **one row**, never wrap to 2x2) that needed separate
-    control. `#room` is `flex-wrap: nowrap` for this reason.
+    control. `#room` is `flex-wrap: nowrap` for this reason. **This one-row
+    rule now has a single deliberate exception**, see the phone-tier 2x2
+    grid bullet further down.
   - **Each `--card-scale` value is bounded by a horizontal fit constraint
     too, not just the per-tier vertical one described below.** 4 cards
     plus 3 gaps at a tier's scale must fit within that tier's minimum
@@ -648,6 +650,31 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   - Also note: the browser's default `body { margin: 8px }` was a silent
     contributor to overflow until it was reset with `html, body { margin: 0 }` —
     check for this if measurements don't add up.
+  - **Phone-tier 2x2 room grid (the one exception to the always-one-row
+    rule above).** Reported via an iPhone SE screenshot: the base phone
+    tier's `--card-scale` (`0.78`) already sits right at that tier's
+    documented horizontal ceiling (see the `0.78` vs `0.8` bullet above),
+    so there was no room left to grow a single-row phone layout further,
+    even though a phone in portrait has a lot of unused *vertical* slack
+    once cards are that small (measured at 375x667: only around 65% of
+    the viewport height was actually in use). A `@media (max-width: 639px)
+    and (min-height: 650px)` block (placed right after the base `#room`
+    rule in `style.css`, specifically so it wins the cascade over that
+    same-specificity `#room` id selector via source order) switches
+    `#room` to a 2-column CSS grid at a bigger `--card-scale` (`0.9`)
+    for any phone-width, portrait-ish viewport tall enough to fit two
+    rows. The `min-height: 650px` gate exists so a short phone falls back
+    to the normal single-row phone tier instead, which is already
+    verified safe all the way down to the `max-height: 480px` net, two
+    rows at the bigger scale would not fit there. `0.9` and `650px` were
+    both chosen by measuring `#game-screen`'s real height at 375x667 and
+    leaving a deliberate safety margin, then re-checked at 360x667, 320x568
+    (falls back to single-row, as intended), and 390x844/393x852 with no
+    scrolling on either axis. `#room`'s new `margin-top: 0.35rem` (the fix
+    for the champion badge overlapping the top of the cards with almost no
+    gap, also reported via that same screenshot) is zeroed back out inside
+    the `max-height: 480px` safety block specifically, since that tier has
+    zero vertical headroom to spare for it (see the `0.46` bullet above).
 
 ## Card architecture (important — read before adding/editing cards)
 
