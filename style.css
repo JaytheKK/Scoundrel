@@ -213,6 +213,10 @@ h1 {
 
 button {
   font-family: var(--font-ui);
+  font-weight: 700; /* MedievalSharp/Metamorphous only ship a Regular
+                       weight (see fonts/LICENSE-fonts.txt), so this is a
+                       browser-synthesized bold, there's no separate bold
+                       font file to switch to */
   font-size: 1.05rem;
   letter-spacing: 0.03em;
   padding: 0.55rem 1.3rem;
@@ -267,10 +271,13 @@ button:disabled::before {
   content: none;
 }
 
+/* #start-new-game-btn is intentionally NOT in this list. The start screen
+   got its own dedicated "gilded seal" design instead, see the #start-screen
+   section further down. This shared gold look now only covers the in-game
+   menu's New Game button, Play Again, and the empty-room call-to-action. */
 #new-game-btn,
 #play-again-btn,
-#room-start-btn,
-#start-new-game-btn {
+#room-start-btn {
   background: linear-gradient(180deg, var(--accent-hover), var(--accent));
   border-color: var(--accent);
   color: #1a1408;
@@ -280,8 +287,7 @@ button:disabled::before {
 
 #new-game-btn:hover:not(:disabled),
 #play-again-btn:hover:not(:disabled),
-#room-start-btn:hover:not(:disabled),
-#start-new-game-btn:hover:not(:disabled) {
+#room-start-btn:hover:not(:disabled) {
   background: linear-gradient(180deg, #f0cd7a, var(--accent-hover));
   border-color: #f0cd7a;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35),
@@ -604,9 +610,119 @@ button:disabled::before {
   margin: -0.75rem 0 0;
 }
 
+/* "Gilded plaque": the start screen's primary call-to-action gets its own
+   look, distinct from every other gold button in the game (#new-game-btn/
+   #play-again-btn/#room-start-btn keep the older flat-gold style, see the
+   shared button rules further up). #flee-btn (further down this file) uses
+   the exact same artwork and border-image technique too, by request, it
+   just keeps its own font-size/padding rather than copying
+   #start-new-game-btn's larger ones, since it lives in the in-game HUD, not
+   the start screen. Two earlier attempts (corner rivet
+   studs via background-image, then a plain CSS double-line frame) both got
+   rejected as not looking right, so this uses real user-supplied artwork
+   instead (images/frames/button-primary.png, cropped from
+   images/backgrounds/StartButtonDesignTransparent.png): an octagonal,
+   beveled plaque with an ornate gold inner trim.
+   Applied via CSS `border-image`, not a plain stretched `background-image`
+   the way the card frames further down this file work, because cards are
+   all nearly the same aspect ratio so a uniform stretch is invisible, but
+   this button's own width varies a lot by label/breakpoint while its
+   height barely changes. border-image 9-slices the source into a 3x3
+   grid: border-image-slice (46, in the source PNG's own pixel units,
+   measured by sampling where the beveled edge's color variation settles
+   into the flat interior fill on all 4 sides) keeps the 4 corners
+   (including their octagon chamfer cut, already transparent in the source
+   pixels) at fixed size no matter how the button resizes, and only
+   stretches the top/bottom/left/right edge strips and the middle fill
+   (the `fill` keyword tells border-image to render the sliced middle
+   region too, instead of leaving it empty for the box's own background to
+   show through, since the source's middle is a nicely shaded bevel, not a
+   flat color a CSS gradient could reproduce as convincingly).
+   border-image-width is deliberately left unset (defaults to whatever
+   border-width is set to) rather than given its own value, so the actual
+   layout thickness reserved for the border and its rendered visual
+   thickness always stay identical. That width is in rem for the same
+   reason as everything else on this page (see "Responsive sizing" in
+   CLAUDE.md): both the button and the border-image scale together with
+   the root font-size, so the frame stays proportional at every
+   breakpoint tier instead of the border becoming relatively thicker or
+   thinner as the button grows. */
 #start-new-game-btn {
-  font-size: 1.2rem;
-  padding: 0.7rem 2.2rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 2.3rem;
+  border-radius: 0; /* the source art's own octagon chamfer defines the
+                        corner shape via real transparent pixels; a CSS
+                        border-radius on top would clip it unpredictably */
+  color: #241a09;
+  background-color: #b08562; /* fallback fill color if the image fails to
+                                 load, sampled from the artwork's own fill */
+  border: 0.6rem solid transparent;
+  border-image-source: url("images/frames/button-primary.png");
+  border-image-slice: 46 fill;
+  border-image-repeat: stretch;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
+  /* Cropping/color-extending the source PNG (see its own history further
+     up) only removed the DARK FRINGE that was leaking through the corner
+     notch, it didn't make the notch itself disappear: background-color
+     and box-shadow both still paint across the element's full rectangular
+     border-box regardless of the border-image's own transparency, so the
+     octagon's cut-off corner still showed a small solid patch of fallback
+     fill color plus a sliver of the drop shadow's blur. clip-path is what
+     actually removes that rectangular corner from the whole element (
+     background, border-image, and box-shadow together), leaving the true
+     page background showing through, matching the artwork's real
+     silhouette instead of just hiding a color mismatch inside it.
+     --octagon-cut is a fixed rem length, not a percentage, deliberately
+     matching border-width (not just close to it), so the clip line falls
+     just past the artwork's own chamfer regardless of how wide the button
+     is (a percentage would cut a bigger or smaller wedge on every
+     differently-sized button using this same rule). */
+  --octagon-cut: 0.6rem;
+  clip-path: polygon(
+    var(--octagon-cut) 0, calc(100% - var(--octagon-cut)) 0,
+    100% var(--octagon-cut), 100% calc(100% - var(--octagon-cut)),
+    calc(100% - var(--octagon-cut)) 100%, var(--octagon-cut) 100%,
+    0 calc(100% - var(--octagon-cut)), 0 var(--octagon-cut)
+  );
+}
+
+#start-new-game-btn:hover:not(:disabled) {
+  filter: brightness(1.12) saturate(1.08);
+  box-shadow: 0 0 18px 3px rgba(217, 164, 65, 0.55), 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* #flee-btn reuses #start-new-game-btn's gilded plaque artwork/technique
+   verbatim (see the long comment above for the full reasoning), just at a
+   thinner border thickness matching its own smaller in-game HUD size, and
+   font-size/padding are deliberately left alone (still the plain button
+   defaults) rather than copied from #start-new-game-btn. */
+#flee-btn {
+  border-radius: 0;
+  color: #241a09;
+  background-color: #b08562;
+  border: 0.4rem solid transparent;
+  border-image-source: url("images/frames/button-primary.png");
+  border-image-slice: 46 fill;
+  border-image-repeat: stretch;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  /* clip-path removes the rectangular corner notch entirely (see the long
+     comment on #start-new-game-btn's own clip-path above for why this is
+     needed on top of the source PNG fix), --octagon-cut matches this
+     rule's own border width. */
+  --octagon-cut: 0.4rem;
+  clip-path: polygon(
+    var(--octagon-cut) 0, calc(100% - var(--octagon-cut)) 0,
+    100% var(--octagon-cut), 100% calc(100% - var(--octagon-cut)),
+    calc(100% - var(--octagon-cut)) 100%, var(--octagon-cut) 100%,
+    0 calc(100% - var(--octagon-cut)), 0 var(--octagon-cut)
+  );
+}
+
+#flee-btn:hover:not(:disabled) {
+  filter: brightness(1.12) saturate(1.08);
+  box-shadow: 0 0 14px 3px rgba(217, 164, 65, 0.5), 0 3px 8px rgba(0, 0, 0, 0.45);
 }
 
 /* Always a fixed grid, never flex-wrap. flex-wrap only wraps once a row
@@ -635,6 +751,45 @@ button:disabled::before {
    everything else (see "Responsive sizing" in CLAUDE.md). */
 #start-nav button {
   min-width: 9rem;
+}
+
+/* "Bronze plaque": the second of the two new start-screen button designs,
+   distinct from #start-new-game-btn's gilded plaque above only in which
+   source image it points at (images/frames/button-secondary.png, cropped
+   from images/backgrounds/ButtonDesignLightTransparent.png, the same
+   octagonal beveled plaque shape but without the primary's ornate gold
+   inner trim, so it reads as the plainer/secondary option next to it).
+   Every technique and the exact reasoning (why border-image over a
+   stretched background-image, why border-radius: 0, why border-image-slice
+   is 46, why border-image-width is left to default to border-width, why
+   rem) is identical to the comment on #start-new-game-btn above, this
+   rule only differs in image path and thickness/size numbers tuned to
+   this button's smaller footprint. */
+#start-nav button {
+  border-radius: 0;
+  color: #241a09;
+  background-color: #b08562;
+  border: 0.45rem solid transparent;
+  border-image-source: url("images/frames/button-secondary.png");
+  border-image-slice: 46 fill;
+  border-image-repeat: stretch;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+  /* clip-path removes the rectangular corner notch entirely (see the long
+     comment on #start-new-game-btn's own clip-path for why this is needed
+     on top of the source PNG fix), --octagon-cut matches this rule's own
+     border width. */
+  --octagon-cut: 0.45rem;
+  clip-path: polygon(
+    var(--octagon-cut) 0, calc(100% - var(--octagon-cut)) 0,
+    100% var(--octagon-cut), 100% calc(100% - var(--octagon-cut)),
+    calc(100% - var(--octagon-cut)) 100%, var(--octagon-cut) 100%,
+    0 calc(100% - var(--octagon-cut)), 0 var(--octagon-cut)
+  );
+}
+
+#start-nav button:hover:not(:disabled) {
+  filter: brightness(1.15) saturate(1.1);
+  box-shadow: 0 0 12px 2px rgba(217, 164, 65, 0.4), 0 3px 7px rgba(0, 0, 0, 0.45);
 }
 
 /* The 7th nav button (Options) starts its own row centered, rather than
@@ -1243,7 +1398,10 @@ button:disabled::before {
   height: 7rem;
   padding: 0.5rem;
   border-radius: var(--radius);
-  background: var(--card-bg);
+  overflow: hidden;
+  background-image: url('images/backgrounds/GalleryBackground.png');
+  background-size: cover;
+  background-position: center;
 }
 
 #gallery-detail-image img {
