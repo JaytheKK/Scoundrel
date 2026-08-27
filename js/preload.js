@@ -22,6 +22,26 @@
 // connection, since every image here is a small PNG.
 const PRELOAD_TIMEOUT_MS = 8000;
 
+/** Card-frame artwork (the illustrated monster/weapon/shield/potion/champion
+ * borders, see "Card frame artwork" in CLAUDE.md) is applied purely via CSS
+ * `background-image`/`mask-image` (style.css), never touched by a JS
+ * `new Image()` call anywhere. A browser only fetches a CSS background image
+ * once a rule actually applies to a rendered element, not just because the
+ * rule exists in the stylesheet, so these were never warmed by the loading
+ * screen at all: the very first .card--weapon (or the Weapons/Shields/
+ * Monsters/Champions gallery, or champion-select) shown after the loading
+ * screen finished was still fetching its own frame PNG from scratch, which
+ * is exactly the "cards still loading after the loading screen" symptom
+ * this list exists to prevent. Hand-listed here (not derived from data)
+ * since these paths don't come from any per-card/per-champion field. */
+const FRAME_IMAGE_URLS = [
+  'images/frames/monster.png',
+  'images/frames/weapon.png',
+  'images/frames/shield.png',
+  'images/frames/potion.png',
+  'images/frames/champion.png',
+];
+
 /** Every image URL the game can ever display, gathered straight from the
  * existing data rather than a separately hand-maintained list, so a newly
  * added card, champion, or ability is automatically preloaded too, nothing
@@ -40,6 +60,7 @@ function collectPreloadImageUrls() {
   Object.values(ABILITY_ICONS).forEach((url) => {
     if (url) urls.add(url);
   });
+  FRAME_IMAGE_URLS.forEach((url) => urls.add(url));
   return Array.from(urls);
 }
 
