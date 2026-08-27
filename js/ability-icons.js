@@ -9,24 +9,25 @@
 // ability's actual gameplay effect is still a planned follow-up — see
 // "Champion Active Abilities" in CLAUDE.md.
 //
-// Artwork lives at images/abilities/<championId>.png — transparent-
-// background black line-art icons cropped from a user-supplied 1x4 sprite
-// sheet (images/AbilitiesIcons.jpeg, kept as the source reference: left to
-// right, a radiant sunburst for Paladin, a heart+cross for Herbalist, a
-// dagger for Rogue, a clenched fist for Berserker — the same order as
-// CHAMPIONS in champion-icons.js). Unlike the champion portrait sheet, the
-// four icons on this sheet were not drawn at a consistent size (the sunburst
-// and fist are visually much bigger than the dagger), so the crop step also
-// scaled each icon so its longest side fills the same fraction of a shared
-// square canvas before centering it — without that, the button would look
-// like it was showing a different icon size per champion. Same contrast-
-// stretch alpha as the champion crop (see "Champion artwork" in CLAUDE.md)
-// since this is thin line art, not a solid silhouette fill.
+// Artwork lives at images/abilities/<ChampionId>AbilityTransparent.png —
+// full-color, individually user-supplied renders (a runic shield for
+// Paladin's Blessing, a heart-shaped tree amulet for Herbalist's Nature's
+// Grace, a jeweled dagger for Rogue's Backstab, a flaming fist for
+// Berserker's Frenzy), each already background-removed by the user (real
+// alpha, no checkerboard baked in — see "Superseded, kept for historical
+// reference only" in CLAUDE.md's weapon-artwork notes for what that
+// reconstruction step used to look like before assets started arriving
+// pre-transparentized like this). Replaces an earlier thin black line-art
+// set (images/abilities/<championId>.png, cropped from a shared 1x4 sprite
+// sheet) that's no longer referenced anywhere. Each file's own alpha
+// bounding box already sits close to its full canvas (checked directly,
+// no significant padding like the shield-art case in CLAUDE.md), so no
+// extra crop was needed before using them as-is.
 const ABILITY_ICONS = {
-  paladin: 'images/abilities/paladin.png',
-  herbalist: 'images/abilities/herbalist.png',
-  rogue: 'images/abilities/rogue.png',
-  berserker: 'images/abilities/berserker.png',
+  paladin: 'images/abilities/PaladinAbilityTransparent.png',
+  herbalist: 'images/abilities/HerbalistAbilityTransparent.png',
+  rogue: 'images/abilities/RogueAbilityTransparent.png',
+  berserker: 'images/abilities/BerserkerAbilityTransparent.png',
 };
 
 function abilityIconFor(championId) {

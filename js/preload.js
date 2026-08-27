@@ -40,6 +40,9 @@ const FRAME_IMAGE_URLS = [
   'images/frames/shield.png',
   'images/frames/potion.png',
   'images/frames/champion.png',
+  // #ability-btn's own background (style.css) — same "applied purely via
+  // CSS, not read from any data field" reasoning as the 5 frames above.
+  'images/abilities/AbilitySpotBackgroundDarkTransparent.png',
 ];
 
 /** The empty weapon/shield slot icons (SwordSymbolTransparent.png/

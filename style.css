@@ -416,6 +416,22 @@ button:disabled::before {
   text-align: center;
 }
 
+/* #menu-title is now the game's logo artwork (images/backgrounds/
+   LogoTransparent.png), not plain "Last Deck Standing" text — shown both
+   in the hamburger menu and for "How to Play" (openMenu(false) opens this
+   exact same #menu-overlay, see CLAUDE.md's "Anleitung" note). It's an
+   <img> now, so font-family/font-weight/font-size above no longer do
+   anything for it (harmless no-ops) and text-align: center has no effect
+   either, since that only centers an element's own inline content, not
+   the element itself — centered here instead via display: block plus
+   margin: auto, overriding the shared rule's margin. */
+#menu-title {
+  display: block;
+  width: min(14rem, 70%);
+  height: auto;
+  margin: 0 auto 1rem;
+}
+
 #menu-panel #new-game-btn,
 #menu-panel #menu-options-btn,
 #menu-panel #back-to-menu-btn {
@@ -563,13 +579,22 @@ button:disabled::before {
   gap: calc(var(--stack-gap) * 1.5);
 }
 
-/* Shared with #loading-logo (js/preload.js's loading screen) so the two
-   screens feel like one continuous brand moment rather than a jump cut. */
+/* #start-logo and #loading-logo are both the game's own logo artwork now
+   (images/backgrounds/LogoTransparent.png) instead of plain "Last Deck
+   Standing" text, back to being a shared rule (as they were pre-logo) so
+   the two screens still feel like one continuous brand moment rather than
+   a jump cut. Both are <img> now, not <h1>, so h1's own `margin: 0` reset
+   (further up this file) no longer applies by element-type selector;
+   restated here explicitly instead. drop-shadow (not the old text-shadow,
+   which only works on text) echoes the same warm glow the text version
+   had. */
 #start-logo,
 #loading-logo {
-  font-size: 3.2rem;
-  color: var(--accent);
-  text-shadow: 0 0 24px rgba(217, 164, 65, 0.35);
+  display: block;
+  width: min(22rem, 80vw);
+  height: auto;
+  margin: 0;
+  filter: drop-shadow(0 0 24px rgba(217, 164, 65, 0.35));
 }
 
 #start-tagline {
@@ -2363,21 +2388,52 @@ button:disabled::before {
   height: var(--ability-size);
   z-index: 1;
   border-radius: 50%;
-  background: var(--card-bg);
-  border: calc(2px * var(--card-scale) * var(--weapon-slot-scale)) solid var(--accent);
+  /* A weathered bronze dish (images/abilities/AbilitySpotBackgroundDark-
+     Transparent.png, user-supplied), replacing the earlier flat
+     var(--card-bg) cream fill — that plain fill read as a stray white
+     circle behind the ability icon. background-size: cover (not the
+     card-frame images' non-uniform 100% 100% stretch) since this art is
+     already circular/symmetric, so a uniform scale keeps it round instead
+     of ovalling it against a non-square button box. */
+  background-image: url('images/abilities/AbilitySpotBackgroundDarkTransparent.png');
+  background-size: cover;
+  background-position: center;
+  /* The bronze dish art already has its own painted metal rim, so any CSS
+     border here just draws a second, redundant ring around it. Explicitly
+     `none`, not just omitted — #ability-btn is a real <button>, and the
+     generic `button` rule further up this file sets its own
+     `border: 1px solid var(--border)` that would otherwise still show
+     through as a plain gray ring the instant this more specific rule
+     stopped setting a border of its own. */
+  border: none;
+  /* Same reasoning as the border above: the generic `button` rule further
+     up this file also sets its own always-on box-shadow (an inset top
+     highlight plus a drop shadow) and, on hover, swaps in a golden outer
+     glow — both read as a leftover ring/shadow around the bronze dish,
+     which already has all the depth it needs painted into the art itself.
+     Reset to `none` here (not just left unset) since removing this
+     wouldn't remove the generic rule's shadow, only failing to add a
+     second one on top of it, the same shadowing mistake border: none above
+     already fixed for the border. The hover-only golden-glow override that
+     used to live in a separate #ability-wrap:hover ... #ability-btn rule
+     right below this one is gone entirely now, for the same reason. */
+  box-shadow: none;
   padding: calc(14px * var(--card-scale) * var(--weapon-slot-scale));
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.25s ease, opacity 0.25s ease;
+  transition: transform 0.2s ease, filter 0.25s ease, opacity 0.25s ease;
 }
 
-/* Only the glow lives here — the actual lift is #ability-wrap's (see
-   above), so the ring rises together with the button instead of the button
-   sliding off on its own. */
-#ability-wrap:hover:not(.ability-wrap--disabled) #ability-btn {
-  box-shadow: 0 0 0.6rem rgba(217, 164, 65, 0.5);
+/* The generic `button` rule's diagonal light-sheen sweep (button::before,
+   further up this file) is meant for the rectangular menu-style buttons —
+   on this round bronze dish it read as a stray shimmer sliding across the
+   artwork on hover. Same "explicitly turn it off" approach already used
+   for button:disabled::before, just applied unconditionally here instead
+   of gated on a state. */
+#ability-btn::before {
+  content: none;
 }
 
 /* Not enough mana yet to use the ability — same grayscale-and-dim treatment
@@ -2941,8 +2997,9 @@ body.tutorial-active .toggle-wrapper {
     font-size: 0.75rem;
   }
 
-  #start-logo {
-    font-size: 1.8rem;
+  #start-logo,
+  #loading-logo {
+    width: min(13rem, 80vw);
   }
 
   #start-tagline {
