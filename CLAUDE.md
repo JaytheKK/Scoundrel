@@ -640,6 +640,34 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     in landscape) is the final safety net.
   - `#message` is capped to 2 lines via `-webkit-line-clamp` so a long
     fight/flee message can never push the page taller.
+  - **`#message` reserves a fixed height (`height`, not `min-height`) for
+    those same 2 lines, always, even when the message is empty or one
+    line.** Reported via screenshot: with `min-height` alone, this box grew
+    the instant a message wrapped to its 2nd line and shrank back down the
+    instant it didn't, which nudged `#flee-btn` and `#weapon-area` apart and
+    back together on almost every action, one line shy of ever noticing
+    it's the same box. A fixed height (`2.21rem` = `0.85rem` font-size x
+    `1.3` line-height x `2` lines, `1.95rem` at the `max-height: 480px`
+    tier's own smaller `0.75rem` font-size) reserves that same space
+    whether the message is empty, one line, or two, so neither neighbor
+    ever moves. `-webkit-box-pack: center` centers shorter/empty messages
+    inside that reserved space instead of pinning them to the top with
+    blank room below.
+    **This raised every tier's own true minimum content height** (a real
+    2-line message, not just an empty one, is now always reserved for, not
+    just occasionally reached), which pushed 3 of the 4 breakpoint gates
+    above right up against their content, verified by measuring with the
+    message forced to 2 real lines at each tier's exact gate: the tablet
+    gate moved `665px` to `715px`, small/mid desktop `900px` to `935px`,
+    full desktop `1040px` to `1110px`. The phone/default tier and the
+    2x2 grid tier's own `min-height: 650px` gate both already had enough
+    slack and didn't need adjusting. **Any future change to `#message`'s
+    reserved height, font-size, or line-height must re-measure all 4
+    breakpoint gates the same way** (force a real 2-line message, check
+    `document.documentElement.scrollHeight` at each gate's own exact
+    minimum width/height, and just below it to confirm the fallback tier
+    still fits too), not just the tier being changed, since `#message` is
+    shared by every tier.
   - **Gotcha:** a safety-net media query needs to be placed in the source
     **after** the base rules for whatever it overrides (e.g. `h1`, `button`),
     not just after other media queries — same-specificity CSS rules are
@@ -675,6 +703,40 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     gap, also reported via that same screenshot) is zeroed back out inside
     the `max-height: 480px` safety block specifically, since that tier has
     zero vertical headroom to spare for it (see the `0.46` bullet above).
+  - **Fixed card positions within the 2x2 grid (custom addition on top of
+    the grid above).** By request: resolving a card in the 2x2 grid must
+    leave that slot visibly empty rather than letting the other cards
+    reflow to close the gap, and a room refill must fill the new cards
+    into whichever slots are empty rather than restacking the whole room.
+    Before this, `renderRoom()` (`js/ui.js`) always just tore `#room` down
+    and rebuilt it straight from `state.room`'s current array order, which
+    is fine for the normal single-row layout (order never mattered
+    visually there) but meant every remaining card visibly jumped to a new
+    position in the grid the moment any other card was resolved, and
+    jumped again on the next refill. Fixed with `roomSlots`, a
+    module-level array of 4 fixed positions in `js/ui.js` (empty room
+    slots render as `.room-slot-empty` in `style.css`, an invisible,
+    unclickable box the same size as a card, so the grid cell stays
+    reserved), reconciled against the live `state.room` every render by
+    `updateRoomSlots()`: any slot whose card is no longer in `state.room`
+    is cleared first, then any `state.room` card not yet in a slot is
+    placed into the first empty one. Tracked by object reference, not
+    `card.id`, specifically so a brand new game (`initGame()` hands out
+    all-new card objects every time via `getFreshDeck()`, even though the
+    same id strings repeat every game, e.g. `"clubs-7"`) can never confuse
+    a leftover slot from the previous game with a same-id card in the new
+    one, nothing needs to explicitly reset `roomSlots` on New Game or Play
+    Again, the reference simply won't be found in the new `state.room` and
+    that slot clears itself out naturally. Only active while `#room`'s own
+    computed `display` is `grid` (read directly from the DOM in
+    `renderRoom()` rather than re-encoding the grid tier's media query
+    breakpoint a second time in JS), so the normal single-row layout is
+    completely untouched by any of this and keeps compacting the way it
+    always did. `#room-empty` (the pre-first-game/post-game call to
+    action) also got `grid-column: 1 / -1; grid-row: 1 / -1;` in
+    `style.css` so it still spans and centers across the whole grid area
+    as a single item, instead of being squeezed into just the grid's first
+    cell.
 
 ## Card architecture (important — read before adding/editing cards)
 
@@ -2115,19 +2177,113 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   percentage readout (`#loading-text`).
 - `collectPreloadImageUrls()` in `js/preload.js` gathers every image URL
   straight from the existing data (`CARD_LIST`, `CHAMPIONS`,
-  `ABILITY_ICONS`) rather than a separately hand-maintained
-  list, so a newly added card, champion, or ability image is automatically
-  preloaded too. **Keep it this way** rather than hand-listing paths. If a
-  future asset type is added outside those three sources (e.g. a new data
-  file following the "Keep the gallery in sync" pattern elsewhere in this
-  file), add it to `collectPreloadImageUrls()` in the same change, the same
-  discipline as keeping the galleries themselves in sync.
+  `ABILITY_ICONS`, `WEAPON_EFFECTS`) rather than a separately hand-maintained
+  list, so a newly added card, champion, ability, or weapon effect is
+  automatically preloaded too. **Keep it this way** rather than hand-listing
+  paths. If a future asset type is added outside those sources (e.g. a new
+  data file following the "Keep the gallery in sync" pattern elsewhere in
+  this file), add it to `collectPreloadImageUrls()` in the same change, the
+  same discipline as keeping the galleries themselves in sync.
+  - **Any image applied purely via CSS** (`background-image`,
+    `border-image-source`, `mask-image`/`-webkit-mask-image`, e.g. the
+    illustrated card/champion frames or the start-screen button plaque
+    artwork) isn't in any of those data sources at all, so it can't be
+    picked up by the loop above. `collectCssImageUrls()` handles this
+    whole category at once by scanning the already-parsed `style.css`
+    stylesheet itself via `document.styleSheets` for every `url(...)`
+    pointing under `images/`, rather than hand-listing each such path —
+    see the "Real-world bug" entries below for why a hand-list here
+    specifically kept failing in practice. `SYMBOL_IMAGE_URLS` is the one
+    remaining hand-list, for the couple of images applied via a
+    hand-written `<img>` string in `js/ui.js` rather than through CSS or a
+    data field, `collectCssImageUrls()` can't see those either.
 - Each image is loaded via a plain `new Image()` and resolves the preload on
   either `onload` or `onerror`, so one broken/missing image can't hang the
   loading screen forever, it just won't be warm in the cache (same as if
-  this preloader didn't exist). A `PRELOAD_TIMEOUT_MS` (8s) fallback also
+  this preloader didn't exist). A `PRELOAD_TIMEOUT_MS` (15s) fallback also
   force-finishes the whole preload if something stalls without ever firing
   either event, for the same reason.
+- **Real-world bug, only visible on the actual hosted site
+  (lastdeckstanding.com), never locally:** reported as "loads for a long
+  time, and afterward images still aren't loaded, buttons are unstyled for
+  a few seconds, weapons, monsters, everything." Root cause had nothing to
+  do with the preload *logic* above, which was already correct, it was
+  that several of the source PNGs it was faithfully preloading were
+  drastically oversized for how they're ever actually displayed: the 4
+  champion portraits (`images/champions/<id>.png`) were still their raw
+  1990x1990 crop-pipeline output at 7.9-8.7MB **each**, and
+  `images/frames/champion.png` was 1617x2098 at 5.4MB, together over 33MB
+  of a roughly 50MB total preload payload, even though neither is ever
+  rendered larger than a few hundred CSS px anywhere in the UI (a
+  champion-select/gallery tile portrait, or the tiny `#champion-badge`
+  circle, see "Champion artwork"/"Card frame artwork" above for exactly
+  where). Locally (`file://`/localhost) this is instant regardless of file
+  size, so it was invisible in dev; on a real hosted connection, that
+  payload could still be mid-download when `PRELOAD_TIMEOUT_MS` fired,
+  which forces the loading screen to reveal the start screen anyway with
+  those images still loading in the background, i.e. the exact "buttons
+  unstyled for a few seconds" symptom reported, since some of those
+  buttons/tiles sit behind the same not-yet-cached images. **Fixed by
+  resizing the 4 champion portraits and the champion frame down to 700px
+  on their long/relevant edge** (matching the resolution the other 4 card
+  frames were already at) and re-saving with `Pillow`'s `optimize=True,
+  compress_level=9`, cutting each champion portrait from ~8.3MB to
+  ~1.0MB and the champion frame from 5.4MB to 1.1MB, roughly a 33MB
+  reduction with no visible quality loss at any of their actual on-screen
+  sizes (verified by simulating the resize in Pillow and checking the
+  result held up before overwriting the real files, since no live
+  screenshot tool was available in that session). **Lesson for any future
+  art asset added to this project: always check a newly cropped/exported
+  PNG's pixel dimensions and file size against where it's actually
+  displayed (its CSS box size, accounting for a reasonable ~2x DPI
+  headroom) before committing it** — a crop tool's default/source-canvas
+  export resolution can be wildly larger than anything the UI ever needs,
+  and unlike a mis-cropped bounding box (which is visually obvious), an
+  oversized-but-correctly-cropped image looks completely fine in isolation
+  and only surfaces as a real-connection loading-performance bug, not
+  something a local `file://` preview will ever catch.
+- **Second real-world bug, same live-site symptom, reported again via a
+  screenshot of the start screen itself:** every button (`Neues Spiel`,
+  `Champions`, `Waffen`, ...) rendering as a plain flat dark box with no
+  wood/gold plaque artwork at all for the first few seconds. This turned
+  out to be a second instance of the exact same root cause as the frame
+  images further up ("Card frame artwork" above): `images/frames/
+  button-primary.png` (used by `#start-new-game-btn`/`#flee-btn`) and
+  `images/frames/button-secondary.png` (used by every `#start-nav`
+  button) are also applied via CSS `border-image-source`, and were simply
+  never added to the `FRAME_IMAGE_URLS` hand-list that existed at the
+  time, since nobody remembered to when that CSS was written. Since these
+  two files style literally every button on the very first screen a
+  player sees, this was the single worst-case instance of this bug
+  category so far. **Fixed properly this time instead of patching the
+  hand-list a third time**: replaced `FRAME_IMAGE_URLS` entirely with
+  `collectCssImageUrls()` (see the bullet above), which finds every
+  CSS-referenced `images/` path by scanning the live stylesheet, so this
+  whole bug category (a new CSS background/border/mask image quietly
+  missing from preload) can't recur regardless of what CSS is added later.
+  - **Gotcha hit writing that scanner, worth remembering for any future
+    code that walks `CSSRuleList`s:** the first version checked
+    `if (rule.cssRules) { scanRules(rule.cssRules); return; }` to decide
+    whether a rule was a grouping rule (`@media`, `@keyframes`, ...) that
+    needed recursing into instead of being read directly, on the
+    assumption that only a grouping rule would ever have a `cssRules`
+    property. That assumption held for a long time, but Chrome (with CSS
+    nesting support) now gives every plain `CSSStyleRule` a `cssRules`
+    property too (an empty `CSSRuleList` when the rule has no nested
+    rules, as is the case for every rule in this project's own
+    non-nested `style.css`) — still just as truthy as a real grouping
+    rule's populated one. The early-return branch fired for every single
+    rule in the stylesheet, so every rule got treated as "must be a
+    grouping rule, recurse instead of reading it", found nothing nested
+    (there was nothing to find), and returned having never read that
+    rule's own `cssText` at all — `collectCssImageUrls()` silently came
+    back empty. Fixed by always scanning a rule's own `cssText` first,
+    unconditionally, and only additionally recursing when
+    `rule.cssRules.length > 0` (a real, non-empty nested list), rather
+    than ever treating "has a `cssRules` property" as a signal on its
+    own. Caught via the browser's live DOM (`document.styleSheets`),
+    not by reading the code, since this only manifests once actually
+    evaluated against a real stylesheet in a real browser.
 
 ## Localization / Options screen (custom addition, not part of the original
 Scoundrel rules)

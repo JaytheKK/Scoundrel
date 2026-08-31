@@ -125,8 +125,13 @@ html {
    hadn't been given one. A window that's wide enough for this tier but too
    short for it now correctly falls back to the phone/default tier instead
    (--card-scale: 0.78), which was already verified to fit comfortably at
-   any height down to the 480px safety net. */
-@media (min-width: 640px) and (min-height: 665px) {
+   any height down to the 480px safety net.
+   Re-measured again later, once #message switched from a variable
+   min-height to a fixed 2-line height (see #message further down): a real
+   2-line message now needs ~689px at this tier, not the ~640px above, so
+   the gate below was raised from 665px to keep the same kind of safety
+   margin over the new true requirement. */
+@media (min-width: 640px) and (min-height: 715px) {
   html {
     font-size: 18px;
   }
@@ -136,9 +141,10 @@ html {
   }
 }
 
-/* Small/mid desktop — content at this tier needs ~850px, so require some
-   margin above that. */
-@media (min-width: 1024px) and (min-height: 900px) {
+/* Small/mid desktop. Content at this tier needs ~909px with a real 2-line
+   #message (re-measured for the same reason as the tablet tier's own
+   comment above), so require some margin above that. */
+@media (min-width: 1024px) and (min-height: 935px) {
   html {
     font-size: 22px;
   }
@@ -148,9 +154,12 @@ html {
   }
 }
 
-/* Full desktop, 1.5x the original size — content at this tier needs
-   ~1010px, so require real margin above that before using it. */
-@media (min-width: 1280px) and (min-height: 1040px) {
+/* Full desktop, 1.5x the original size. Content at this tier now needs
+   ~1077px (re-measured after #message switched from a variable min-height
+   to a fixed 2-line height, and after #room's own small margin-top was
+   added, see both of those changes' own comments), so the gate is set well
+   above that, not just the ~1010px an older measurement had found. */
+@media (min-width: 1280px) and (min-height: 1110px) {
   html {
     font-size: 24px; /* desktop — 1.5x the original 16px */
   }
@@ -1447,7 +1456,11 @@ button:disabled::before {
 
 #champion-select-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  /* 15rem, not 11rem: see the min-width comment on .champion-select-item
+     below for why this floor has to be wide enough to make the frame's own
+     aspect-ratio height (not just each tile's own content) the tallest
+     thing in play. */
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
   gap: 0.9rem;
   /* Grid's default align-items is `stretch` — without overriding it, every
      tile in a row gets stretched to match whichever sibling has the
@@ -1495,7 +1508,58 @@ button:disabled::before {
    corrected crop (top ~15.2%, right ~14.8%, bottom ~15.8%, left ~15.2%,
    same hand-tuned-by-eye method as the --art- / --hex- boxes elsewhere) —
    **any future recrop of this file must re-measure both the `aspect-ratio`
-   and this padding together**, they're only valid as a matched pair. */
+   and this padding together**, they're only valid as a matched pair.
+
+   **Bug found via user report ("cards render at inconsistent sizes on
+   screens bigger than ~1920x1280"), fixed by widening the grid's column
+   floor above from 11rem to 15rem — not by touching `aspect-ratio`
+   itself.** `align-items: start` (above) only stops the grid from
+   force-stretching every tile to match its row's tallest sibling; it does
+   NOT stop a single tile from individually growing past its own
+   `aspect-ratio`-implied height. A grid item's automatic minimum size is
+   its min-content size when overflow is visible (the default here), and
+   that min-content size includes this flex column's children — portrait +
+   name + description — at their natural (unwrapped-as-little-as-possible)
+   height. At the old 11rem column floor, the longest description
+   (Berserker's German text is the worst case, measured ~17.1rem tall
+   including the portrait/name/gaps/padding around it) needed noticeably
+   more vertical room than the frame's own 1617:2098 ratio gives an 11rem-
+   wide box (~14.3rem) — so that one tile silently grew taller than its
+   siblings, independently, by however much ITS OWN text happened to
+   overflow. Every champion's text overflowed by a different amount (even
+   Paladin's short description overflowed slightly), which is exactly why
+   the reported symptom varied between sessions (sometimes just Rogue
+   looked ~20% bigger, sometimes every tile looked bigger than Paladin's,
+   whichever tile's own overflow happened to be biggest and drew the eye).
+   This was hard to notice at smaller breakpoints only because the
+   overflow-to-tile-size ratio is small there too, not because it doesn't
+   happen — the underlying gap exists at every root-font tier equally,
+   since it's expressed once you convert both sides to `rem` (confirmed by
+   measuring the same ~17.1rem figure at both the 16px and 24px root-font
+   tiers). It's specifically most visible on very large/tall screens
+   because that's the one situation where the champion-select panel's own
+   capped width (`min(38rem, 100%)`, see `#champion-select-panel` above)
+   forces the grid's `auto-fit` down to 3 uneven columns instead of a
+   clean 2x2 or 1x4 layout, putting all 4 differently-overflowing tiles
+   directly next to each other where the size mismatch reads as an
+   obvious bug rather than blending into a wrap. Do NOT fix a future
+   recurrence of this by changing `.champion-select-item`'s own
+   `aspect-ratio` value — that changes the ratio the *frame artwork* is
+   stretched to fill (`background-size: 100% 100%` below), which distorts
+   the illustrated border, the exact problem `aspect-ratio` was
+   originally added to prevent (see above). The correct lever is the grid
+   column's minimum width: a wider column makes the *same* 1617:2098 ratio
+   resolve to a taller box on its own, with no distortion, while also
+   giving the description more horizontal room to wrap into fewer lines,
+   attacking the gap from both sides at once. Re-verify by temporarily
+   forcing `grid-template-columns` to a single fixed-width column (so
+   percentage padding still resolves against the grid item's own area,
+   not the grid container's, which is a real difference — measuring this
+   with `display: flex` instead of `grid` gives wrong numbers) and
+   comparing each champion's natural (`aspect-ratio: unset; height: auto`)
+   content height against `width * 2098 / 1617` at that same width, for
+   both languages (German ran longer than English for every champion
+   tested). */
 .champion-select-item {
   display: flex;
   flex-direction: column;
@@ -1569,6 +1633,13 @@ button:disabled::before {
   flex-direction: column;
   align-items: center;
   gap: 0.9rem;
+  /* No-op whenever #room is flex (every tier except the phone 2x2 grid
+     further down), but keeps this single child from being squeezed into
+     just the grid's first cell when #room is a 2-column grid, it spans the
+     whole grid area instead, so it still centers itself the same way it
+     always has. */
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
 }
 
 #room-empty-tagline {
@@ -1888,7 +1959,18 @@ button:disabled::before {
      between Flee Room and the equipment slots". Zeroed here so `gap` is
      the only spacing in that area, same as every other #game-screen child. */
   margin: 0;
-  min-height: 1rem;
+  /* A fixed height (not min-height), reserving exactly the 2 lines
+     -webkit-line-clamp below allows, not just min-height's old single
+     line. min-height let this box grow taller the moment a message wrapped
+     to a 2nd line (and shrink back down once it didn't), which nudged
+     #flee-btn and #weapon-area apart and back together again on almost
+     every action, reported as the whole layout "shifting" between Flee
+     and the equipment slots. A fixed height reserves the same space
+     whether the message is empty, one line, or two, so neither neighbor
+     ever moves. -webkit-box-pack centers shorter (or empty) messages
+     inside that reserved space instead of leaving them pinned to the top
+     with blank room below. */
+  height: 2.21rem;
   max-width: min(90vw, 26rem);
   font-size: 0.85rem;
   font-family: var(--font-ui);
@@ -1897,6 +1979,7 @@ button:disabled::before {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  -webkit-box-pack: center;
 }
 
 .message--won {
@@ -1968,6 +2051,21 @@ button:disabled::before {
     justify-content: center;
     gap: calc(0.35rem + 0.35rem * var(--card-scale));
   }
+}
+
+/* Reserves a resolved-but-not-yet-refilled slot's exact grid cell in the
+   phone 2x2 room grid above, so the other cards never reflow to close the
+   gap and a room refill can drop its new cards straight back into place,
+   see updateRoomSlots()/renderRoom() in js/ui.js. Same box size as a real
+   card (.card's own width/height formula, further down), everything else
+   left unset on purpose: no background, no border, no cursor, so it's
+   fully invisible and un-clickable, just an empty space holding the cell
+   open. Only ever created while the grid above is active, the normal
+   single-row layout never builds one of these. */
+.room-slot-empty {
+  width: calc(100px * var(--card-scale));
+  height: calc(140px * var(--card-scale));
+  pointer-events: none;
 }
 
 /* Card size is driven by --card-scale (see the responsive breakpoints
@@ -3207,6 +3305,11 @@ body.tutorial-active .toggle-wrapper {
 
   #message {
     font-size: 0.75rem;
+    /* Matches this tier's own smaller font-size/line-height (the base
+       height further up is sized for the base 0.85rem font), this tier
+       has no vertical headroom to spare for extra unused space, see the
+       max-height:480px block's own doc comment above. */
+    height: 1.95rem;
   }
 
   #start-logo,

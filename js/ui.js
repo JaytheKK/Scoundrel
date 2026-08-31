@@ -141,6 +141,58 @@ function renderCard(card) {
   return el;
 }
 
+/** Persistent mapping from the 4 fixed visual positions in the phone-tier
+ * 2x2 room grid (the max-width:639px/min-height:650px media query in
+ * style.css) to whichever card currently occupies each one, or null for an
+ * empty slot. Only read/written while that grid is actually active, see
+ * renderRoom() below, the normal single-row layout ignores this entirely
+ * and just renders state.room directly in order, exactly as before this
+ * existed.
+ *
+ * By request: in the 2x2 grid, resolving a card should leave that slot
+ * visibly empty rather than letting the other cards reflow to close the
+ * gap, and a room refill should fill the new cards into whichever slots
+ * are empty instead of restacking everything from scratch (both of which
+ * happened before, since renderRoom() always just rebuilt #room from
+ * state.room's current order). Tracked by object reference, not card.id,
+ * specifically so a brand new game (initGame() hands out all-new card
+ * objects via getFreshDeck(), even though the same id strings, e.g.
+ * "clubs-7", exist again every game) can never confuse a leftover slot
+ * from the previous game with a same-named card in the new one:
+ * updateRoomSlots() below clears any slot whose card object isn't found
+ * by reference in the current state.room, which a previous game's cards
+ * never are, so nothing needs to explicitly reset this array on New Game
+ * or Play Again. */
+let roomSlots = [null, null, null, null];
+
+/** Reconciles roomSlots (see above) against the live state.room array: any
+ * slot whose card is no longer present in state.room is cleared first (the
+ * card was resolved, or the whole room changed at once, e.g. a flee or a
+ * new game), then any state.room card that isn't already occupying a slot
+ * is placed into the first empty slot, in state.room's own order. Called
+ * only from renderRoom() while the 2x2 grid tier is active. */
+function updateRoomSlots(roomCards) {
+  const stillPresent = new Set(roomCards);
+  for (let i = 0; i < roomSlots.length; i++) {
+    if (roomSlots[i] && !stillPresent.has(roomSlots[i])) {
+      roomSlots[i] = null;
+    }
+  }
+  const alreadySlotted = new Set(roomSlots.filter(Boolean));
+  roomCards.forEach((card) => {
+    if (alreadySlotted.has(card)) return;
+    const emptyIndex = roomSlots.indexOf(null);
+    if (emptyIndex === -1) {
+      // Should never happen (the room never holds more than 4 cards at
+      // once), but don't silently drop a card if it somehow does.
+      roomSlots.push(card);
+    } else {
+      roomSlots[emptyIndex] = card;
+    }
+    alreadySlotted.add(card);
+  });
+}
+
 /** When there's no active room (before the first game, or once the dungeon
  * is fully cleared/lost), show a "New Game" call-to-action in its place
  * instead of leaving the room area blank. */
@@ -170,6 +222,30 @@ function renderRoom() {
     empty.appendChild(tagline);
     empty.appendChild(cta);
     roomEl.appendChild(empty);
+    return;
+  }
+
+  // The phone-tier 2x2 grid keeps every card in its own fixed slot instead
+  // of reflowing the remaining cards whenever one resolves, see
+  // updateRoomSlots() above for why. Reading #room's own computed display
+  // (rather than re-encoding that media query's breakpoint here too) keeps
+  // this in sync with style.css automatically. Any other layout (the
+  // normal single-row room) skips all of this and renders state.room
+  // directly, exactly as before that grid existed.
+  if (getComputedStyle(roomEl).display === 'grid') {
+    updateRoomSlots(state.room);
+    roomSlots.forEach((card) => {
+      if (card) {
+        roomEl.appendChild(renderCard(card));
+      } else {
+        // Reserves the same grid cell a card would occupy, but with
+        // nothing shown and no interaction, see .room-slot-empty in
+        // style.css.
+        const placeholder = document.createElement('div');
+        placeholder.className = 'room-slot-empty';
+        roomEl.appendChild(placeholder);
+      }
+    });
     return;
   }
 
