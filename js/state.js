@@ -617,6 +617,47 @@ function fightMonster(card, useWeapon = true) {
   return { message, weakenedIds, paladinCycleComplete, shieldBlocked: blocked > 0, shieldBroke, weaponBroke };
 }
 
+/** Pure, read-only preview of the damage a monster card would deal if
+ * fought right now, mirroring fightMonster()'s damage math exactly (weapon/
+ * bare-handed choice via useWeaponPreference, Berserker's flat reduction,
+ * Paladin's Blessing, Frenzy's degrade-limit override, then the shield
+ * block), but never mutating any state (no weapon degrade, no shield
+ * durability loss, no charge spent). Used only to show a "how much would
+ * this cost me" hint on hover (see showCardTooltip() in js/ui.js), which
+ * can be called any number of times without side effects.
+ * @returns {rawDamage, blocked, finalDamage, vampiric} where rawDamage is
+ *   the damage after weapon/Berserker/Paladin reduction but BEFORE any
+ *   shield block, blocked is how much of that a shield would absorb (0 if
+ *   no shield is equipped), finalDamage is what would actually be
+ *   subtracted from HP (rawDamage - blocked), and vampiric is true if the
+ *   equipped weapon's Vampiric effect would heal 1 HP on this swing. */
+function previewMonsterDamage(card) {
+  const weaponUsable = state.useWeaponPreference && isWeaponUsableOn(card);
+  const weapon = state.equippedWeapon;
+
+  let rawDamage;
+  let vampiric = false;
+  if (weaponUsable) {
+    rawDamage = Math.max(card.rank - weapon.rank, 0);
+    const frenzyActive = state.champion === 'berserker' && state.berserkerFrenzyCharges > 0;
+    const frenzyOverrode =
+      frenzyActive && state.weaponMaxMonster !== null && card.rank >= state.weaponMaxMonster;
+    vampiric = weapon.effect === 'vampiric' && !frenzyOverrode;
+  } else {
+    rawDamage = card.rank;
+    if (state.champion === 'berserker') rawDamage = Math.max(rawDamage - 10, 0);
+  }
+
+  if (state.champion === 'paladin' && state.paladinResistCharges > 0 && rawDamage > 0) {
+    rawDamage = Math.max(rawDamage - 10, 0);
+  }
+
+  const blocked = state.equippedShield ? Math.min(rawDamage, state.equippedShield.rank) : 0;
+  const finalDamage = rawDamage - blocked;
+
+  return { rawDamage, blocked, finalDamage, vampiric };
+}
+
 function equipWeapon(card) {
   state.equippedWeapon = card;
   state.weaponMaxMonster = null; // fresh weapon: no restriction until first use

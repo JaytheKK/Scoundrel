@@ -116,6 +116,48 @@ function cardTooltipText(card) {
   return effect ? `${name} (${effect.name})` : name;
 }
 
+/** Builds the small "damage you'd take" line shown under a monster card's
+ * hover tooltip (see showCardTooltip() below), from previewMonsterDamage()
+ * in js/state.js, a live, read-only preview that already accounts for an
+ * equipped weapon, Berserker/Paladin/Frenzy, and a shield, exactly as a
+ * real fight would. Returns null for a monster that can currently be
+ * fought for 0 damage AND has no shield in play (nothing useful to show).
+ * Layout, by request:
+ *   - no shield: just the damage in red, e.g. "-15".
+ *   - shield blocks everything: just the blocked amount in gray
+ *     parentheses, e.g. "(-18)", no red number, since 0 HP would be lost.
+ *   - shield blocks only part: the blocked amount in gray parentheses
+ *     followed by the actual HP loss in red, e.g. "(-18) -15".
+ *   - Vampiric heal (if the equipped weapon would trigger it this swing):
+ *     a "+1" in green, appended after the above. */
+function buildDamagePreviewEl(card) {
+  const { blocked, finalDamage, vampiric } = previewMonsterDamage(card);
+  if (blocked <= 0 && finalDamage <= 0 && !vampiric) return null;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'tooltip-damage';
+
+  if (blocked > 0) {
+    const blockedEl = document.createElement('span');
+    blockedEl.className = 'tooltip-damage-blocked';
+    blockedEl.textContent = `(-${blocked})`;
+    wrap.appendChild(blockedEl);
+  }
+  if (blocked <= 0 || finalDamage > 0) {
+    const dmgEl = document.createElement('span');
+    dmgEl.className = 'tooltip-damage-final';
+    dmgEl.textContent = `-${finalDamage}`;
+    wrap.appendChild(dmgEl);
+  }
+  if (vampiric) {
+    const vampEl = document.createElement('span');
+    vampEl.className = 'tooltip-damage-vamp';
+    vampEl.textContent = '+1';
+    wrap.appendChild(vampEl);
+  }
+  return wrap;
+}
+
 function renderCard(card) {
   const el = document.createElement('div');
   el.className = `card card--${card.type} card--tier-${cardTier(card.rank)}`;
@@ -668,9 +710,10 @@ function renderShieldSlot() {
   }
 }
 
-/** Positions and shows #card-tooltip above `el` (or below, if there isn't
- * enough room), centered horizontally on it and clamped so it never runs
- * off the left/right edge of the viewport — same approach as
+/** Positions and shows #card-tooltip below `el` (or above, if there isn't
+ * enough room underneath it, e.g. a card in the bottom row of the phone-tier
+ * 2x2 grid), centered horizontally on it and clamped so it never runs off
+ * the left/right edge of the viewport, same approach as
  * positionCoachmarkNear() in js/tutorial.js. Reads the name/effect text
  * from el.dataset.tooltip, set by renderCard()/renderWeaponSlot()/
  * renderShieldSlot() via cardTooltipText() above. This is a custom, styled
@@ -682,7 +725,25 @@ function showCardTooltip(el) {
   if (!text) return;
 
   const tooltip = document.getElementById('card-tooltip');
-  tooltip.textContent = text;
+  tooltip.innerHTML = '';
+  const nameEl = document.createElement('div');
+  nameEl.className = 'tooltip-name';
+  nameEl.textContent = text;
+  tooltip.appendChild(nameEl);
+
+  // Damage preview: only for a monster card actually still in the room
+  // (not the equipped-weapon/shield slots, which also use this same
+  // tooltip for their own name text). Looked up fresh by id every time
+  // this shows, rather than cached, so it always reflects the current
+  // weapon/shield/champion-charge state exactly as a real fight would.
+  if (el.classList.contains('card--monster')) {
+    const card = state.room.find((c) => c.id === el.dataset.id);
+    if (card) {
+      const preview = buildDamagePreviewEl(card);
+      if (preview) tooltip.appendChild(preview);
+    }
+  }
+
   tooltip.classList.remove('hidden');
 
   const rect = el.getBoundingClientRect();
@@ -691,8 +752,8 @@ function showCardTooltip(el) {
   let left = rect.left + rect.width / 2 - ttRect.width / 2;
   left = Math.max(8, Math.min(left, window.innerWidth - ttRect.width - 8));
 
-  let top = rect.top - ttRect.height - 10;
-  if (top < 8) top = rect.bottom + 10;
+  let top = rect.bottom + 10;
+  if (top + ttRect.height > window.innerHeight - 8) top = rect.top - ttRect.height - 10;
 
   tooltip.style.left = `${left}px`;
   tooltip.style.top = `${top}px`;

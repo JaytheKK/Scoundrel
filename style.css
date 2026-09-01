@@ -3218,30 +3218,91 @@ body.tutorial-active .toggle-wrapper {
 }
 
 /* Custom card-name hover tooltip (see cardTooltipText()/showCardTooltip()/
-   hideCardTooltip() in js/ui.js) — replaces the browser's own default
+   hideCardTooltip() in js/ui.js), replacing the browser's own default
    title-attribute tooltip with a small styled popup matching the rest of
    the game's chrome, positioned in JS the same way #tutorial-coachmark is
-   above (plain left/top, since its anchor moves). pointer-events: none so
-   it never itself becomes the mouseover/mouseout target and interferes
-   with the hover it's meant to be reporting on. */
+   below (plain left/top, since its anchor moves, and always placed under
+   the hovered card now, only flipping above if it wouldn't fit under it,
+   see showCardTooltip()). pointer-events: none so it never itself becomes
+   the mouseover/mouseout target and interferes with the hover it's meant
+   to be reporting on.
+   Background is the same paper/parchment photo used behind a gallery
+   detail popup's portrait (images/backgrounds/GalleryBackground.png, see
+   #gallery-detail-image above), by request, so this reads as the same
+   kind of "paper card" surface as the rest of the game's UI rather than
+   the plain dark --surface fill it used before. --card-bg is still the
+   background-color underneath, purely as a solid fallback for the instant
+   before the image itself has loaded. Border color/width was picked to
+   match: a bronze tone (not the accent gold used elsewhere, which read
+   too close to a plain highlight/selection color here) at 2px, a bit
+   thicker than a normal 1px card border so it holds its own against the
+   busier paper texture underneath. Text switches to --card-text (the same
+   near-black used on every card face) since the background is now light
+   parchment, not the dark --surface it was tuned for before. */
 #card-tooltip {
   position: fixed;
   z-index: 60;
   pointer-events: none;
   max-width: min(14rem, 80vw);
-  background: var(--surface);
-  border: 1px solid var(--accent);
+  background-color: var(--card-bg);
+  background-image: url('images/backgrounds/GalleryBackground.png');
+  background-size: cover;
+  background-position: center;
+  border: 2px solid #8c6239;
   border-radius: 0.4rem;
   padding: 0.35rem 0.6rem;
   font-family: var(--font-ui);
   font-size: 0.85rem;
-  color: var(--text);
+  color: var(--card-text);
   text-align: center;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
 }
 
 #card-tooltip.hidden {
   display: none;
+}
+
+/* Damage-preview line, appended under a monster card's name inside
+   #card-tooltip above (see buildDamagePreviewEl()/showCardTooltip() in
+   js/ui.js), "how much HP this fight would cost right now", already
+   accounting for an equipped weapon/shield/champion effect. .tooltip-name
+   gets a small bottom margin only when that second line is actually
+   present (a card with no damage line, e.g. a weapon/potion, still shows
+   just its plain name with no extra gap below it). */
+.tooltip-name {
+  margin: 0;
+}
+
+.tooltip-name:not(:last-child) {
+  margin-bottom: 0.3rem;
+}
+
+.tooltip-damage {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.35rem;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+/* Grayed out and parenthesized: the amount a shield would absorb, shown
+   as context alongside (not instead of) the actual HP loss in red. A muted
+   warm brown, not --text-muted (a light gray tuned for the old dark
+   --surface tooltip background), which read as washed-out and low-contrast
+   once the tooltip switched to a light parchment background above. */
+.tooltip-damage-blocked {
+  color: #7a6a52;
+  font-weight: 600;
+}
+
+.tooltip-damage-final {
+  color: var(--danger);
+}
+
+.tooltip-damage-vamp {
+  color: var(--success);
 }
 
 #tutorial-coachmark-text {
