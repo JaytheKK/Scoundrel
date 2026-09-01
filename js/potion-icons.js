@@ -13,28 +13,30 @@
 // the table for whatever getLang() currently returns.
 // ---------------------------------------------------------------------------
 
+// Keys are the ×5-rescaled rank values (see "Value rescale" note in
+// js/cards.js) — old rank 2-10 is now 10-50, same steps of 5.
 const POTION_NAMES = {
   en: {
-    2: 'Minor Health Potion',
-    3: 'Lesser Health Potion',
-    4: 'Small Health Potion',
-    5: 'Medium Health Potion',
-    6: 'Large Health Potion',
-    7: 'Greater Health Potion',
-    8: 'Major Health Potion',
-    9: 'Superior Health Potion',
-    10: 'Supreme Health Potion',
+    10: 'Minor Health Potion',
+    15: 'Lesser Health Potion',
+    20: 'Small Health Potion',
+    25: 'Medium Health Potion',
+    30: 'Large Health Potion',
+    35: 'Greater Health Potion',
+    40: 'Major Health Potion',
+    45: 'Superior Health Potion',
+    50: 'Supreme Health Potion',
   },
   de: {
-    2: 'Kleiner Heiltrank',
-    3: 'Geringer Heiltrank',
-    4: 'Schwacher Heiltrank',
-    5: 'Mittlerer Heiltrank',
-    6: 'Großer Heiltrank',
-    7: 'Starker Heiltrank',
-    8: 'Mächtiger Heiltrank',
-    9: 'Überlegener Heiltrank',
-    10: 'Höchster Heiltrank',
+    10: 'Kleiner Heiltrank',
+    15: 'Geringer Heiltrank',
+    20: 'Schwacher Heiltrank',
+    25: 'Mittlerer Heiltrank',
+    30: 'Großer Heiltrank',
+    35: 'Starker Heiltrank',
+    40: 'Mächtiger Heiltrank',
+    45: 'Überlegener Heiltrank',
+    50: 'Höchster Heiltrank',
   },
 };
 

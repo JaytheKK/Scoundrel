@@ -44,19 +44,31 @@
 // scripted deck) so every fight's damage number is known ahead of time and
 // the whole script can be hand-tuned to never actually kill the player. See
 // the big comment block on TUTORIAL_STEPS below for the room-by-room math.
+// Ids use the ×5-rescaled rank values (see the "Value rescale" note in
+// js/cards.js), and monster ids use the pool's "monster-<rank>-<instance>"
+// scheme (see "Monster Pool" there) now that monsters no longer belong to a
+// clubs/spades suit — e.g. old 'spades-5' is now 'monster-25-1'. Every
+// monster value below is used only once, so every id stays on instance "-1"
+// — no need to reach for "-2" anywhere. The 23-monster rebalance (see
+// "Monster Pool" in js/monster-icons.js) shifted several monster values that
+// this script used to reference (45, 35, 50 no longer exist as monster
+// values at all) — this deck was re-picked against the new value set, and
+// the whole room-by-room HP/damage trace below was re-verified by hand
+// against those new numbers, not just mechanically offset from the old
+// ones.
 const TUTORIAL_DECK_IDS = [
   // Room 1: bare-handed fight, equip a weapon, fight with it, leave a potion.
-  'spades-5', 'diamonds-6', 'clubs-9', 'hearts-8',
+  'monster-25-1', 'diamonds-30', 'monster-46-1', 'hearts-40',
   // Room 2 refill: heal, potion-stacking cap, weapon-degrade rule, leave a shield.
-  'hearts-3', 'clubs-11', 'shields-5',
+  'hearts-15', 'monster-55-1', 'shields-25',
   // Room 3 refill: equip shield, shield partially blocks, shield shatters.
-  'spades-7', 'spades-10', 'diamonds-8',
+  'monster-34-1', 'monster-37-1', 'diamonds-40',
   // Room 4 refill (filler, this room is fled whole, never resolved card by card).
-  'clubs-4', 'hearts-2', 'diamonds-3',
+  'monster-20-1', 'hearts-10', 'diamonds-15',
   // Room 5, dealt fresh from the top of the deck after fleeing: heal, then
   // fight with the champion's active ability active. Last two are filler,
   // the tutorial ends before they'd ever be reached.
-  'hearts-7', 'spades-9', 'diamonds-9', 'hearts-9',
+  'hearts-35', 'monster-43-1', 'diamonds-45', 'hearts-45',
 ];
 
 function buildTutorialDeck() {
@@ -99,55 +111,55 @@ const TUTORIAL_STEPS = [
   },
   {
     targetType: 'card',
-    targetKey: 'spades-5',
+    targetKey: 'monster-25-1',
     textKey: 'tutorialStep1',
     advanceDelayMs: 600,
   },
   {
     targetType: 'card',
-    targetKey: 'diamonds-6',
+    targetKey: 'diamonds-30',
     textKey: 'tutorialStep2',
     advanceDelayMs: 700,
   },
   {
     targetType: 'card',
-    targetKey: 'clubs-9',
+    targetKey: 'monster-46-1',
     textKey: 'tutorialStep3',
     advanceDelayMs: 1800,
   },
   {
     targetType: 'card',
-    targetKey: 'hearts-8',
+    targetKey: 'hearts-40',
     textKey: 'tutorialStep4',
     advanceDelayMs: 600,
   },
   {
     targetType: 'card',
-    targetKey: 'hearts-3',
+    targetKey: 'hearts-15',
     textKey: 'tutorialStep5',
     advanceDelayMs: 600,
   },
   {
     targetType: 'card',
-    targetKey: 'clubs-11',
+    targetKey: 'monster-55-1',
     textKey: 'tutorialStep6',
     advanceDelayMs: 600,
   },
   {
     targetType: 'card',
-    targetKey: 'shields-5',
+    targetKey: 'shields-25',
     textKey: 'tutorialStep7',
     advanceDelayMs: 700,
   },
   {
     targetType: 'card',
-    targetKey: 'spades-7',
+    targetKey: 'monster-34-1',
     textKey: 'tutorialStep8',
     advanceDelayMs: 1800,
   },
   {
     targetType: 'card',
-    targetKey: 'spades-10',
+    targetKey: 'monster-37-1',
     textKey: 'tutorialStep9',
     advanceDelayMs: 900,
   },
@@ -159,7 +171,7 @@ const TUTORIAL_STEPS = [
   },
   {
     targetType: 'card',
-    targetKey: 'hearts-7',
+    targetKey: 'hearts-35',
     textKey: 'tutorialStep11',
     advanceDelayMs: 600,
   },
@@ -179,7 +191,7 @@ const TUTORIAL_STEPS = [
   },
   {
     targetType: 'card',
-    targetKey: 'spades-9',
+    targetKey: 'monster-43-1',
     textKey: 'tutorialStep13',
     advanceDelayMs: 600,
   },

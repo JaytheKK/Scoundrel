@@ -1,7 +1,8 @@
 // ---------------------------------------------------------------------------
 // Scoundrel — shield names.
 // Shields are a custom addition on top of the standard 44-card deck (see
-// js/cards.js) — currently just 3 cards, ranks 3-5. Artwork lives in
+// js/cards.js) — currently just 3 cards, ranks 15-25 (a ×5 rescale of the
+// original 3-5). Artwork lives in
 // images/shields/<rank>.png (assigned automatically in makeCard(), see
 // js/cards.js) — this file just maps each rank to its shield name, used for
 // the card tooltip (see renderCard() in js/ui.js) and the Shields gallery.
@@ -14,16 +15,18 @@
 // getLang() currently returns.
 // ---------------------------------------------------------------------------
 
+// Keys are the ×5-rescaled rank values (see "Value rescale" note in
+// js/cards.js) — old rank 3-5 is now 15-25, same steps of 5.
 const SHIELD_NAMES = {
   en: {
-    3: 'Oaken Shield',
-    4: 'Round Shield',
-    5: 'Lion Crest Shield',
+    15: 'Oaken Shield',
+    20: 'Round Shield',
+    25: 'Lion Crest Shield',
   },
   de: {
-    3: 'Eichenschild',
-    4: 'Rundschild',
-    5: 'Löwenwappenschild',
+    15: 'Eichenschild',
+    20: 'Rundschild',
+    25: 'Löwenwappenschild',
   },
 };
 
@@ -37,14 +40,14 @@ function shieldNameFor(rank) {
 // tooltips only show the name, not this).
 const SHIELD_DESCRIPTIONS = {
   en: {
-    3: 'A simple wooden shield, carved with an oak leaf.',
-    4: 'A sturdy round shield, banded with iron rivets.',
-    5: "A knight's heraldic shield, emblazoned with a rampant lion.",
+    15: 'A simple wooden shield, carved with an oak leaf.',
+    20: 'A sturdy round shield, banded with iron rivets.',
+    25: "A knight's heraldic shield, emblazoned with a rampant lion.",
   },
   de: {
-    3: 'Ein einfacher Holzschild, mit einem Eichenblatt verziert.',
-    4: 'Ein robuster Rundschild, mit eisernen Nieten verstärkt.',
-    5: 'Der heraldische Schild eines Ritters, geschmückt mit einem aufgerichteten Löwen.',
+    15: 'Ein einfacher Holzschild, mit einem Eichenblatt verziert.',
+    20: 'Ein robuster Rundschild, mit eisernen Nieten verstärkt.',
+    25: 'Der heraldische Schild eines Ritters, geschmückt mit einem aufgerichteten Löwen.',
   },
 };
 

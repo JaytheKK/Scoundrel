@@ -66,11 +66,13 @@ function fillCardFace(el, card) {
  * the border/glow treatment in style.css (.card--tier-N). Weapons/potions
  * only go up to rank 10, so they naturally top out around tier 3 — only a
  * monster can reach tier 4/5. */
+// Thresholds are the ×5-rescaled rank values (see the "Value rescale" note
+// in js/cards.js) — old 14/11/8/5 is now 70/55/40/25.
 function cardTier(rank) {
-  if (rank >= 14) return 5;
-  if (rank >= 11) return 4;
-  if (rank >= 8) return 3;
-  if (rank >= 5) return 2;
+  if (rank >= 70) return 5;
+  if (rank >= 55) return 4;
+  if (rank >= 40) return 3;
+  if (rank >= 25) return 2;
   return 1;
 }
 
@@ -85,17 +87,6 @@ function flavorNameFor(card) {
   if (card.type === 'weapon') return weaponNameFor(card.baseRank);
   if (card.type === 'shield') return shieldNameFor(card.baseRank);
   return null;
-}
-
-/** Whether a card is strong enough to get the extra pulsing "aura" (rotating
- * glow ring + breathing shadow, see .card--aura in style.css) on top of the
- * normal tier border — the very strongest monsters (rank 11-14) and
- * the 3 strongest weapons (rank 8+, since weapons cap at 10). Potions don't
- * get one — they already have their own always-on life-pulse. */
-function hasAura(card) {
-  if (card.type === 'monster') return card.rank >= 11;
-  if (card.type === 'weapon') return card.rank >= 8;
-  return false;
 }
 
 /** Applies a card's own glow color (card.glowRgb, an "R, G, B" string —
@@ -128,7 +119,6 @@ function cardTooltipText(card) {
 function renderCard(card) {
   const el = document.createElement('div');
   el.className = `card card--${card.type} card--tier-${cardTier(card.rank)}`;
-  if (hasAura(card)) el.classList.add('card--aura');
   el.dataset.suit = card.suit;
   el.dataset.id = card.id;
   applyGlowColor(el, card);
@@ -157,7 +147,7 @@ function renderCard(card) {
  * state.room's current order). Tracked by object reference, not card.id,
  * specifically so a brand new game (initGame() hands out all-new card
  * objects via getFreshDeck(), even though the same id strings, e.g.
- * "clubs-7", exist again every game) can never confuse a leftover slot
+ * "diamonds-30", can recur across games) can never confuse a leftover slot
  * from the previous game with a same-named card in the new one:
  * updateRoomSlots() below clears any slot whose card object isn't found
  * by reference in the current state.room, which a previous game's cards
@@ -589,7 +579,6 @@ function renderWeaponSlot() {
     slot.innerHTML = '<img class="slot-icon" src="images/symbols/SwordSymbolTransparent.png" alt="">';
   } else {
     slot.className = `card card--weapon card--tier-${cardTier(state.equippedWeapon.rank)}`;
-    if (hasAura(state.equippedWeapon)) slot.classList.add('card--aura');
     slot.dataset.suit = state.equippedWeapon.suit;
     slot.dataset.tooltip = cardTooltipText(state.equippedWeapon);
     applyGlowColor(slot, state.equippedWeapon);
@@ -784,8 +773,8 @@ function fillPortrait(el, image, name, letter) {
  * the detail popup (see openGalleryDetail() in main.js) — `kind`/`key` are
  * stashed as dataset attributes so the click handler (delegated on
  * #gallery-grid) knows which item was clicked without needing a closure per
- * tile. `rankLabel` overrides the default "RANK_LABELS[key]" bottom line —
- * pass '' to omit it entirely (used for champions, which have no rank). */
+ * tile. `rankLabel` overrides the default "String(key)" bottom line — pass
+ * '' to omit it entirely (used for champions, which have no rank). */
 function buildGalleryItem(kind, image, name, key, rankLabel) {
   const item = document.createElement('div');
   item.className = 'gallery-item';
@@ -824,7 +813,7 @@ function buildGalleryItem(kind, image, name, key, rankLabel) {
   nameEl.textContent = name || '';
   item.appendChild(nameEl);
 
-  const label = rankLabel !== undefined ? rankLabel : RANK_LABELS[key];
+  const label = rankLabel !== undefined ? rankLabel : String(key);
   if (label) {
     const rankEl = document.createElement('div');
     rankEl.className = 'gallery-item-rank';
@@ -866,23 +855,30 @@ function renderGallery(kind) {
   grid.classList.toggle('gallery-grid--shields', kind === 'shields');
   grid.classList.toggle('gallery-grid--monsters', kind === 'monsters');
 
+  // Ranges are the ×5-rescaled rank values (see the "Value rescale" note in
+  // js/cards.js) — old rank 2-10/2-14/3-5 is now 10-50/10-70/15-25, in steps
+  // of 5 instead of 1.
   if (kind === 'weapons') {
     title.textContent = t('galleryTitleWeapons');
-    for (let rank = 2; rank <= 10; rank++) {
+    for (let rank = 10; rank <= 50; rank += 5) {
       grid.appendChild(
         buildGalleryItem('weapons', `images/weapons/${rank}.png`, weaponNameFor(rank), rank)
       );
     }
   } else if (kind === 'monsters') {
     title.textContent = t('galleryTitleMonsters');
-    for (let rank = 2; rank <= 14; rank++) {
+    // Reads the same pool getFreshDeck()'s monster selection draws from
+    // (getMonsterRankPool() in js/monster-icons.js), not a hardcoded range —
+    // a newly added monster rank shows up here automatically, with no range
+    // to remember to extend (see "Monster Pool" in js/cards.js).
+    getMonsterRankPool().forEach((rank) => {
       grid.appendChild(
         buildGalleryItem('monsters', `images/monsters/${rank}.png`, monsterNameFor(rank), rank)
       );
-    }
+    });
   } else if (kind === 'shields') {
     title.textContent = t('galleryTitleShields');
-    for (let rank = 3; rank <= 5; rank++) {
+    for (let rank = 15; rank <= 25; rank += 5) {
       grid.appendChild(
         buildGalleryItem('shields', `images/shields/${rank}.png`, shieldNameFor(rank), rank)
       );
@@ -907,12 +903,12 @@ function renderGalleryDetail(kind, key) {
     image = `images/weapons/${key}.png`;
     name = weaponNameFor(key);
     description = weaponDescriptionFor(key);
-    subtitle = t('strengthLabel', { n: RANK_LABELS[key] });
+    subtitle = t('strengthLabel', { n: rankLabel(key) });
   } else if (kind === 'monsters') {
     image = `images/monsters/${key}.png`;
     name = monsterNameFor(key);
     description = monsterDescriptionFor(key);
-    subtitle = t('strengthLabel', { n: RANK_LABELS[key] });
+    subtitle = t('strengthLabel', { n: rankLabel(key) });
   } else if (kind === 'shields') {
     image = `images/shields/${key}.png`;
     name = shieldNameFor(key);
@@ -920,7 +916,7 @@ function renderGalleryDetail(kind, key) {
     // Shields block damage rather than dealing/healing it, so their number
     // is labeled "Block" here instead of "Strength" (unlike weapons/
     // monsters) — see js/shield-icons.js.
-    subtitle = t('blockLabel', { n: RANK_LABELS[key] });
+    subtitle = t('blockLabel', { n: rankLabel(key) });
   } else {
     const champ = championById(key);
     image = champ ? champ.image : null;

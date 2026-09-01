@@ -6,8 +6,8 @@
 // ---------------------------------------------------------------------------
 
 const state = {
-  hp: 20,
-  maxHp: 20,
+  hp: 100,
+  maxHp: 100,
   deck: [],
   room: [],
   equippedWeapon: null,      // card object, or null
@@ -146,15 +146,17 @@ function isRoomMonotype(cards) {
   return cards.every((c) => c.type === cards[0].type);
 }
 
-/** True if any card in a room is a monster with strength (rank) 10 or
- * higher — J/Q/K/A-strength monsters (11-14), plus a bare 10, hit hard
- * enough on their own to seriously threaten a fresh, weaponless 20 HP
+/** True if any card in a room is a monster with strength (rank) 50 or
+ * higher (the ×5-rescaled equivalent of the original "10 or higher" — see
+ * the "Value rescale" note in js/cards.js) — the old-scale J/Q/K/A-strength
+ * monsters (rank 11-14, now 55-70) plus a bare old-10 (now 50) hit hard
+ * enough on their own to seriously threaten a fresh, weaponless 100 HP
  * player, so the first SAFE_ROOM_LIMIT rooms only ever deal monsters in
- * the milder 2-9 range. A separate check from isRoomMonotype() above, not
+ * the milder 10-45 range. A separate check from isRoomMonotype() above, not
  * merged into it, so each half of the "no unfair start" rule stays easy to
  * read and tweak on its own. */
 function hasStrongMonster(cards) {
-  return cards.some((c) => c.type === 'monster' && c.rank >= 10);
+  return cards.some((c) => c.type === 'monster' && c.rank >= 50);
 }
 
 /** Combines both "no unfair start" checks above into the one predicate
@@ -310,7 +312,9 @@ function useAbility() {
   }
 
   if (state.champion === 'herbalist') {
-    const healed = Math.min(5, state.maxHp - state.hp);
+    // 25 HP, the ×5 rescale of the original 5, see the "Value rescale" note
+    // in js/cards.js.
+    const healed = Math.min(25, state.maxHp - state.hp);
     state.hp += healed;
     const message =
       healed > 0
@@ -340,10 +344,10 @@ function cancelBackstab() {
 
 /** Resolves Rogue's Backstab once a monster has actually been chosen (see
  * the room-click handling in js/main.js, which only calls this for a
- * monster-type card while state.rogueTargeting is true) — deals 6 damage
- * to that monster via weakenMonster() (same "reduce rank, floor at 1,
- * identity unchanged" behavior as the Electric weapon effect, just -6
- * instead of -1: strong enough to cripple almost anything, but Backstab
+ * monster-type card while state.rogueTargeting is true) — deals 30 damage
+ * to that monster via weakenMonster() (same "reduce rank, floor at 5,
+ * identity unchanged" behavior as the Electric weapon effect, just -30
+ * instead of -5: strong enough to cripple almost anything, but Backstab
  * alone never removes a monster from the room outright). Spends the mana
  * and turns off targeting mode either way. Returns null if targeting
  * wasn't active or the card isn't actually in the room as a monster, so a
@@ -358,7 +362,7 @@ function resolveBackstab(cardId) {
 
   const champ = championById(state.champion);
   const monsterLabel = monsterNameFor(card.baseRank) || card.name;
-  weakenMonster(card, 6);
+  weakenMonster(card, 30);
 
   return { message: t('backstabHit', { name: champ.name, monster: monsterLabel }), cardId };
 }
@@ -378,16 +382,17 @@ function isWeaponUsableOn(card) {
   );
 }
 
-/** Lowers a monster's rank by `amount` (default 1, min 1 — this never
- * outright kills/removes it, however high `amount` is), keeping its
- * identity (artwork, flavor name — both keyed off `baseRank`, not `rank`)
- * but updating its displayed label/name so messages/tooltips stay
- * consistent with the new, weaker value. Used by the Electric weapon
- * effect (amount 1) and Rogue's Backstab ability (amount 6, see
- * resolveBackstab() below). */
-function weakenMonster(card, amount = 1) {
-  card.rank = Math.max(1, card.rank - amount);
-  card.label = RANK_LABELS[card.rank] || String(card.rank);
+/** Lowers a monster's rank by `amount` (default 5, min 5 — this never
+ * outright kills/removes it, however high `amount` is; 5 is the ×5-rescaled
+ * equivalent of the original default/floor of 1, see the "Value rescale"
+ * note in js/cards.js), keeping its identity (artwork, flavor name — both
+ * keyed off `baseRank`, not `rank`) but updating its displayed label/name so
+ * messages/tooltips stay consistent with the new, weaker value. Used by the
+ * Electric weapon effect (amount 5) and Rogue's Backstab ability (amount 30,
+ * see resolveBackstab() below). */
+function weakenMonster(card, amount = 5) {
+  card.rank = Math.max(5, card.rank - amount);
+  card.label = rankLabel(card.rank);
   card.name = `${card.label} of ${capitalize(card.suit)}`;
 }
 
@@ -437,14 +442,15 @@ function fightMonster(card, useWeapon = true) {
 
     // Weapon degrade: normally the weapon can only be used again on a
     // monster weaker than the one it just defeated. Sturdy limits how far
-    // that usable-strength ceiling can drop in one fight (max -2) instead
-    // of dropping straight to the defeated monster's value. Frenzy only
-    // lifts the *restriction* for this swing — the ceiling itself still
-    // updates normally afterward, so a later, non-Frenzied swing still
-    // respects the degrade rule.
+    // that usable-strength ceiling can drop in one fight (max -10, the ×5
+    // rescale of the original -2, see the "Value rescale" note in
+    // js/cards.js) instead of dropping straight to the defeated monster's
+    // value. Frenzy only lifts the *restriction* for this swing — the
+    // ceiling itself still updates normally afterward, so a later,
+    // non-Frenzied swing still respects the degrade rule.
     const previousCeiling = state.weaponMaxMonster === null ? weapon.rank : state.weaponMaxMonster;
     state.weaponMaxMonster =
-      weapon.effect === 'sturdy' ? Math.max(card.rank, previousCeiling - 2) : card.rank;
+      weapon.effect === 'sturdy' ? Math.max(card.rank, previousCeiling - 10) : card.rank;
 
     if (weapon.effect === 'electric') {
       state.room.forEach((roomCard) => {
@@ -466,23 +472,25 @@ function fightMonster(card, useWeapon = true) {
     }
   } else {
     damage = card.rank;
-    // Berserker champion: 2 less damage from every monster fought
-    // bare-handed (never below 0).
-    if (state.champion === 'berserker') damage = Math.max(damage - 2, 0);
+    // Berserker champion: 10 less damage from every monster fought
+    // bare-handed (never below 0) — the ×5 rescale of the original -2, see
+    // the "Value rescale" note in js/cards.js.
+    if (state.champion === 'berserker') damage = Math.max(damage - 10, 0);
   }
 
   // Paladin's active ability (see useAbility() above): the next 3 times he
   // would take damage — weapon or bare-handed, doesn't matter, this runs
-  // after both branches above — each hit is reduced by 2 (never below 0)
-  // and burns one charge. Applied before the shield block below, same spot
-  // Berserker's passive reduction lands, so a shield only ever blocks
-  // whatever damage is still left after every other reduction. Only counts
-  // as one of the 3 "times he'd take damage" if there was actually damage
-  // to reduce — a hit already fully stopped by the weapon doesn't burn a
-  // charge for nothing.
+  // after both branches above — each hit is reduced by 10 (never below 0,
+  // the ×5 rescale of the original -2, see the "Value rescale" note in
+  // js/cards.js) and burns one charge. Applied before the shield block
+  // below, same spot Berserker's passive reduction lands, so a shield only
+  // ever blocks whatever damage is still left after every other reduction.
+  // Only counts as one of the 3 "times he'd take damage" if there was
+  // actually damage to reduce — a hit already fully stopped by the weapon
+  // doesn't burn a charge for nothing.
   let paladinResisted = false;
   if (state.champion === 'paladin' && state.paladinResistCharges > 0 && damage > 0) {
-    damage = Math.max(damage - 2, 0);
+    damage = Math.max(damage - 10, 0);
     state.paladinResistCharges -= 1;
     paladinResisted = true;
   }
@@ -503,7 +511,7 @@ function fightMonster(card, useWeapon = true) {
     blocked = Math.min(damage, shieldBefore.rank);
     damage -= blocked;
     shieldBefore.rank -= blocked;
-    shieldBefore.label = RANK_LABELS[shieldBefore.rank] || String(shieldBefore.rank);
+    shieldBefore.label = rankLabel(shieldBefore.rank);
     shieldBefore.name = `${shieldBefore.label} of ${capitalize(shieldBefore.suit)}`;
     if (shieldBefore.rank <= 0) {
       shieldBroke = true;
@@ -513,11 +521,13 @@ function fightMonster(card, useWeapon = true) {
 
   state.hp = Math.max(state.hp - damage, 0);
 
-  // Paladin champion: every 5th monster defeated this game heals 2 HP.
-  // Counted here (rather than in resolveCard) since this is the one place
-  // both weapon and bare-handed fights funnel through, and a monster is
-  // always "defeated" once its card resolves — there's no monster HP to
-  // track separately.
+  // Paladin champion: every 5th monster defeated this game heals 10 HP (the
+  // ×5 rescale of the original 2 HP, see the "Value rescale" note in
+  // js/cards.js — the "every 5th kill" cadence itself is a kill count, not a
+  // value, so it's untouched). Counted here (rather than in resolveCard)
+  // since this is the one place both weapon and bare-handed fights funnel
+  // through, and a monster is always "defeated" once its card resolves —
+  // there's no monster HP to track separately.
   let paladinHeal = 0;
   // True on the exact kill that completes a 5-kill cycle, even if the heal
   // itself was capped to 0 HP by an already-full health bar — the ability
@@ -529,7 +539,7 @@ function fightMonster(card, useWeapon = true) {
     if (state.monstersDefeated % 5 === 0) {
       paladinCycleComplete = true;
       const hpBefore = state.hp;
-      state.hp = Math.min(state.hp + 2, state.maxHp);
+      state.hp = Math.min(state.hp + 10, state.maxHp);
       paladinHeal = state.hp - hpBefore;
     }
   }

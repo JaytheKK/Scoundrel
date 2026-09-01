@@ -131,6 +131,16 @@ function collectPreloadImageUrls() {
   CARD_LIST.forEach((card) => {
     if (card.image) urls.add(card.image);
   });
+  // Monster cards aren't in CARD_LIST (see "Monster Pool" in js/cards.js) —
+  // this must scan the FULL monster pool, every rank that currently exists,
+  // not just whatever subset a single getFreshDeck() call happens to draw
+  // for one game, or a monster rank left out of this game's random 26 would
+  // silently never get warmed into the cache. Same bug category (a new
+  // image type quietly missing from this hand-assembled list) already hit
+  // this file twice before — see "Loading screen" in CLAUDE.md.
+  getAllMonsterCards().forEach((card) => {
+    if (card.image) urls.add(card.image);
+  });
   CHAMPIONS.forEach((champion) => {
     if (champion.image) urls.add(champion.image);
   });

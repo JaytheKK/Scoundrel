@@ -37,15 +37,15 @@ const WEAPON_EFFECT_TEXT = {
   en: {
     vampiric: {
       name: 'Vampiric',
-      description: 'Heals 1 HP whenever this weapon defeats a monster.',
+      description: 'Heals 5 HP whenever this weapon defeats a monster.',
     },
     electric: {
       name: 'Electric',
-      description: 'Every other revealed monster loses 1 strength whenever this weapon is used in a fight.',
+      description: 'Every other revealed monster loses 5 strength whenever this weapon is used in a fight.',
     },
     sturdy: {
       name: 'Sturdy',
-      description: "This weapon's usable strength can never drop by more than 2 per fight.",
+      description: "This weapon's usable strength can never drop by more than 10 per fight.",
     },
     fragile: {
       name: 'Fragile',
@@ -55,15 +55,15 @@ const WEAPON_EFFECT_TEXT = {
   de: {
     vampiric: {
       name: 'Vampirisch',
-      description: 'Heilt 1 LP, wenn diese Waffe ein Monster besiegt.',
+      description: 'Heilt 5 LP, wenn diese Waffe ein Monster besiegt.',
     },
     electric: {
       name: 'Elektrisch',
-      description: 'Jedes andere aufgedeckte Monster verliert 1 Stärke, wenn diese Waffe in einem Kampf eingesetzt wird.',
+      description: 'Jedes andere aufgedeckte Monster verliert 5 Stärke, wenn diese Waffe in einem Kampf eingesetzt wird.',
     },
     sturdy: {
       name: 'Robust',
-      description: 'Die einsetzbare Stärke dieser Waffe kann pro Kampf nie um mehr als 2 sinken.',
+      description: 'Die einsetzbare Stärke dieser Waffe kann pro Kampf nie um mehr als 10 sinken.',
     },
     fragile: {
       name: 'Zerbrechlich',

@@ -2230,9 +2230,12 @@ button:disabled::before {
   }
 }
 
-/* Suit color (matches normal playing-card convention) */
-.card[data-suit='clubs'],
-.card[data-suit='spades'] {
+/* Suit color (matches normal playing-card convention). Monsters used to be
+   split across the real clubs/spades suits (see the SUITS.MONSTERS note in
+   js/cards.js) — this rule just follows that rename, same single color as
+   before, shields were never part of this split either way (they fall
+   through to .card's own base color, untouched here). */
+.card[data-suit='monsters'] {
   color: var(--card-text);
 }
 

@@ -57,16 +57,16 @@ const CHAMPION_NAMES = {
 
 const CHAMPION_DESCRIPTIONS = {
   en: {
-    paladin: 'For every 5 monsters you defeat, you heal 2 HP',
+    paladin: 'For every 5 monsters you defeat, you heal 10 HP',
     herbalist: 'You can drink two potions per room instead of one',
     rogue: 'You are allowed to flee two rooms in a row instead of one',
-    berserker: 'Fighting bare-handed, you take 2 less damage from monsters',
+    berserker: 'Fighting bare-handed, you take 10 less damage from monsters',
   },
   de: {
-    paladin: 'Für alle 5 besiegten Monster heilst du 2 LP',
+    paladin: 'Für alle 5 besiegten Monster heilst du 10 LP',
     herbalist: 'Du kannst zwei Tränke pro Raum trinken statt nur einen',
     rogue: 'Du darfst zwei Räume hintereinander fliehen statt nur einen',
-    berserker: 'Im bloßhändigen Kampf erleidest du 2 weniger Schaden von Monstern',
+    berserker: 'Im bloßhändigen Kampf erleidest du 10 weniger Schaden von Monstern',
   },
 };
 

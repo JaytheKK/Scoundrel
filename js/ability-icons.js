@@ -65,15 +65,15 @@ const ABILITY_DETAILS = {
   en: {
     paladin: {
       name: 'Blessing',
-      description: 'The next 3 hits that would deal damage are reduced by 2 each.',
+      description: 'The next 3 hits that would deal damage are reduced by 10 each.',
     },
     herbalist: {
       name: "Nature's Grace",
-      description: 'Instantly heals 5 HP.',
+      description: 'Instantly heals 25 HP.',
     },
     rogue: {
       name: 'Backstab',
-      description: 'Choose a monster to strike it for 6 damage.',
+      description: 'Choose a monster to strike it for 30 damage.',
     },
     berserker: {
       name: 'Frenzy',
@@ -83,15 +83,15 @@ const ABILITY_DETAILS = {
   de: {
     paladin: {
       name: 'Segen',
-      description: 'Die nächsten 3 Treffer, die Schaden verursachen würden, werden um je 2 verringert.',
+      description: 'Die nächsten 3 Treffer, die Schaden verursachen würden, werden um je 10 verringert.',
     },
     herbalist: {
       name: 'Gnade der Natur',
-      description: 'Heilt sofort 5 LP.',
+      description: 'Heilt sofort 25 LP.',
     },
     rogue: {
       name: 'Hinterhalt',
-      description: 'Wähle ein Monster, um ihm 6 Schaden zuzufügen.',
+      description: 'Wähle ein Monster, um ihm 30 Schaden zuzufügen.',
     },
     berserker: {
       name: 'Raserei',

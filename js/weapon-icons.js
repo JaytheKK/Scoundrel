@@ -11,28 +11,30 @@
 // whatever getLang() currently returns.
 // ---------------------------------------------------------------------------
 
+// Keys are the ×5-rescaled rank values (see "Value rescale" note in
+// js/cards.js) — old rank 2-10 is now 10-50, same steps of 5.
 const WEAPON_NAMES = {
   en: {
-    2: 'Wooden Club',
-    3: 'Damaged Sword',
-    4: 'Spear',
-    5: 'Sword',
-    6: 'Battle Axe',
-    7: 'Flaming Broadsword',
-    8: 'Dark Scythe',
-    9: 'Mjölnir',
-    10: 'Excalibur',
+    10: 'Wooden Club',
+    15: 'Damaged Sword',
+    20: 'Spear',
+    25: 'Sword',
+    30: 'Battle Axe',
+    35: 'Flaming Broadsword',
+    40: 'Dark Scythe',
+    45: 'Mjölnir',
+    50: 'Excalibur',
   },
   de: {
-    2: 'Holzkeule',
-    3: 'Beschädigtes Schwert',
-    4: 'Speer',
-    5: 'Schwert',
-    6: 'Streitaxt',
-    7: 'Flammendes Breitschwert',
-    8: 'Dunkle Sense',
-    9: 'Mjölnir',
-    10: 'Excalibur',
+    10: 'Holzkeule',
+    15: 'Beschädigtes Schwert',
+    20: 'Speer',
+    25: 'Schwert',
+    30: 'Streitaxt',
+    35: 'Flammendes Breitschwert',
+    40: 'Dunkle Sense',
+    45: 'Mjölnir',
+    50: 'Excalibur',
   },
 };
 
@@ -46,26 +48,26 @@ function weaponNameFor(rank) {
 // tooltips only show the name, not this).
 const WEAPON_DESCRIPTIONS = {
   en: {
-    2: 'A crude, splintering club — barely better than bare fists.',
-    3: 'A rusted blade, dulled by age and countless battles.',
-    4: 'A long-reaching weapon, simple but effective.',
-    5: 'A reliable blade, well balanced for any fight.',
-    6: 'A heavy axe that cleaves through armor.',
-    7: 'A broadsword wreathed in eternal flame.',
-    8: 'A cursed blade that hungers for battle.',
-    9: 'A legendary hammer said to summon thunder.',
-    10: 'The legendary blade of kings.',
+    10: 'A crude, splintering club — barely better than bare fists.',
+    15: 'A rusted blade, dulled by age and countless battles.',
+    20: 'A long-reaching weapon, simple but effective.',
+    25: 'A reliable blade, well balanced for any fight.',
+    30: 'A heavy axe that cleaves through armor.',
+    35: 'A broadsword wreathed in eternal flame.',
+    40: 'A cursed blade that hungers for battle.',
+    45: 'A legendary hammer said to summon thunder.',
+    50: 'The legendary blade of kings.',
   },
   de: {
-    2: 'Ein grober, splitternder Knüppel, kaum besser als bloße Fäuste.',
-    3: 'Eine rostige Klinge, stumpf durch Alter und zahllose Kämpfe.',
-    4: 'Eine weitreichende Waffe, einfach aber wirkungsvoll.',
-    5: 'Eine verlässliche Klinge, gut ausbalanciert für jeden Kampf.',
-    6: 'Eine schwere Axt, die Rüstungen spaltet.',
-    7: 'Ein Breitschwert, umhüllt von ewigen Flammen.',
-    8: 'Eine verfluchte Klinge, die nach dem Kampf hungert.',
-    9: 'Ein legendärer Hammer, der angeblich Donner herbeiruft.',
-    10: 'Die legendäre Klinge der Könige.',
+    10: 'Ein grober, splitternder Knüppel, kaum besser als bloße Fäuste.',
+    15: 'Eine rostige Klinge, stumpf durch Alter und zahllose Kämpfe.',
+    20: 'Eine weitreichende Waffe, einfach aber wirkungsvoll.',
+    25: 'Eine verlässliche Klinge, gut ausbalanciert für jeden Kampf.',
+    30: 'Eine schwere Axt, die Rüstungen spaltet.',
+    35: 'Ein Breitschwert, umhüllt von ewigen Flammen.',
+    40: 'Eine verfluchte Klinge, die nach dem Kampf hungert.',
+    45: 'Ein legendärer Hammer, der angeblich Donner herbeiruft.',
+    50: 'Die legendäre Klinge der Könige.',
   },
 };
 
