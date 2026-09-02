@@ -117,6 +117,12 @@ function collectCssImageUrls() {
 const SYMBOL_IMAGE_URLS = [
   'images/symbols/SwordSymbolTransparent.png',
   'images/symbols/ShieldSymbolTransparent.png',
+  // The Victory/Defeat gameover banner images (see #gameover-image in
+  // renderGameOverBanner(), js/ui.js) are set via a plain `img.src =`
+  // assignment, same "not CSS, not card data" reason as the two symbols
+  // above.
+  'images/backgrounds/victory.png',
+  'images/backgrounds/defeat.png',
 ];
 
 /** Every image URL the game can ever display, gathered straight from the

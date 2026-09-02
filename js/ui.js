@@ -801,8 +801,19 @@ function renderGameOverBanner() {
   overlay.classList.remove('hidden');
   overlay.classList.toggle('gameover-won', state.outcome === 'won');
   overlay.classList.toggle('gameover-lost', state.outcome === 'lost');
-  document.getElementById('gameover-text').textContent =
-    state.outcome === 'won' ? t('victory') : t('defeat');
+  const label = state.outcome === 'won' ? t('victory') : t('defeat');
+  // The banner artwork itself (images/backgrounds/victory.png / defeat.png)
+  // has its "VICTORY"/"Defeat" text painted directly into the image, in
+  // English only, so #gameover-text is kept (translated, per the existing
+  // t() pattern) purely as this image's alt text for screen readers, not
+  // shown visually, see the #gameover-text CSS rule for why.
+  document.getElementById('gameover-text').textContent = label;
+  const image = document.getElementById('gameover-image');
+  image.src =
+    state.outcome === 'won'
+      ? 'images/backgrounds/victory.png'
+      : 'images/backgrounds/defeat.png';
+  image.alt = label;
 }
 
 // --- start-screen galleries (Champions/Weapons/Monsters) -------------------
@@ -955,10 +966,12 @@ function renderGallery(kind) {
 /** Fills #gallery-detail-overlay for one weapon/monster/shield/champion tile
  * clicked in the gallery (see openGalleryDetail() in main.js) — portrait,
  * name, and either "Strength N" + a flavor blurb (weapons/monsters/shields)
- * or the champion's passive-ability text. `key` is a rank number for
+ * or, for a champion, a short flavor blurb followed by its passive-ability
+ * text and its active-ability name + text. `key` is a rank number for
  * weapons/monsters/shields, or a champion id string for champions. */
 function renderGalleryDetail(kind, key) {
   let image, name, description, subtitle;
+  let isHtml = false;
 
   if (kind === 'weapons') {
     image = `images/weapons/${key}.png`;
@@ -982,16 +995,36 @@ function renderGalleryDetail(kind, key) {
     const champ = championById(key);
     image = champ ? champ.image : null;
     name = champ ? champ.name : '';
-    description = champ ? champ.description : '';
-    subtitle = t('passiveAbilityLabel');
+    // No "Strength N"/"Block N" line for a champion — the passive/active
+    // ability sections below now carry the "Passive Ability"/"Active
+    // Ability" labels inline instead, so this line is left empty.
+    subtitle = '';
+    isHtml = true;
+    const abilityDetails = champ ? abilityDetailsFor(champ.id) : null;
+    description = champ
+      ? `<p>${champ.flavor}</p>` +
+        `<p><span class="gallery-detail-label">${t('passiveAbilityLabel')}</span>${champ.description}</p>` +
+        (abilityDetails
+          ? `<p><span class="gallery-detail-label">${t('activeAbilityLabel')}</span><strong>${abilityDetails.name}:</strong> ${abilityDetails.description}</p>`
+          : '')
+      : '';
   }
 
   const portrait = document.getElementById('gallery-detail-image');
   fillPortrait(portrait, image, name, (name || '?').charAt(0));
 
   document.getElementById('gallery-detail-title').textContent = name || '';
-  document.getElementById('gallery-detail-rank').textContent = subtitle;
-  document.getElementById('gallery-detail-text').textContent = description || '';
+  const rankEl = document.getElementById('gallery-detail-rank');
+  rankEl.textContent = subtitle;
+  // Hidden entirely (not just empty) so it doesn't reserve a blank line's
+  // worth of height above the champion text block below it.
+  rankEl.style.display = subtitle ? '' : 'none';
+  const textEl = document.getElementById('gallery-detail-text');
+  if (isHtml) {
+    textEl.innerHTML = description || '';
+  } else {
+    textEl.textContent = description || '';
+  }
 }
 
 // --- champion-select screen (shown whenever a new game is started) ---------

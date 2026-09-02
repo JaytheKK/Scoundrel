@@ -118,6 +118,7 @@ const I18N = {
     strengthLabel: 'Strength {n}',
     blockLabel: 'Block {n}',
     passiveAbilityLabel: 'Passive Ability',
+    activeAbilityLabel: 'Active Ability',
     chooseChampionTitle: 'Choose your Champion',
 
     // --- options overlay ---
@@ -130,19 +131,19 @@ const I18N = {
     tutorialStart: 'Start Tutorial',
     tutorialFinish: 'Finish',
     tutorialWelcome:
-      'Welcome to Scoundrel! This short tutorial walks you through one real, pre-arranged dungeon run so you can see every rule in action. Click Start to begin.',
+      'Welcome to Scoundrel! This tutorial walks you through one real, pre-arranged dungeon run so you can see every rule in action. Click Start to begin.',
     tutorialStep1:
       'This is a Monster card. Its number is how much damage it deals. You have no weapon yet, so click it to fight bare-handed and take full damage.',
     tutorialStep2:
       "This is a Weapon card. Click it to equip it, it'll reduce damage from monsters you fight next.",
     tutorialStep3:
-      'Fight this monster with your weapon equipped: damage = monster strength minus weapon strength. Click it to see the difference.',
+      'Fight this monster with your weapon equipped: damage = monster strength minus weapon strength.',
     tutorialStep4:
       'Only 3 of the 4 room cards get resolved each round. The 4th, like this Health Potion, carries into the next room. Click it to drink and heal HP.',
     tutorialStep5:
-      "Only the first potion in a room actually heals. This one won't, but it still needs to be resolved. Click it to see.",
+      "Only the first potion in a room actually heals. This one won't. Click it to see.",
     tutorialStep6:
-      "This monster (55) is stronger than the last one your weapon defeated (46), so the weapon can't be used on it, that's its wear rule. Click it to fight bare-handed.",
+      "This monster (55) is stronger than the last one your weapon defeated (46), so the weapon can't be used on it, that's its wear rule. You will fight it bare-handed.",
     tutorialStep7:
       "Shields are a third equippable item. Click to equip it, it'll block some incoming damage and has its own durability.",
     tutorialStep8:
@@ -154,7 +155,7 @@ const I18N = {
     tutorialStep11:
       "Notice 'Flee Room' is now disabled. You can't flee two rooms in a row. For now, drink this potion to heal back up.",
     tutorialStep12:
-      "Every champion has an active ability, powered by mana (the ring around this button) gained from clearing or fleeing rooms, filled early here so you can try it now. Paladin's Blessing reduces your next 3 hits by 10 damage each. Click to activate it.",
+      "Every champion has an active ability, powered by mana (the ring around this button) gained from clearing or fleeing rooms. Paladin's Blessing reduces your next 3 hits by 10 damage each. Click to activate it.",
     tutorialStep13: 'Now fight this monster. Blessing will cut the damage you take by 10.',
     tutorialFinal:
       "That's the essentials: monsters, weapons and their wear, potions and their limit, shields, fleeing, and your champion's ability. You're ready, good luck in the real dungeon!",
@@ -174,7 +175,7 @@ const I18N = {
     fightWithWeapon: 'Fought {monster} with your {weapon}, took {damage} damage.',
     fightBareHanded: 'Fought {monster} bare-handed, took {damage} damage.',
     fightVampiricSuffix: ' Vampiric weapon healed 5 HP.',
-    fightElectricSuffix: ' Electric surge weakened the other monsters!',
+    fightElectricSuffix: ' Electric surge damaged the other monsters!',
     fightFragileShattered: ' Your fragile {weapon} shatters!',
     fightFragileCrackingSingular: ' Your fragile {weapon} is cracking (1 use left).',
     fightFragileCrackingPlural: ' Your fragile {weapon} is cracking ({n} uses left).',
@@ -189,12 +190,12 @@ const I18N = {
     shieldBlockedShattered: ' Your {shield} blocked {n} damage and shattered!',
     equippedWeapon: 'Equipped {weapon}.',
     equippedShield: 'Equipped {shield}.',
-    potionNoEffect: 'Drank {potion}, already healed this room, no effect.',
+    potionNoEffect: 'Drank {potion}, already healed in this room, no effect.',
     potionHealed: 'Drank {potion}, healed {n} HP.',
     diedSuffix: ' You died!',
     winAllMonstersSuffix: ' All monsters defeated, the dungeon is cleared, you win!',
     winDungeonClearedSuffix: ' The dungeon is cleared, you win!',
-    fleeOnlyFullRoomMessage: 'You can only flee a full room, before fighting anything in it.',
+    fleeOnlyFullRoomMessage: 'You can only flee a full room, before fighting or equipping anything in it.',
     fleeCantTwiceMessage: "You can't flee two rooms in a row.",
     fleeCantThriceMessage: "You can't flee three rooms in a row.",
     fledSuccess: 'You fled the room, it was sent to the bottom of the deck.',
@@ -221,12 +222,12 @@ const I18N = {
       <p>Click a shield to equip it, it replaces whatever you had equipped. A shield blocks damage that would otherwise get through, after your weapon (or bare hands) has already done its part, the shield absorbs as much of the remaining damage as its block value allows. Blocking costs the shield durability equal to the damage it absorbed; once its durability reaches 0, it shatters and is gone.</p>
 
       <h3>Weapon Effects</h3>
-      <p>Every weapon has a 25% chance of carrying one of three effects, shown as a small badge in its corner:</p>
+      <p>Every weapon has a 25% chance of carrying one of four effects, shown as a small symbol in its corner:</p>
       <ul>
-        <li><strong>V: Vampiric</strong>: heals 5 HP whenever this weapon defeats a monster.</li>
-        <li><strong>E: Electric</strong>: every other revealed monster loses 5 strength whenever this weapon is used in a fight (still the same monster, just weaker).</li>
-        <li><strong>S: Sturdy</strong>: this weapon's usable strength can never drop by more than 10 per fight, instead of dropping straight to the defeated monster's value.</li>
-        <li><strong>F: Fragile</strong>: breaks after 2 uses, no matter which monster it's used on.</li>
+        <li><strong>Vampiric</strong>: heals 5 HP whenever this weapon defeats a monster.</li>
+        <li><strong>Electric</strong>: every other revealed monster loses 5 strength whenever this weapon is used in a fight (still the same monster, just weaker).</li>
+        <li><strong>Sturdy</strong>: this weapon's usable strength can never drop by more than 10 per fight, instead of dropping straight to the defeated monster's value.</li>
+        <li><strong>Fragile</strong>: breaks after 2 uses, no matter which monster it's used on.</li>
       </ul>
 
       <h3>Champions</h3>
@@ -320,6 +321,7 @@ const I18N = {
     strengthLabel: 'Stärke {n}',
     blockLabel: 'Blockwert {n}',
     passiveAbilityLabel: 'Passive Fähigkeit',
+    activeAbilityLabel: 'Aktive Fähigkeit',
     chooseChampionTitle: 'Wähle deinen Champion',
 
     // --- options overlay ---
@@ -332,19 +334,19 @@ const I18N = {
     tutorialStart: 'Anleitung starten',
     tutorialFinish: 'Fertig',
     tutorialWelcome:
-      'Willkommen bei Scoundrel! Diese kurze Anleitung führt dich durch einen echten, vorbereiteten Dungeon-Lauf, damit du jede Regel in Aktion siehst. Klicke auf Start, um zu beginnen.',
+      'Willkommen bei Scoundrel! Diese Anleitung führt dich durch einen echten, vorbereiteten Dungeon-Lauf, damit du jede Regel in Aktion siehst. Klicke auf Start, um zu beginnen.',
     tutorialStep1:
       'Das ist eine Monsterkarte. Ihre Zahl gibt an, wie viel Schaden sie verursacht. Du hast noch keine Waffe, also klicke sie an, um bloßhändig zu kämpfen und vollen Schaden zu nehmen.',
     tutorialStep2:
       'Das ist eine Waffenkarte. Klicke sie an, um sie auszurüsten, sie verringert den Schaden von Monstern, die du als Nächstes bekämpfst.',
     tutorialStep3:
-      'Bekämpfe dieses Monster mit ausgerüsteter Waffe: Schaden = Monsterstärke minus Waffenstärke. Klicke es an, um den Unterschied zu sehen.',
+      'Bekämpfe dieses Monster mit ausgerüsteter Waffe: Schaden = Monsterstärke minus Waffenstärke.',
     tutorialStep4:
       'Nur 3 der 4 Raumkarten werden pro Runde aufgelöst. Die vierte, wie dieser Heiltrank, wandert in den nächsten Raum. Klicke ihn an, um zu trinken und LP zu heilen.',
     tutorialStep5:
-      'Nur der erste Trank in einem Raum heilt tatsächlich. Dieser hier nicht, muss aber trotzdem aufgelöst werden. Klicke ihn an, um es zu sehen.',
+      'Nur der erste Trank in einem Raum heilt tatsächlich. Dieser hier nicht. Klicke ihn an, um es zu sehen.',
     tutorialStep6:
-      'Dieses Monster (55) ist stärker als das letzte, das deine Waffe besiegt hat (46), daher kann die Waffe nicht gegen es eingesetzt werden, das ist ihre Abnutzungsregel. Klicke es an, um bloßhändig zu kämpfen.',
+      'Dieses Monster (55) ist stärker als das letzte, das deine Waffe besiegt hat (46), daher kann die Waffe nicht gegen es eingesetzt werden, das ist ihre Abnutzungsregel. Du wirst bloßhändig gegen es kämpfen.',
     tutorialStep7:
       'Schilde sind eine dritte ausrüstbare Item-Art. Klicke ihn an, um ihn auszurüsten, er blockt eingehenden Schaden und hat eine eigene Haltbarkeit.',
     tutorialStep8:
@@ -356,7 +358,7 @@ const I18N = {
     tutorialStep11:
       "Beachte, dass 'Raum fliehen' jetzt deaktiviert ist. Du kannst nicht zwei Räume hintereinander fliehen. Trink für jetzt diesen Trank, um dich wieder zu heilen.",
     tutorialStep12:
-      'Jeder Champion hat eine aktive Fähigkeit, angetrieben durch Mana (der Ring um diesen Button), das du durch Räumen oder Fliehen von Räumen erhältst, hier schon früh gefüllt, damit du sie jetzt ausprobieren kannst. Der Segen des Paladins verringert deine nächsten 3 Treffer um je 10 Schaden. Klicke, um sie zu aktivieren.',
+      'Jeder Champion hat eine aktive Fähigkeit, angetrieben durch Mana (der Ring um diesen Button), das du durch Räumen oder Fliehen von Räumen erhältst. Der Segen des Paladins verringert deine nächsten 3 Treffer um je 10 Schaden. Klicke, um sie zu aktivieren.',
     tutorialStep13: 'Bekämpfe jetzt dieses Monster. Der Segen verringert den Schaden, den du erleidest, um 10.',
     tutorialFinal:
       'Das waren die Grundlagen: Monster, Waffen und ihre Abnutzung, Tränke und ihr Limit, Schilde, Fliehen und die Fähigkeit deines Champions. Du bist bereit, viel Glück im echten Dungeon!',
@@ -377,7 +379,7 @@ const I18N = {
     fightWithWeapon: 'Hast {monster} mit deiner {weapon} bekämpft, {damage} Schaden erlitten.',
     fightBareHanded: 'Hast {monster} bloßhändig bekämpft, {damage} Schaden erlitten.',
     fightVampiricSuffix: ' Die vampirische Waffe hat 5 LP geheilt.',
-    fightElectricSuffix: ' Ein elektrischer Stoß hat die anderen Monster geschwächt!',
+    fightElectricSuffix: ' Ein elektrischer Stoß hat die anderen Monster geschädigt!',
     fightFragileShattered: ' Deine zerbrechliche {weapon} zerbricht!',
     fightFragileCrackingSingular: ' Deine zerbrechliche {weapon} bekommt Risse (noch 1 Anwendung übrig).',
     fightFragileCrackingPlural: ' Deine zerbrechliche {weapon} bekommt Risse (noch {n} Anwendungen übrig).',
@@ -397,7 +399,7 @@ const I18N = {
     diedSuffix: ' Du bist gestorben!',
     winAllMonstersSuffix: ' Alle Monster besiegt, das Dungeon ist geräumt, du hast gewonnen!',
     winDungeonClearedSuffix: ' Das Dungeon ist geräumt, du hast gewonnen!',
-    fleeOnlyFullRoomMessage: 'Du kannst nur einen vollen Raum fliehen, bevor du etwas darin bekämpft hast.',
+    fleeOnlyFullRoomMessage: 'Du kannst nur einen vollen Raum fliehen, bevor du etwas darin bekämpft oder ausgerüstet hast.',
     fleeCantTwiceMessage: 'Du kannst nicht zwei Räume hintereinander fliehen.',
     fleeCantThriceMessage: 'Du kannst nicht drei Räume hintereinander fliehen.',
     fledSuccess: 'Du bist aus dem Raum geflohen, er wurde unten ans Deck gelegt.',
@@ -424,12 +426,12 @@ const I18N = {
       <p>Klicke einen Schild an, um ihn auszurüsten, er ersetzt deine bisherige Ausrüstung. Ein Schild blockt Schaden, der sonst durchkommen würde, nachdem deine Waffe (oder bloße Hände) bereits ihren Teil erledigt hat, absorbiert der Schild so viel vom verbleibenden Schaden, wie sein Blockwert erlaubt. Das Blocken kostet den Schild Haltbarkeit in Höhe des absorbierten Schadens, sobald seine Haltbarkeit 0 erreicht, zerbricht er und ist verloren.</p>
 
       <h3>Waffeneffekte</h3>
-      <p>Jede Waffe hat eine Chance von 25%, einen von drei Effekten zu tragen, angezeigt als kleines Symbol in ihrer Ecke:</p>
+      <p>Jede Waffe hat eine Chance von 25%, einen von vier Effekten zu tragen, angezeigt als kleines Symbol in ihrer Ecke:</p>
       <ul>
-        <li><strong>V: Vampirisch</strong>: heilt 5 LP, wenn diese Waffe ein Monster besiegt.</li>
-        <li><strong>E: Elektrisch</strong>: jedes andere aufgedeckte Monster verliert 5 Stärke, wenn diese Waffe in einem Kampf eingesetzt wird (bleibt dasselbe Monster, nur schwächer).</li>
-        <li><strong>S: Robust</strong>: die einsetzbare Stärke dieser Waffe kann pro Kampf nie um mehr als 10 sinken, statt direkt auf den Wert des besiegten Monsters zu fallen.</li>
-        <li><strong>F: Zerbrechlich</strong>: zerbricht nach 2 Anwendungen, egal gegen welches Monster.</li>
+        <li><strong>Vampirisch</strong>: heilt 5 LP, wenn diese Waffe ein Monster besiegt.</li>
+        <li><strong>Elektrisch</strong>: jedes andere aufgedeckte Monster verliert 5 Stärke, wenn diese Waffe in einem Kampf eingesetzt wird (bleibt dasselbe Monster, nur schwächer).</li>
+        <li><strong>Robust</strong>: die einsetzbare Stärke dieser Waffe kann pro Kampf nie um mehr als 10 sinken, statt direkt auf den Wert des besiegten Monsters zu fallen.</li>
+        <li><strong>Zerbrechlich</strong>: zerbricht nach 2 Anwendungen, egal gegen welches Monster.</li>
       </ul>
 
       <h3>Champions</h3>

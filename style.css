@@ -83,6 +83,12 @@
      a transform: scale() on .card--monster's .card-art only, staying
      centered on the same point, frame/hexagon/value number untouched. */
   --monster-art-scale: 0.75;
+  /* Same mechanism again, for potion cards this time (previously the only
+     type left unshrunk, see the "Potion cards are unaffected" note on
+     .card--weapon/.card--shield's .card-art rule below) — a request to
+     make "the potion illustrations" 20% smaller (0.8), then a follow-up
+     request for another 10% smaller on top of that (0.8 * 0.9 = 0.72). */
+  --potion-art-scale: 0.72;
   --stack-gap: 0.5rem;
 }
 
@@ -283,9 +289,10 @@ button:disabled::before {
 /* #start-new-game-btn is intentionally NOT in this list. The start screen
    got its own dedicated "gilded seal" design instead, see the #start-screen
    section further down. This shared gold look now only covers the in-game
-   menu's New Game button, Play Again, and the empty-room call-to-action. */
+   menu's New Game button and the empty-room call-to-action. #play-again-btn
+   is NOT in this list either any more, see the gameover-overlay section
+   further down, it now reuses #start-new-game-btn's gilded plaque instead. */
 #new-game-btn,
-#play-again-btn,
 #room-start-btn {
   background: linear-gradient(180deg, var(--accent-hover), var(--accent));
   border-color: var(--accent);
@@ -295,7 +302,6 @@ button:disabled::before {
 }
 
 #new-game-btn:hover:not(:disabled),
-#play-again-btn:hover:not(:disabled),
 #room-start-btn:hover:not(:disabled) {
   background: linear-gradient(180deg, #f0cd7a, var(--accent-hover));
   border-color: #f0cd7a;
@@ -1447,6 +1453,31 @@ button:disabled::before {
   margin: 0;
 }
 
+/* Only the Champions detail popup fills #gallery-detail-text with more than
+   one paragraph (flavor text, then a Passive Ability section, then an
+   Active Ability section — see renderGalleryDetail() in js/ui.js); weapons/
+   monsters/shields still just set its plain textContent to one sentence,
+   which these two rules don't affect either way. */
+#gallery-detail-text p {
+  margin: 0 0 0.6rem;
+}
+
+#gallery-detail-text p:last-child {
+  margin-bottom: 0;
+}
+
+/* "Passive Ability" / "Active Ability" section headers within a champion's
+   detail text — same look #gallery-detail-rank used to have on its own
+   (accent gold, UI font, slightly smaller), kept consistent now that it's
+   inline within the text block instead of its own separate line above it. */
+.gallery-detail-label {
+  display: block;
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  margin-bottom: 0.15rem;
+}
+
 /* --- champion-select screen (shown whenever a new game starts) ------------
    Sits inside #champion-select-panel, which reuses the shared #menu-overlay/
    #gallery-overlay chrome (see above). Each tile shows its full ability text
@@ -2445,10 +2476,10 @@ button:disabled::before {
    scale() on top of the existing --art-* box, rather than recomputing that
    box's percentages, so the shrink amount stays a single easy-to-tune
    number and the artwork stays centered on the exact same point (transform-
-   origin defaults to the element's own center). Potion cards are
-   unaffected; weapon/shield were reported as looking too big, and monster
-   later got its own separate --monster-art-scale below for the same
-   reason, just requested/tuned independently. */
+   origin defaults to the element's own center). Weapon/shield were
+   reported as looking too big, and monster and potion later each got
+   their own separate --monster-art-scale/--potion-art-scale below for the
+   same reason, just requested/tuned independently. */
 .card--weapon .card-art,
 .card--shield .card-art {
   transform: scale(var(--weapon-shield-art-scale));
@@ -2461,6 +2492,13 @@ button:disabled::before {
    should have to move in lockstep with the weapon/shield one. */
 .card--monster .card-art {
   transform: scale(var(--monster-art-scale));
+}
+
+/* Same mechanism again, potion's own scale value (see --potion-art-scale
+   in :root) — kept as its own variable for the same reason monster's is
+   separate from weapon/shield's. */
+.card--potion .card-art {
+  transform: scale(var(--potion-art-scale));
 }
 
 .card-suit-symbol {
@@ -3084,9 +3122,21 @@ button:disabled::before {
 }
 
 /* --- Victory / Defeat banner ------------------------------------------------
-   Original, simplistic design (angled banner shape via clip-path, flat
-   color + a soft pulsing glow) — not an image asset, so it's easy to
-   re-theme later just by editing colors below. --------------------------- */
+   Was originally a simplistic CSS-only design (angled banner shape via
+   clip-path, flat color + a soft pulsing box-shadow glow), replaced with
+   real user-supplied artwork: a hanging wooden/gilded sign,
+   images/backgrounds/victory.png (won) / defeat.png (lost), each cropped
+   from a *Transparent.png source the same way every other item art in this
+   project is (tight alpha-bbox crop, see CLAUDE.md). #gameover-image's
+   `src`/`alt` are set in renderGameOverBanner() (js/ui.js).
+   Both source images already have their "VICTORY"/"Defeat" text painted
+   directly into the artwork, in English only, by deliberate choice (see
+   the project's i18n system in CLAUDE.md, which otherwise translates every
+   piece of UI text) — re-inpainting the art per language wasn't practical,
+   so the banner always reads in English even when the rest of the UI is in
+   German. #gameover-text still gets the real translated string (unchanged
+   from before), it's just not shown visually any more, kept only as this
+   image's accessible alt text for screen readers. -------------------- */
 
 #gameover-overlay {
   position: fixed;
@@ -3106,30 +3156,49 @@ button:disabled::before {
 
 #gameover-banner {
   --glow-color: 217, 164, 65; /* matches --accent, as r,g,b for use in rgba() */
-  padding: 1.4rem 4rem;
-  background: linear-gradient(180deg, #26221a, #17140f);
-  border: 1px solid rgb(var(--glow-color));
-  clip-path: polygon(6% 0%, 94% 0%, 100% 50%, 94% 100%, 6% 100%, 0% 50%);
-  animation: banner-in 0.45s ease, banner-glow 2.4s ease-in-out infinite 0.45s;
+  display: flex;
+  /* Nudged up so the real fight/death message sitting behind this overlay
+     (visible through #gameover-overlay's translucent black background,
+     e.g. "...You died!" in red, or "...you win!" in green) isn't covered
+     by the banner's own bottom edge. Applies to both the victory and
+     defeat banner alike, since this rule isn't scoped to .gameover-lost.
+     A small, fixed offset rather than a rem one, since this is a one-off
+     visual nudge, not something meant to scale with the root font-size.
+     -10px, then -32px, still weren't enough (still overlapped the message
+     on both banners, reported via screenshot each time), bumped to -64px. */
+  transform: translateY(-64px);
 }
 
 #gameover-overlay.gameover-lost #gameover-banner {
   --glow-color: 192, 57, 43; /* matches --danger */
 }
 
+/* Kept in the DOM as the image's alt text (see the block comment above),
+   never shown on screen — same off-screen-but-still-readable pattern as
+   any standard sr-only utility, just not factored into a shared class
+   since this is the only element in the project that needs it. */
 #gameover-text {
-  display: block;
-  font-family: var(--font-display);
-  font-size: 2.1rem;
-  font-weight: 400;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  color: rgb(var(--glow-color, 217, 164, 65));
-  text-shadow: 0 0 12px rgba(var(--glow-color, 217, 164, 65), 0.6);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }
 
-#gameover-banner {
-  color: rgb(var(--glow-color));
+#gameover-image {
+  width: min(26rem, 80vw);
+  height: auto;
+  /* filter: drop-shadow(), not box-shadow, specifically because the source
+     art's own silhouette (a hanging sign with open space around and
+     between its two top hooks) isn't a plain rectangle — drop-shadow
+     follows the image's actual alpha shape, a box-shadow would show as a
+     visible rectangle behind it. Animated directly (not the opacity-on-a-
+     separate-::after-layer pattern used for repeatedly-pulsing card
+     glows elsewhere, see CLAUDE.md) since this element is shown once, not
+     dozens at a time, so the repaint cost that pattern exists to avoid
+     doesn't apply here. */
+  animation: banner-in 0.45s ease, banner-glow 2.4s ease-in-out infinite 0.45s;
 }
 
 @keyframes banner-in {
@@ -3145,11 +3214,70 @@ button:disabled::before {
 
 @keyframes banner-glow {
   0%, 100% {
-    box-shadow: 0 0 14px 2px rgba(var(--glow-color), 0.3);
+    filter: drop-shadow(0 0 10px rgba(var(--glow-color), 0.35));
   }
   50% {
-    box-shadow: 0 0 26px 6px rgba(var(--glow-color), 0.55);
+    filter: drop-shadow(0 0 20px rgba(var(--glow-color), 0.65));
   }
+}
+
+/* #play-again-btn reuses #start-new-game-btn's gilded plaque artwork/
+   technique verbatim (see the long comment on #start-new-game-btn further
+   up for the full border-image reasoning), by request, so the gameover
+   screen's primary action reads exactly like the start screen's New Game
+   button instead of the plain flat-gold shared button style. */
+#play-again-btn {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 2.3rem;
+  border-radius: 0;
+  color: #241a09;
+  background-color: #b08562;
+  border: 0.6rem solid transparent;
+  border-image-source: url("images/frames/button-primary.png");
+  border-image-slice: 46 fill;
+  border-image-repeat: stretch;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
+  --octagon-cut: 0.6rem;
+  clip-path: polygon(
+    var(--octagon-cut) 0, calc(100% - var(--octagon-cut)) 0,
+    100% var(--octagon-cut), 100% calc(100% - var(--octagon-cut)),
+    calc(100% - var(--octagon-cut)) 100%, var(--octagon-cut) 100%,
+    0 calc(100% - var(--octagon-cut)), 0 var(--octagon-cut)
+  );
+}
+
+#play-again-btn:hover:not(:disabled) {
+  filter: brightness(1.12) saturate(1.08);
+  box-shadow: 0 0 18px 3px rgba(217, 164, 65, 0.55), 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* #gameover-menu-btn reuses #start-nav button's "bronze plaque" secondary
+   look verbatim (see the long comment on that rule further up for the full
+   reasoning), by request, so it matches the start screen's/menu's secondary
+   buttons instead of the plain flat button default it had before. */
+#gameover-menu-btn {
+  border-radius: 0;
+  color: #241a09;
+  background-color: #b08562;
+  border: 0.45rem solid transparent;
+  border-image-source: url("images/frames/button-secondary.png");
+  border-image-slice: 46 fill;
+  border-image-repeat: stretch;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+  --octagon-cut: 0.45rem;
+  clip-path: polygon(
+    var(--octagon-cut) 0, calc(100% - var(--octagon-cut)) 0,
+    100% var(--octagon-cut), 100% calc(100% - var(--octagon-cut)),
+    calc(100% - var(--octagon-cut)) 100%, var(--octagon-cut) 100%,
+    0 calc(100% - var(--octagon-cut)), 0 var(--octagon-cut)
+  );
+}
+
+#gameover-menu-btn:hover:not(:disabled) {
+  filter: brightness(1.15) saturate(1.1);
+  box-shadow: 0 0 12px 2px rgba(217, 164, 65, 0.4), 0 3px 7px rgba(0, 0, 0, 0.45);
 }
 
 /* --- Tutorial (custom addition, see js/tutorial.js) ------------------------

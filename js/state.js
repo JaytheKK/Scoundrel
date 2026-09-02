@@ -570,7 +570,11 @@ function fightMonster(card, useWeapon = true) {
     ? t('fightWithWeapon', { monster: monsterLabel, weapon: weaponLabel, damage })
     : t('fightBareHanded', { monster: monsterLabel, damage });
   if (vampiricHeals) {
-    state.hp = Math.min(state.hp + 1, state.maxHp);
+    // 5 HP, the ×5 rescale of the original 1, see the "Value rescale" note
+    // in js/cards.js — this spot was missed in that pass (still healing the
+    // pre-rescale amount) even though fightVampiricSuffix's own text
+    // (js/i18n.js) already correctly said "healed 5 HP".
+    state.hp = Math.min(state.hp + 5, state.maxHp);
     message += t('fightVampiricSuffix');
   } else if (weaponUsable && weapon.effect === 'electric') {
     message += t('fightElectricSuffix');

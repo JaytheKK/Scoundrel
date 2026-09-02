@@ -55,6 +55,28 @@ const CHAMPION_NAMES = {
   },
 };
 
+// Short flavor blurb shown in the Champions gallery's detail popup, above
+// the passive/active ability text (see renderGalleryDetail() in js/ui.js) —
+// same idea and tone as MONSTER_DESCRIPTIONS/WEAPON_DESCRIPTIONS (a plain
+// lore sentence, no mechanics), kept as its own field since champ.description
+// below is already used everywhere else (champion-select tile, the
+// #champion-badge tooltip, this same detail popup) as the passive ability's
+// text, not a flavor blurb.
+const CHAMPION_FLAVOR = {
+  en: {
+    paladin: 'A devout knight who channels holy faith into both blade and shield.',
+    herbalist: "A wandering healer, well versed in poultices and the dungeon's hidden remedies.",
+    rogue: "A quick-fingered thief who slips past danger and strikes when it's least expected.",
+    berserker: 'A battle-hardened warrior who shrugs off pain and hits hardest with bare fists.',
+  },
+  de: {
+    paladin: 'Ein frommer Ritter, der heiligen Glauben in Klinge und Schild lenkt.',
+    herbalist: 'Eine Kräuterkundige, bewandert in Umschlägen und den verborgenen Heilmitteln des Dungeons.',
+    rogue: 'Ein flinkfingriger Dieb, der der Gefahr ausweicht und zuschlägt, wenn man es am wenigsten erwartet.',
+    berserker: 'Ein kampferprobter Krieger, der Schmerz ignoriert und am härtesten mit bloßen Fäusten zuschlägt.',
+  },
+};
+
 const CHAMPION_DESCRIPTIONS = {
   en: {
     paladin: 'For every 5 monsters you defeat, you heal 10 HP',
@@ -79,6 +101,10 @@ const CHAMPIONS = CHAMPION_BASE.map((base) => ({
   },
   get description() {
     const table = CHAMPION_DESCRIPTIONS[getLang()] || CHAMPION_DESCRIPTIONS.en;
+    return table[base.id];
+  },
+  get flavor() {
+    const table = CHAMPION_FLAVOR[getLang()] || CHAMPION_FLAVOR.en;
     return table[base.id];
   },
 }));

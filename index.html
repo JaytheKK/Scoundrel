@@ -168,6 +168,7 @@
 
   <div id="gameover-overlay" class="hidden">
     <div id="gameover-banner">
+      <img id="gameover-image" src="" alt="" />
       <span id="gameover-text">Victory</span>
     </div>
     <button id="play-again-btn" data-i18n="playAgain">Play Again</button>
@@ -188,7 +189,13 @@
       <div id="gallery-detail-image"></div>
       <h2 id="gallery-detail-title"></h2>
       <p id="gallery-detail-rank"></p>
-      <p id="gallery-detail-text"></p>
+      <!-- A <div>, not a <p>: for champions renderGalleryDetail() (js/ui.js)
+           fills this with several <p> blocks (flavor text, then the passive
+           and active ability sections), and a <p> can't validly contain
+           another <p>. Weapons/monsters/shields still just get one plain-
+           text sentence via textContent, which renders identically in a
+           div as it did in a p. -->
+      <div id="gallery-detail-text"></div>
     </div>
   </div>
 
