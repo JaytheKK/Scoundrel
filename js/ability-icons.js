@@ -77,7 +77,7 @@ const ABILITY_DETAILS = {
     },
     berserker: {
       name: 'Frenzy',
-      description: 'For the next 4 weapon fights, the weapon ignores its degrade limit and can strike any monster.',
+      description: "For the next 2 fights, bare-handed hits take 40 less damage instead of the passive's 10.",
     },
   },
   de: {
@@ -95,7 +95,7 @@ const ABILITY_DETAILS = {
     },
     berserker: {
       name: 'Raserei',
-      description: 'Für die nächsten 4 Waffenkämpfe ignoriert die Waffe ihre Abnutzungsgrenze und kann jedes Monster treffen.',
+      description: 'Für die nächsten 2 Kämpfe verursachen waffenlose Treffer 40 statt der passiven 10 weniger Schaden.',
     },
   },
 };

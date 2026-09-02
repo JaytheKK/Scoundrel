@@ -86,7 +86,6 @@ const I18N = {
     fightingBareHanded: 'Fighting bare-handed',
     canDefeatAny: 'Can defeat any monster',
     canOnlyDefeatWeaker: 'Can only defeat monsters weaker than {n}',
-    frenzyOverrides: "Frenzy overrides the degrade limit ({n} left)",
     weaponToggleLabel: 'Using weapon',
     fleeCantTwice: "Can't flee two rooms in a row",
     fleeCantThrice: "Can't flee three rooms in a row",
@@ -168,7 +167,7 @@ const I18N = {
     abilityHerbalistFull:
       "{name} channels nature's grace, already at full health, no effect.",
     abilityBerserkerFrenzy:
-      '{name} flies into a frenzy, the weapon ignores its degrade limit for the next 4 fights.',
+      '{name} flies into a frenzy, bare-handed hits take 40 less damage for the next 2 fights.',
     abilityNotImplemented: "{name}'s ability isn't implemented yet, mana spent.",
     backstabCancelled: 'Backstab cancelled.',
     backstabHit: '{name} backstabs {monster} for 30 damage!',
@@ -182,8 +181,6 @@ const I18N = {
     paladinHealSuffix: " Paladin's faith healed {n} HP.",
     blessingAbsorbedLeft: ' Blessing absorbed 10 damage ({n} left).',
     blessingAbsorbedFaded: ' Blessing absorbed 10 damage, it has faded.',
-    frenzyOverpoweredLeft: " Frenzy overpowered the weapon's limit ({n} left).",
-    frenzyOverpoweredFaded: " Frenzy overpowered the weapon's limit, it has faded.",
     frenzyActiveLeft: ' Frenzy is active ({n} left).',
     frenzyFaded: ' Frenzy has faded.',
     shieldBlocked: ' Your {shield} blocked {n} damage.',
@@ -251,7 +248,7 @@ const I18N = {
         <li>
           <strong>Berserker</strong>
           <br><strong>Passive:</strong> fighting bare-handed, you take 10 less damage from every monster.
-          <br><strong>Active, Frenzy:</strong> for the next 4 weapon fights, the weapon ignores its degrade limit and can strike any monster.
+          <br><strong>Active, Frenzy:</strong> for the next 2 fights, bare-handed hits take 40 less damage instead of 10.
         </li>
       </ul>
       <p>The ring around your ability button shows your banked mana. You gain 1 mana every time a room is cleared or fled, up to your champion's ability cost. Once the ring is full, the button lights up and you can click it to trigger your active ability, which spends all of it.</p>
@@ -289,7 +286,6 @@ const I18N = {
     fightingBareHanded: 'Kämpfst bloßhändig',
     canDefeatAny: 'Kann jedes Monster besiegen',
     canOnlyDefeatWeaker: 'Kann nur Monster schwächer als {n} besiegen',
-    frenzyOverrides: 'Raserei hebt die Abnutzungsgrenze auf ({n} übrig)',
     weaponToggleLabel: 'Waffe benutzen',
     fleeCantTwice: 'Kann nicht zwei Räume hintereinander fliehen',
     fleeCantThrice: 'Kann nicht drei Räume hintereinander fliehen',
@@ -372,7 +368,7 @@ const I18N = {
     abilityHerbalistFull:
       '{name} kanalisiert die Gnade der Natur, bereits bei voller Gesundheit, keine Wirkung.',
     abilityBerserkerFrenzy:
-      '{name} verfällt in Raserei, die Waffe ignoriert ihre Abnutzungsgrenze für die nächsten 4 Kämpfe.',
+      '{name} verfällt in Raserei, bloßhändige Treffer verursachen für die nächsten 2 Kämpfe 40 statt 10 weniger Schaden.',
     abilityNotImplemented: '{name}s Fähigkeit ist noch nicht implementiert, Mana wurde verbraucht.',
     backstabCancelled: 'Hinterhalt abgebrochen.',
     backstabHit: '{name} greift {monster} hinterrücks an, 30 Schaden!',
@@ -386,8 +382,6 @@ const I18N = {
     paladinHealSuffix: ' Der Glaube des Paladins hat {n} LP geheilt.',
     blessingAbsorbedLeft: ' Der Segen hat 10 Schaden absorbiert ({n} übrig).',
     blessingAbsorbedFaded: ' Der Segen hat 10 Schaden absorbiert und ist nun verblasst.',
-    frenzyOverpoweredLeft: ' Die Raserei hat die Grenze der Waffe überwunden ({n} übrig).',
-    frenzyOverpoweredFaded: ' Die Raserei hat die Grenze der Waffe überwunden und ist nun verklungen.',
     frenzyActiveLeft: ' Die Raserei ist aktiv ({n} übrig).',
     frenzyFaded: ' Die Raserei ist verklungen.',
     shieldBlocked: ' Dein {shield} hat {n} Schaden geblockt.',
@@ -455,7 +449,7 @@ const I18N = {
         <li>
           <strong>Berserker</strong>
           <br><strong>Passiv:</strong> im bloßhändigen Kampf erleidest du 10 weniger Schaden von jedem Monster.
-          <br><strong>Aktiv, Raserei:</strong> für die nächsten 4 Waffenkämpfe ignoriert die Waffe ihre Abnutzungsgrenze und kann jedes Monster treffen.
+          <br><strong>Aktiv, Raserei:</strong> für die nächsten 2 Kämpfe verursachen bloßhändige Treffer 40 statt 10 weniger Schaden.
         </li>
       </ul>
       <p>Der Ring um deinen Fähigkeiten-Button zeigt dein gesammeltes Mana. Du erhältst 1 Mana, jedes Mal wenn ein Raum geräumt oder verlassen wird, bis zu den Kosten deines Champions. Sobald der Ring voll ist, leuchtet der Button auf und du kannst ihn anklicken, um deine aktive Fähigkeit auszulösen, was das gesamte Mana verbraucht.</p>

@@ -88,33 +88,40 @@ const state = {
                               // (cancelBackstab()) costs nothing, so the
                               // ability stays saved for later.
   berserkerFrenzyCharges: 0,  // Berserker's active ability ("Frenzy"): set to
-                              // 4 by useAbility() below. While > 0, the
-                              // equipped weapon ignores weaponMaxMonster (the
-                              // "only usable on a monster weaker than the
-                              // last one it defeated" degrade rule) entirely
-                              // — see isWeaponUsableOn() below — so a
-                              // degraded weapon can strike anything again.
-                              // Counts down by 1 on every one of the next 4
-                              // weapon fights, whether or not the override
-                              // was actually needed that fight (see the
-                              // gotcha comment in fightMonster() — an
-                              // earlier "only spend it when it mattered"
-                              // version could get the counter stuck for a
-                              // long time, since a frenzied kill of a
-                              // strong monster raises weaponMaxMonster high
-                              // enough that the restriction stops engaging
-                              // for a while afterward). 0 = ability inactive
-                              // — renderAbilityActiveGlow() (js/ui.js) reads
+                              // 2 by useAbility() below. While > 0, bare-
+                              // handed fights (see fightMonster() below) take
+                              // 40 less damage instead of the passive's flat
+                              // 10 (replacing it, not stacking on top of it).
+                              // Counts down by 1 on every one of the next 2
+                              // fights, weapon or bare-handed alike, whether
+                              // or not the boost was actually relevant that
+                              // fight — a plain, predictable "next 2 fights"
+                              // counter, same reasoning as the Fragile/
+                              // degrade-style counters elsewhere in this
+                              // file: gating the decrement on "only while it
+                              // actually mattered" risks it getting stuck if
+                              // the player happens to keep using a weapon
+                              // instead. 0 = ability inactive —
+                              // renderAbilityActiveGlow() (js/ui.js) reads
                               // this directly, same pattern as Paladin's
-                              // paladinResistCharges (a different system —
-                              // this lifts a restriction rather than
-                              // reducing damage — deliberately, so the two
-                              // abilities don't feel like reskins of the
-                              // same mechanic).
+                              // paladinResistCharges. This used to also lift
+                              // the weapon's degrade restriction entirely
+                              // (isWeaponUsableOn() below); that effect has
+                              // been removed from Berserker and moved to a
+                              // different champion, so the two active
+                              // abilities don't overlap.
 
-  // UI preference, not reset by initGame(): whether fighting a monster should
-  // use the equipped weapon (when legal) or go bare-handed. Controlled by the
-  // "Using weapon" toggle.
+  // Whether fighting a monster should use the equipped weapon (when legal)
+  // or go bare-handed. Normally a plain UI preference controlled by the
+  // "Using weapon" toggle, but Berserker's active ability (see
+  // berserkerFrenzyCharges above and useAbility()/fightMonster() below) also
+  // writes this directly: forced to false the instant Frenzy is activated
+  // (its damage boost only applies bare-handed, so leaving the toggle on
+  // would waste both charges on weapon fights with no visible effect), then
+  // forced back to true the instant the 2 charges run out. Reset to true by
+  // initGame() (unlike most other UI-preference-style fields) specifically
+  // so a game that ends while Frenzy is still active can't leave the next
+  // game starting with weapon fighting silently turned off.
   useWeaponPreference: true,
 };
 
@@ -249,6 +256,7 @@ function initGame(championId = null, options = {}) {
   state.paladinResistCharges = 0;
   state.rogueTargeting = false;
   state.berserkerFrenzyCharges = 0;
+  state.useWeaponPreference = true;
 }
 
 /** Called whenever the room changes — a room clearing (refilling back up to
@@ -324,9 +332,17 @@ function useAbility() {
   }
 
   if (state.champion === 'berserker') {
-    // See berserkerFrenzyCharges in the state object above and
-    // isWeaponUsableOn()/fightMonster() below.
-    state.berserkerFrenzyCharges = 4;
+    // See berserkerFrenzyCharges in the state object above and the
+    // bare-handed damage reduction in fightMonster() below. Charges tick
+    // down on every fight for the next 2 fights, weapon or bare-handed
+    // alike (see the GOTCHA note in fightMonster() for why it's not gated
+    // on "only while it actually mattered").
+    state.berserkerFrenzyCharges = 2;
+    // Force bare-handed fighting for the duration, since Frenzy only boosts
+    // bare-handed damage reduction (see useWeaponPreference in the state
+    // object above for why) — switched back on automatically once the
+    // charges run out, see fightMonster() below.
+    state.useWeaponPreference = false;
     return { message: t('abilityBerserkerFrenzy', { name: champ.name }) };
   }
 
@@ -368,17 +384,15 @@ function resolveBackstab(cardId) {
 }
 
 /** Whether the equipped weapon may currently be used against this monster
- * (ignoring player choice — just whether the rules allow it at all).
- * Normally gated by weaponMaxMonster (the "only usable on a monster weaker
- * than the last one it defeated" degrade rule) — Berserker's active
- * ability ("Frenzy", see useAbility() above) lifts that restriction
- * entirely while berserkerFrenzyCharges > 0, so a degraded weapon can
- * strike anything again. */
+ * (ignoring player choice — just whether the rules allow it at all), gated
+ * by weaponMaxMonster (the "only usable on a monster weaker than the last
+ * one it defeated" degrade rule). Berserker's active ability used to lift
+ * this restriction, but that's been moved to a different champion, see
+ * fightMonster() below for what Berserker's ability does now. */
 function isWeaponUsableOn(card) {
-  const frenzied = state.champion === 'berserker' && state.berserkerFrenzyCharges > 0;
   return (
     !!state.equippedWeapon &&
-    (frenzied || state.weaponMaxMonster === null || card.rank < state.weaponMaxMonster)
+    (state.weaponMaxMonster === null || card.rank < state.weaponMaxMonster)
   );
 }
 
@@ -404,17 +418,22 @@ function fightMonster(card, useWeapon = true) {
   const weaponUsable = useWeapon && isWeaponUsableOn(card);
   const weapon = state.equippedWeapon;
 
-  // Whether Berserker's Frenzy (see isWeaponUsableOn() above) is active for
-  // this weapon fight. Computed from weaponMaxMonster BEFORE it gets
-  // overwritten below, purely to decide the flavor text (did the degrade
-  // rule actually need overriding this time, or was the weapon already
-  // legal anyway?) — the charge itself always ticks down on the next 3
-  // weapon fights, whether or not it was actually needed each time (see the
-  // gotcha below for why "only spend it when it matters" doesn't work).
-  const frenzyActive =
-    weaponUsable && state.champion === 'berserker' && state.berserkerFrenzyCharges > 0;
-  const frenzyOverrode =
-    frenzyActive && state.weaponMaxMonster !== null && card.rank >= state.weaponMaxMonster;
+  // Berserker's active ability ("Frenzy"): while berserkerFrenzyCharges > 0,
+  // the bare-handed damage-reduction branch below uses 40 instead of the
+  // passive's flat 10, for the next 2 fights. The charge always ticks down
+  // on every fight, weapon or bare-handed alike, not just a bare-handed one
+  // — same lesson as the GOTCHA further down about Fragile/degrade-style
+  // counters: gating the decrement on "only while it actually mattered"
+  // risks the charge getting stuck forever if the player happens to keep
+  // using a weapon instead, which reads as the ability never expiring.
+  const frenzyActive = state.champion === 'berserker' && state.berserkerFrenzyCharges > 0;
+  if (frenzyActive) {
+    state.berserkerFrenzyCharges -= 1;
+    // The 2 charges are up: switch "Using weapon" back on automatically,
+    // undoing the forced-off flip useAbility() made when Frenzy was
+    // activated (see useWeaponPreference in the state object above).
+    if (state.berserkerFrenzyCharges === 0) state.useWeaponPreference = true;
+  }
 
   // Ids of monsters weakened this fight (currently only via Electric) — the
   // caller (main.js) uses this to play a "-1" + shake on those cards.
@@ -424,30 +443,12 @@ function fightMonster(card, useWeapon = true) {
   if (weaponUsable) {
     damage = Math.max(card.rank - weapon.rank, 0);
 
-    // GOTCHA: an earlier version only decremented berserkerFrenzyCharges
-    // when frenzyOverrode was true (i.e. only on a fight the restriction
-    // would otherwise have blocked). That trapped the counter: the very
-    // first frenzied kill of a strong monster raises weaponMaxMonster (the
-    // ceiling, set below) up to that monster's rank, which then makes the
-    // weapon legally usable on almost everything for a long stretch
-    // afterward — so the restriction stops engaging, the remaining
-    // charge(s) never get spent, and the button/status line sits stuck on
-    // e.g. "1 left" indefinitely while the player keeps fighting freely.
-    // Always spending a charge on every weapon fight while Frenzy is active
-    // (regardless of whether it was needed) makes it a plain, predictable
-    // "next 4 weapon fights" counter instead — matching how Paladin's/
-    // Berserker's other counters behave. Don't reintroduce the
-    // "only-if-it-mattered" version.
-    if (frenzyActive) state.berserkerFrenzyCharges -= 1;
-
     // Weapon degrade: normally the weapon can only be used again on a
     // monster weaker than the one it just defeated. Sturdy limits how far
     // that usable-strength ceiling can drop in one fight (max -10, the ×5
     // rescale of the original -2, see the "Value rescale" note in
     // js/cards.js) instead of dropping straight to the defeated monster's
-    // value. Frenzy only lifts the *restriction* for this swing — the
-    // ceiling itself still updates normally afterward, so a later,
-    // non-Frenzied swing still respects the degrade rule.
+    // value.
     const previousCeiling = state.weaponMaxMonster === null ? weapon.rank : state.weaponMaxMonster;
     state.weaponMaxMonster =
       weapon.effect === 'sturdy' ? Math.max(card.rank, previousCeiling - 10) : card.rank;
@@ -474,8 +475,13 @@ function fightMonster(card, useWeapon = true) {
     damage = card.rank;
     // Berserker champion: 10 less damage from every monster fought
     // bare-handed (never below 0) — the ×5 rescale of the original -2, see
-    // the "Value rescale" note in js/cards.js.
-    if (state.champion === 'berserker') damage = Math.max(damage - 10, 0);
+    // the "Value rescale" note in js/cards.js. Boosted to 40 while Frenzy
+    // (see frenzyActive above) is active, replacing the passive's flat 10
+    // rather than stacking with it.
+    if (state.champion === 'berserker') {
+      const bareHandedReduction = frenzyActive ? 40 : 10;
+      damage = Math.max(damage - bareHandedReduction, 0);
+    }
   }
 
   // Paladin's active ability (see useAbility() above): the next 3 times he
@@ -551,17 +557,12 @@ function fightMonster(card, useWeapon = true) {
   // weakenMonster()) still shows the right creature.
   const monsterLabel = monsterNameFor(card.baseRank) || card.name;
   const weaponLabel = weaponUsable ? weaponNameFor(weapon.baseRank) || weapon.name : null;
-  // Vampiric only heals if the weapon actually defeated the monster within
-  // its normal degrade limit — true on a fresh weapon's first swing
-  // (weaponMaxMonster was null, so any monster counts as "under the limit"),
-  // and true afterward only while card.rank is still below weaponMaxMonster.
-  // Berserker's Frenzy can make weaponUsable true even when the monster is
-  // AT or ABOVE that limit (frenzyOverrode) — that swing must not heal.
-  // Also never heal on a lethal hit: state.hp was already clamped to 0
+  // Vampiric only heals if the weapon was actually usable this fight, which
+  // (via isWeaponUsableOn()) already implies the monster was within the
+  // weapon's degrade limit. Also never heal on a lethal hit: state.hp was already clamped to 0
   // above, and healing after death let the player survive every fight at
   // 1 HP forever (the vampiric-immortality bug) — gate on state.hp > 0.
-  const vampiricHeals =
-    weaponUsable && weapon.effect === 'vampiric' && !frenzyOverrode && state.hp > 0;
+  const vampiricHeals = weaponUsable && weapon.effect === 'vampiric' && state.hp > 0;
   // True the instant a Fragile weapon's uses reach 0 on this fight. See
   // breakFragileWeapon() above for why this only *reports* the break rather
   // than unequipping the weapon here directly.
@@ -595,17 +596,14 @@ function fightMonster(card, useWeapon = true) {
         ? t('blessingAbsorbedLeft', { n: state.paladinResistCharges })
         : t('blessingAbsorbedFaded');
   }
-  if (frenzyActive) {
+  // Only reported on the bare-handed fights Frenzy actually affects (see the
+  // boosted bareHandedReduction above) — a weapon fight still silently
+  // spends a charge while Frenzy is active (see the comment where
+  // frenzyActive is computed), but there's nothing of Frenzy's to report on
+  // one, since it never touches weapon damage.
+  if (frenzyActive && !weaponUsable) {
     const left = state.berserkerFrenzyCharges;
-    if (frenzyOverrode) {
-      message += left > 0
-        ? t('frenzyOverpoweredLeft', { n: left })
-        : t('frenzyOverpoweredFaded');
-    } else {
-      message += left > 0
-        ? t('frenzyActiveLeft', { n: left })
-        : t('frenzyFaded');
-    }
+    message += left > 0 ? t('frenzyActiveLeft', { n: left }) : t('frenzyFaded');
   }
   if (blocked > 0) {
     const shieldLabel = shieldNameFor(shieldBefore.baseRank) || shieldBefore.name;
@@ -624,7 +622,7 @@ function fightMonster(card, useWeapon = true) {
 /** Pure, read-only preview of the damage a monster card would deal if
  * fought right now, mirroring fightMonster()'s damage math exactly (weapon/
  * bare-handed choice via useWeaponPreference, Berserker's flat reduction,
- * Paladin's Blessing, Frenzy's degrade-limit override, then the shield
+ * Paladin's Blessing, Frenzy's boosted bare-handed reduction, then the shield
  * block), but never mutating any state (no weapon degrade, no shield
  * durability loss, no charge spent). Used only to show a "how much would
  * this cost me" hint on hover (see showCardTooltip() in js/ui.js), which
@@ -643,13 +641,13 @@ function previewMonsterDamage(card) {
   let vampiric = false;
   if (weaponUsable) {
     rawDamage = Math.max(card.rank - weapon.rank, 0);
-    const frenzyActive = state.champion === 'berserker' && state.berserkerFrenzyCharges > 0;
-    const frenzyOverrode =
-      frenzyActive && state.weaponMaxMonster !== null && card.rank >= state.weaponMaxMonster;
-    vampiric = weapon.effect === 'vampiric' && !frenzyOverrode;
+    vampiric = weapon.effect === 'vampiric';
   } else {
     rawDamage = card.rank;
-    if (state.champion === 'berserker') rawDamage = Math.max(rawDamage - 10, 0);
+    if (state.champion === 'berserker') {
+      const frenzyActive = state.berserkerFrenzyCharges > 0;
+      rawDamage = Math.max(rawDamage - (frenzyActive ? 40 : 10), 0);
+    }
   }
 
   if (state.champion === 'paladin' && state.paladinResistCharges > 0 && rawDamage > 0) {

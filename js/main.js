@@ -191,6 +191,7 @@ function applyResolve(cardId, options) {
   renderChampionAbilityBar({ animateHeal: !!result.paladinCycleComplete });
   renderManaRing(); // a room-clear (see resolveCard() in js/state.js) may have granted mana
   renderAbilityActiveGlow(); // a fight may have burned a Paladin/Berserker charge
+  renderWeaponToggle(); // a fight may have run Berserker's Frenzy charges out, switching it back on
 
   // Electric weapon effect: play a "-1" + shake on each monster it weakened,
   // while their card elements are still the ones actually in the DOM.
@@ -377,7 +378,8 @@ document.getElementById('ability-btn').addEventListener('click', () => {
   renderMessage(result.message);
   renderManaRing();
   renderAbilityActiveGlow(); // e.g. Paladin's blessing just turned on
-  renderWeaponSlot(); // Berserker's Frenzy changes the weapon-status line immediately
+  renderWeaponToggle(); // Berserker's Frenzy just forced "Using weapon" off
+  renderWeaponSlot();
 
   // Herbalist (or any future ability that heals): same before/after HP-delta
   // feedback every other heal already gets, plus a little "+" particle burst

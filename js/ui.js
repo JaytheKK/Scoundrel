@@ -406,9 +406,10 @@ function renderManaRing() {
  * style.css) while the current champion's active ability has an ongoing
  * effect running — Paladin's paladinResistCharges (counts down as he takes
  * reduced-damage hits) or Berserker's berserkerFrenzyCharges (counts down
- * as his weapon ignores its degrade limit, see fightMonster() in
- * js/state.js) — either way the glow disappears the instant its counter
- * hits 0. Lives on #ability-wrap rather than #ability-btn itself — see the
+ * as his bare-handed fights take boosted damage reduction, see
+ * fightMonster() in js/state.js) — either way the glow disappears the
+ * instant its counter hits 0. Lives on #ability-wrap rather than
+ * #ability-btn itself — see the
  * comment on .ability-wrap--active::after in style.css for why (short
  * version: #ability-btn is a real <button> and clips its own glow, or its
  * own hover sheen leaks out, depending on which way that gets fixed). A
@@ -603,6 +604,19 @@ function showAbilityHealBurst() {
   }
 }
 
+/** Syncs #weapon-toggle's checked state to state.useWeaponPreference.
+ * Normally the checkbox is the only thing that ever writes that field (its
+ * own change listener in js/main.js), so nothing needed to sync it back the
+ * other way — but Berserker's active ability now also writes it directly
+ * (forced off the instant Frenzy activates, forced back on the instant its
+ * charges run out, see useAbility()/fightMonster() in js/state.js), so the
+ * checkbox needs to be told about that. Called from renderAll() and
+ * anywhere state.useWeaponPreference can change programmatically (the
+ * ability button's click handler and applyResolve(), both in js/main.js). */
+function renderWeaponToggle() {
+  document.getElementById('weapon-toggle').checked = state.useWeaponPreference;
+}
+
 function renderWeaponSlot() {
   const slot = document.getElementById('weapon-slot-card');
   const status = document.getElementById('weapon-status');
@@ -636,17 +650,10 @@ function renderWeaponSlot() {
   } else if (!state.equippedWeapon) {
     status.textContent = t('noWeaponEquipped');
   } else {
-    // Berserker's Frenzy (see fightMonster()/isWeaponUsableOn() in
-    // js/state.js) lifts the degrade restriction entirely while active —
-    // reflect that here too, so this line doesn't keep claiming a
-    // restriction that currently doesn't apply.
-    const frenzied = state.champion === 'berserker' && state.berserkerFrenzyCharges > 0;
     const restriction =
-      frenzied
-        ? t('frenzyOverrides', { n: state.berserkerFrenzyCharges })
-        : state.weaponMaxMonster === null
-          ? t('canDefeatAny')
-          : t('canOnlyDefeatWeaker', { n: state.weaponMaxMonster });
+      state.weaponMaxMonster === null
+        ? t('canDefeatAny')
+        : t('canOnlyDefeatWeaker', { n: state.weaponMaxMonster });
     const effect = state.equippedWeapon.effect && WEAPON_EFFECTS[state.equippedWeapon.effect];
     status.textContent = effect ? `${restriction}. ${effect.name}: ${effect.description}` : restriction;
   }
@@ -1109,6 +1116,7 @@ function renderAll() {
   renderRoom();
   renderRogueTargeting(); // after renderRoom() — it needs the fresh #room card elements
   renderDeckCount();
+  renderWeaponToggle();
   renderWeaponSlot();
   renderShieldSlot();
   renderFleeButton();
