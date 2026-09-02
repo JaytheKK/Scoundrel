@@ -76,6 +76,19 @@ const SUITS = {
   // plumbing so shield cards flow through makeCard()/renderCard() etc. like
   // every other card.
   SHIELDS: 'shields',
+  // Custom addition, see "Ranged Weapons" in CLAUDE.md. A second, distinct
+  // weapon pseudo-suit alongside DIAMONDS (melee) — suitToType() below still
+  // maps it to type 'weapon' (so it shares the same weapon equip slot and
+  // the same resolveCard() dispatch as a melee weapon, see js/state.js),
+  // but its own suit lets fightMonster()/isWeaponUsableOn()/equipWeapon()
+  // (js/state.js) and flavorNameFor() (js/ui.js) tell a ranged weapon apart
+  // from a melee one, and gives it its own image folder
+  // (images/weapons/RangedWeapons/, vs melee's images/weapons/MeleeWeapons/)
+  // and its own name/description table (js/ranged-weapon-icons.js) — needed
+  // because ranged and melee ranks overlap (both currently use some of the
+  // same 10/15/25/40 values), so a single shared WEAPON_NAMES table keyed
+  // only by rank could not tell the two apart.
+  RANGED: 'ranged',
 };
 
 const SUIT_SYMBOLS = {
@@ -83,6 +96,7 @@ const SUIT_SYMBOLS = {
   diamonds: '♦',
   hearts: '♥',
   shields: '⛨',
+  ranged: '↗',
 };
 
 // Plain numeric labels only — no J/Q/K/A anywhere, per project convention:
@@ -97,7 +111,10 @@ function rankLabel(rank) {
 
 function suitToType(suit) {
   if (suit === SUITS.MONSTERS) return 'monster';
-  if (suit === SUITS.DIAMONDS) return 'weapon';
+  // RANGED shares type 'weapon' with DIAMONDS on purpose — see the SUITS.RANGED
+  // comment above: it's what lets a ranged weapon flow through the exact same
+  // weapon equip slot / resolveCard() dispatch (js/state.js) as a melee one.
+  if (suit === SUITS.DIAMONDS || suit === SUITS.RANGED) return 'weapon';
   if (suit === SUITS.SHIELDS) return 'shield';
   return 'potion'; // hearts
 }
@@ -127,9 +144,19 @@ function makeCard(suit, rank, overrides = {}) {
     name: `${label} of ${capitalize(suit)}`,
     // Every card type has its own artwork folder (same image for a given
     // rank regardless of suit) — see images/monsters/ + js/monster-icons.js,
-    // images/potions/ + js/potion-icons.js, and images/weapons/ +
-    // js/weapon-icons.js for the name that goes with each rank.
-    image: `images/${type}s/${rank}.png`,
+    // images/potions/ + js/potion-icons.js, and images/weapons/MeleeWeapons/
+    // + js/weapon-icons.js / images/weapons/RangedWeapons/ +
+    // js/ranged-weapon-icons.js for the name that goes with each rank.
+    // Melee and Ranged weapons need their own subfolder (not a shared
+    // images/weapons/<rank>.png) because their ranks overlap (both currently
+    // use some of the same 10/15/25/40 values) — a shared path would have
+    // one silently overwrite the other's file.
+    image:
+      suit === SUITS.DIAMONDS
+        ? `images/weapons/MeleeWeapons/${rank}.png`
+        : suit === SUITS.RANGED
+          ? `images/weapons/RangedWeapons/${rank}.png`
+          : `images/${type}s/${rank}.png`,
     // The card border/glow color (see .card--tier-N in style.css), as
     // "R, G, B" for use inside rgba(). Weapons default to white; monsters,
     // potions, and shields get their color from the type-based CSS classes
@@ -140,6 +167,16 @@ function makeCard(suit, rank, overrides = {}) {
     // shared tier system.
     glowRgb: type === 'weapon' ? '255, 255, 255' : null,
     effect: null,
+    // Custom addition for the planned weapon Deckbuilder (not wired up to
+    // any UI yet — this field is inert data until that system exists, see
+    // CLAUDE.md's "Ranged Weapons" section). Defaults to `rank` (a melee
+    // weapon's budget cost is just its combat strength, 1:1) — Ranged
+    // weapons override this to a lower value via `overrides` below, since a
+    // ranged weapon only ever gets RANGED_AMMO_MAX (3) total uses, far fewer
+    // than a melee weapon gets before it degrades past usefulness, so its
+    // face-value damage number would overstate how much budget it deserves
+    // to cost.
+    deckCost: rank,
     ...overrides,
   };
 }
@@ -149,7 +186,7 @@ function makeCard(suit, rank, overrides = {}) {
 // rank 2-10/3-5 is now 10-50/15-25, in the same steps of 5. Monsters are
 // NOT listed here — see "Monster Pool" below for why.
 const CARD_LIST = [
-  // --- Diamonds (weapons, 10-50) ---
+  // --- Diamonds (melee weapons, 10-50) ---
   makeCard(SUITS.DIAMONDS, 10),
   makeCard(SUITS.DIAMONDS, 15),
   makeCard(SUITS.DIAMONDS, 20),
@@ -159,6 +196,21 @@ const CARD_LIST = [
   makeCard(SUITS.DIAMONDS, 40),
   makeCard(SUITS.DIAMONDS, 45),
   makeCard(SUITS.DIAMONDS, 50),
+
+  // --- Ranged weapons (custom addition, not part of the original Scoundrel
+  // rules — see "Ranged Weapons" in CLAUDE.md): 4 bows, damage 10/15/25/40.
+  // Unlike melee weapons, a ranged weapon's `rank` is subtracted directly
+  // from the monster's own rank (see fireRangedWeapon() in js/state.js)
+  // rather than reducing incoming damage, and it only ever gets
+  // RANGED_AMMO_MAX (3) uses before it breaks — so `deckCost` here is
+  // deliberately lower than the raw damage value (roughly half, rounded),
+  // reflecting that a ranged weapon delivers far less total value over a
+  // full run than a melee weapon of the same face-value rank. Names in
+  // js/ranged-weapon-icons.js.
+  makeCard(SUITS.RANGED, 10, { deckCost: 5 }),
+  makeCard(SUITS.RANGED, 15, { deckCost: 8 }),
+  makeCard(SUITS.RANGED, 25, { deckCost: 13 }),
+  makeCard(SUITS.RANGED, 40, { deckCost: 20 }),
 
   // --- Hearts (potions, 10-50) ---
   makeCard(SUITS.HEARTS, 10),

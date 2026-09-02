@@ -22,6 +22,18 @@ const state = {
                               // fightMonster() below); once it hits 0 the
                               // weapon breaks. Reset by equipWeapon()
                               // whenever a new weapon is equipped.
+  weaponAmmoRemaining: null, // null unless the equipped weapon is Ranged
+                              // (SUITS.RANGED, see "Ranged Weapons" in
+                              // CLAUDE.md), in which case it starts at
+                              // RANGED_AMMO_MAX and counts down by 1 every
+                              // time it's fired (see fireRangedWeapon()
+                              // below); once it hits 0 the weapon breaks.
+                              // Reset by equipWeapon() whenever a new weapon
+                              // is equipped — the exact same pattern as
+                              // weaponFragileUsesRemaining above, just for a
+                              // different weapon kind (a weapon is never
+                              // both Ranged and Fragile at once, see
+                              // rollWeaponEffects() in js/weapon-effects.js).
   equippedShield: null,      // card object, or null — custom addition (see
                               // "Shields" in js/cards.js). Clicking one
                               // equips it (equipShield() below) the same way
@@ -165,6 +177,15 @@ function shuffle(cards) {
  * existed. */
 const SAFE_ROOM_LIMIT = 2;
 
+/** Custom addition, see "Ranged Weapons" in CLAUDE.md. How many times a
+ * Ranged weapon (SUITS.RANGED) can be fired before it breaks, and the
+ * chance (per shot that doesn't kill the target outright) that the monster
+ * strikes back before the player can finish it off. Both declared here,
+ * next to SAFE_ROOM_LIMIT above, as the two tunable numbers for the whole
+ * feature — see fireRangedWeapon() below for where they're actually used. */
+const RANGED_AMMO_MAX = 3;
+const RANGED_RETALIATE_CHANCE = 0.2;
+
 /** True unless every card in a room is the same type — the specific
  * "unfair instant death" shape drawForRoom() below exists to rule out: 4
  * fresh monsters with no weapon or potion to fall back on (and if it
@@ -268,6 +289,7 @@ function initGame(championId = null, options = {}) {
   state.equippedWeapon = null;
   state.weaponMaxMonster = null;
   state.weaponFragileUsesRemaining = null;
+  state.weaponAmmoRemaining = null;
   state.equippedShield = null;
   state.potionsDrunkThisRoom = 0;
   state.fleeStreak = 0;
@@ -422,11 +444,14 @@ function resolveBackstab(cardId) {
  * entirely while swordmasterMasteryCharges > 0, so a degraded weapon can
  * strike anything again. */
 function isWeaponUsableOn(card) {
+  if (!state.equippedWeapon) return false;
+  // Ranged weapons (SUITS.RANGED, see "Ranged Weapons" in CLAUDE.md) ignore
+  // the degrade rule entirely — a bow can be fired at any monster regardless
+  // of what it was last used on. Only its ammo (weaponAmmoRemaining, checked
+  // in fireRangedWeapon()) limits how many times it can be used.
+  if (state.equippedWeapon.suit === SUITS.RANGED) return true;
   const mastered = state.champion === 'swordmaster' && state.swordmasterMasteryCharges > 0;
-  return (
-    !!state.equippedWeapon &&
-    (mastered || state.weaponMaxMonster === null || card.rank < state.weaponMaxMonster)
-  );
+  return mastered || state.weaponMaxMonster === null || card.rank < state.weaponMaxMonster;
 }
 
 /** Lowers a monster's rank by `amount` (default 5, min 5 — this never
@@ -446,8 +471,18 @@ function weakenMonster(card, amount = 5) {
 /** @param useWeapon - player's choice, only relevant if the weapon is legal
  * to use here in the first place (see isWeaponUsableOn). Defaults to true
  * (use the weapon whenever legal) so callers that don't offer a choice keep
- * working as before. */
+ * working as before. This is still the single entry point resolveCard()
+ * calls for any monster card — a Ranged weapon (SUITS.RANGED) is handled by
+ * delegating to fireRangedWeapon() below immediately, since its damage
+ * model, degrade rule, and "does the monster actually leave the room"
+ * outcome are all different enough from melee/bare-handed combat to warrant
+ * a fully separate function rather than forking deep inside this one (see
+ * "Ranged Weapons" in CLAUDE.md). */
 function fightMonster(card, useWeapon = true) {
+  if (useWeapon && state.equippedWeapon && state.equippedWeapon.suit === SUITS.RANGED && isWeaponUsableOn(card)) {
+    return fireRangedWeapon(card);
+  }
+
   const weaponUsable = useWeapon && isWeaponUsableOn(card);
   const weapon = state.equippedWeapon;
 
@@ -540,7 +575,7 @@ function fightMonster(card, useWeapon = true) {
     // means it breaks. The weapon stays equipped (at 0 uses) for the rest
     // of this fight; the caller only actually unequips it and plays the
     // shatter animation once the weapon-attack swing has fully returned to
-    // the slot (see breakFragileWeapon() above for why).
+    // the slot (see breakEquippedWeapon() below for why).
     if (weapon.effect === 'fragile') {
       state.weaponFragileUsesRemaining -= 1;
     }
@@ -642,8 +677,8 @@ function fightMonster(card, useWeapon = true) {
   const vampiricHeals =
     weaponUsable && weapon.effect === 'vampiric' && !masteryOverrode && state.hp > 0;
   // True the instant a Fragile weapon's uses reach 0 on this fight. See
-  // breakFragileWeapon() above for why this only *reports* the break rather
-  // than unequipping the weapon here directly.
+  // breakEquippedWeapon() below for why this only *reports* the break
+  // rather than unequipping the weapon here directly.
   const weaponBroke = weaponUsable && weapon.effect === 'fragile' && state.weaponFragileUsesRemaining <= 0;
   message = weaponUsable
     ? t('fightWithWeapon', { monster: monsterLabel, weapon: weaponLabel, damage })
@@ -709,7 +744,166 @@ function fightMonster(card, useWeapon = true) {
   // play the shield's shake/shatter feedback (see animateShieldShake()/
   // animateShieldShatter() in js/ui.js) without having to re-derive whether
   // a shield was involved from the before/after state itself.
-  return { message, weakenedIds, paladinCycleComplete, shieldBlocked: blocked > 0, shieldBroke, weaponBroke };
+  return {
+    message,
+    weakenedIds,
+    paladinCycleComplete,
+    shieldBlocked: blocked > 0,
+    shieldBroke,
+    weaponBroke,
+    // Always true for a melee/bare-handed fight — fighting a monster this
+    // way always defeats it, whether or not you took damage doing so. Only
+    // fireRangedWeapon() below can ever set this false (a shot that doesn't
+    // kill leaves the monster in the room) — see resolveCard() for how this
+    // flag decides whether the card actually leaves state.room.
+    monsterDied: true,
+  };
+}
+
+/** Custom addition, see "Ranged Weapons" in CLAUDE.md. Fires the equipped
+ * Ranged weapon (SUITS.RANGED) at `card` — called by fightMonster() above
+ * instead of the melee/bare-handed logic whenever a ranged weapon is
+ * equipped, legal to use (always, see isWeaponUsableOn()), and the player
+ * chose to use it. Completely different damage model from a melee fight:
+ * the weapon's own rank is subtracted directly from the monster's rank
+ * (not `monster - weapon` applied as damage to the player) — if that
+ * reaches 0 or below, the monster is defeated outright, exactly like a
+ * melee kill; otherwise it survives at its new, lower rank and stays in the
+ * room (resolveCard() below is what actually keeps it there, driven by this
+ * function's `monsterDied: false`). Only on that survive case is there a
+ * RANGED_RETALIATE_CHANCE (20%) chance the monster strikes back, for
+ * however much rank it has left after the shot — never on a kill, a dead
+ * monster doesn't hit back. The weapon's own ammo (weaponAmmoRemaining)
+ * always counts down by 1 regardless of outcome, same "unconditional
+ * counter" reasoning as every other per-use counter in this file (Fragile,
+ * Frenzy, Weapon Mastery) — see the GOTCHA comment on
+ * swordmasterMasteryCharges in fightMonster() above for why a counter like
+ * this must never be gated on "only when it actually did something". */
+function fireRangedWeapon(card) {
+  const weapon = state.equippedWeapon;
+
+  state.weaponAmmoRemaining -= 1;
+  const weaponBroke = state.weaponAmmoRemaining <= 0;
+
+  const shotDamage = weapon.rank;
+  const monsterDied = card.rank - shotDamage <= 0;
+
+  let retaliated = false;
+  let damage = 0;
+
+  if (monsterDied) {
+    state.monstersDefeated += 1;
+  } else {
+    // Weaken the monster by the shot's full damage — deliberately NOT
+    // weakenMonster() (which floors at 5): that floor exists specifically so
+    // Electric/Backstab can never outright remove a monster on their own,
+    // but a ranged shot both can and should kill outright once its damage
+    // reaches the monster's rank — that case is handled above as
+    // monsterDied, so by construction card.rank - shotDamage is always > 0
+    // here and needs no floor of its own.
+    card.rank -= shotDamage;
+    card.label = rankLabel(card.rank);
+    card.name = `${card.label} of ${capitalize(card.suit)}`;
+
+    if (Math.random() < RANGED_RETALIATE_CHANCE) {
+      retaliated = true;
+      // The FULL remaining value hits the player, not some further-reduced
+      // amount — this is a direct monster attack, not something the weapon
+      // itself is blocking (that's what the shield block further below is
+      // for, same as any other hit).
+      damage = card.rank;
+    }
+  }
+
+  // Paladin's Blessing and the shield block apply to this hit exactly like
+  // any other (see the matching comments in fightMonster() above) — both
+  // naturally no-op when damage is 0 (the common case: no retaliation, or a
+  // kill), so there's no need to special-case that here.
+  let paladinResisted = false;
+  if (state.champion === 'paladin' && state.paladinResistCharges > 0 && damage > 0) {
+    damage = Math.max(damage - 10, 0);
+    state.paladinResistCharges -= 1;
+    paladinResisted = true;
+  }
+
+  const shieldBefore = state.equippedShield;
+  let blocked = 0;
+  let shieldBroke = false;
+  if (shieldBefore) {
+    blocked = Math.min(damage, shieldBefore.rank);
+    damage -= blocked;
+    shieldBefore.rank -= blocked;
+    shieldBefore.label = rankLabel(shieldBefore.rank);
+    shieldBefore.name = `${shieldBefore.label} of ${capitalize(shieldBefore.suit)}`;
+    if (shieldBefore.rank <= 0) {
+      shieldBroke = true;
+      state.equippedShield = null;
+    }
+  }
+
+  state.hp = Math.max(state.hp - damage, 0);
+
+  let paladinHeal = 0;
+  let paladinCycleComplete = false;
+  if (monsterDied && state.champion === 'paladin' && state.monstersDefeated % 5 === 0) {
+    paladinCycleComplete = true;
+    const hpBefore = state.hp;
+    state.hp = Math.min(state.hp + 10, state.maxHp);
+    paladinHeal = state.hp - hpBefore;
+  }
+
+  const monsterLabel = monsterNameFor(card.baseRank) || card.name;
+  const weaponLabel = rangedWeaponNameFor(weapon.baseRank) || weapon.name;
+
+  let message = monsterDied
+    ? t('rangedKillMessage', { monster: monsterLabel, weapon: weaponLabel, damage: shotDamage })
+    : t('rangedHitMessage', {
+        monster: monsterLabel,
+        weapon: weaponLabel,
+        damage: shotDamage,
+        remaining: card.rank,
+      });
+  if (retaliated) {
+    // `damage` has already been through the Paladin/shield reduction below
+    // by the time this runs (same ordering as fightMonster()'s message,
+    // which also shows the final post-reduction number) — the
+    // blessingAbsorbed/shieldBlocked suffixes appended further down explain
+    // *why* it's lower than the monster's full remaining strength, they
+    // don't reduce it further.
+    message += t('rangedRetaliateSuffix', { n: damage });
+  }
+  if (paladinHeal > 0) {
+    message += t('paladinHealSuffix', { n: paladinHeal });
+  }
+  if (paladinResisted) {
+    message +=
+      state.paladinResistCharges > 0
+        ? t('blessingAbsorbedLeft', { n: state.paladinResistCharges })
+        : t('blessingAbsorbedFaded');
+  }
+  if (blocked > 0) {
+    const shieldLabel = shieldNameFor(shieldBefore.baseRank) || shieldBefore.name;
+    message += shieldBroke
+      ? t('shieldBlockedShattered', { shield: shieldLabel, n: blocked })
+      : t('shieldBlocked', { shield: shieldLabel, n: blocked });
+  }
+
+  return {
+    message,
+    weakenedIds: [],
+    paladinCycleComplete,
+    shieldBlocked: blocked > 0,
+    shieldBroke,
+    weaponBroke,
+    monsterDied,
+    // Only meaningful when monsterDied is false — how much the shot itself
+    // damaged the monster, read by the caller (applyResolve() in js/main.js)
+    // to show a floating "-N" + shake on the monster's own card, the same
+    // way the Electric weapon effect's weakenedIds does for a different
+    // card. Omitted (undefined) on a kill, where the whole card just fades
+    // out via the normal resolved-card animation instead.
+    shotDamage: monsterDied ? undefined : shotDamage,
+  };
 }
 
 /** Pure, read-only preview of the damage a monster card would deal if
@@ -726,10 +920,23 @@ function fightMonster(card, useWeapon = true) {
  *   shield block, blocked is how much of that a shield would absorb (0 if
  *   no shield is equipped), finalDamage is what would actually be
  *   subtracted from HP (rawDamage - blocked), and vampiric is true if the
- *   equipped weapon's Vampiric effect would heal 1 HP on this swing. */
+ *   equipped weapon's Vampiric effect would heal 1 HP on this swing.
+ *
+ * Deliberately returns "nothing to show" (all zero/false) whenever a Ranged
+ * weapon would be used — its outcome isn't a single deterministic damage
+ * number the way melee/bare-handed combat is (80% chance of 0 damage taken,
+ * 20% chance of taking the monster's post-shot value, see fireRangedWeapon()
+ * above), so a single preview number would misrepresent the real risk
+ * either way. buildDamagePreviewEl() (js/ui.js) already treats an all-zero
+ * result as "show nothing", so this needs no special handling on the caller
+ * side. */
 function previewMonsterDamage(card) {
   const weaponUsable = state.useWeaponPreference && isWeaponUsableOn(card);
   const weapon = state.equippedWeapon;
+
+  if (weaponUsable && weapon.suit === SUITS.RANGED) {
+    return { rawDamage: 0, blocked: 0, finalDamage: 0, vampiric: false };
+  }
 
   let rawDamage;
   let vampiric = false;
@@ -764,32 +971,44 @@ function equipWeapon(card) {
   // being replaced was itself Fragile and partway through breaking.
   // Equipping a new weapon always discards the old one's condition too, same
   // as everything else about the old weapon (see fightMonster() below for
-  // where this counts down, and breakFragileWeapon() for what happens at 0).
+  // where this counts down, and breakEquippedWeapon() for what happens at 0).
   state.weaponFragileUsesRemaining = card.effect === 'fragile' ? FRAGILE_MAX_USES : null;
-  const weaponLabel = weaponNameFor(card.baseRank) || card.name;
-  return { message: t('equippedWeapon', { weapon: weaponLabel }) };
+  // Ranged weapons (SUITS.RANGED, see "Ranged Weapons" in CLAUDE.md) start
+  // at full ammo the same way a Fragile weapon starts at full uses — the
+  // exact same "reset on every fresh equip, count down in the fight
+  // function, break at 0" pattern, just a different counter for a different
+  // weapon kind (never both at once, see rollWeaponEffects() in
+  // js/weapon-effects.js).
+  state.weaponAmmoRemaining = card.suit === SUITS.RANGED ? RANGED_AMMO_MAX : null;
+  const weaponLabel =
+    card.suit === SUITS.RANGED ? rangedWeaponNameFor(card.baseRank) : weaponNameFor(card.baseRank);
+  return { message: t('equippedWeapon', { weapon: weaponLabel || card.name }) };
 }
 
-/** Actually breaks the currently-equipped Fragile weapon: unequips it and
- * clears its degrade ceiling/use counter, the same three fields a normal
- * "equip something else" swap would clear. Deliberately a separate function
- * from fightMonster() below rather than fightMonster() clearing the weapon
- * itself the instant its uses hit 0. The weapon-attack swing animation
- * (animateWeaponAttack() in js/ui.js) keeps flying the *real* weapon-slot
- * element out to the monster and back over ~1.5s, calling renderWeaponSlot()
- * partway through (at impact) while the element is still mid-flight; if the
- * weapon were already unequipped by then, that mid-flight re-render would
- * instantly swap the flying card face for the empty-slot icon, which reads
- * as the weapon vanishing before it's even swung back. So fightMonster()
- * only reports `weaponBroke: true` and leaves the weapon equipped (at 0
- * uses) for the rest of that swing; the caller (resolveAndAnimate() in
- * js/main.js) waits until the swing has fully returned, then calls this
- * function immediately before playing the shatter animation
- * (animateWeaponShatter() in js/ui.js) on the now-stationary slot. */
-function breakFragileWeapon() {
+/** Actually breaks the currently-equipped weapon once it's run out of uses:
+ * a Fragile melee weapon (weaponFragileUsesRemaining hit 0) or a Ranged
+ * weapon out of ammo (weaponAmmoRemaining hit 0, see "Ranged Weapons" in
+ * CLAUDE.md) — unequips it and clears every one of its condition fields, the
+ * same ones a normal "equip something else" swap would clear. Deliberately a
+ * separate function from fightMonster()/fireRangedWeapon() below rather than
+ * either of those clearing the weapon itself the instant its uses/ammo hit
+ * 0. The weapon-attack swing animation (animateWeaponAttack() in js/ui.js)
+ * keeps flying the *real* weapon-slot element out to the monster and back
+ * over ~1.5s, calling renderWeaponSlot() partway through (at impact) while
+ * the element is still mid-flight; if the weapon were already unequipped by
+ * then, that mid-flight re-render would instantly swap the flying card face
+ * for the empty-slot icon, which reads as the weapon vanishing before it's
+ * even swung back. So fightMonster()/fireRangedWeapon() only report
+ * `weaponBroke: true` and leave the weapon equipped (at 0 uses/ammo) for the
+ * rest of that swing; the caller (resolveAndAnimate() in js/main.js) waits
+ * until the swing has fully returned, then calls this function immediately
+ * before playing the shatter animation (animateWeaponShatter() in
+ * js/ui.js) on the now-stationary slot. */
+function breakEquippedWeapon() {
   state.equippedWeapon = null;
   state.weaponMaxMonster = null;
   state.weaponFragileUsesRemaining = null;
+  state.weaponAmmoRemaining = null;
 }
 
 /** Equips a shield card, the same way equipWeapon() equips a weapon. Its
@@ -830,13 +1049,28 @@ function resolveCard(cardId, options = {}) {
 
   const idx = state.room.findIndex((c) => c.id === cardId);
   if (idx === -1) return null;
-  const [card] = state.room.splice(idx, 1);
+  const card = state.room[idx];
 
   let result;
   if (card.type === 'monster') result = fightMonster(card, options.useWeapon);
   else if (card.type === 'weapon') result = equipWeapon(card);
   else if (card.type === 'shield') result = equipShield(card);
   else result = drinkPotion(card);
+
+  // A Ranged weapon shot that didn't kill its target (see fireRangedWeapon()
+  // above, "Ranged Weapons" in CLAUDE.md) leaves the monster in the room,
+  // weakened rather than removed — this is the one case where resolving a
+  // card doesn't take it out of play. Every other outcome removes it as
+  // normal: fightMonster() always sets monsterDied true for a melee/
+  // bare-handed fight (which always defeats the monster), and
+  // equipWeapon()/equipShield()/drinkPotion() never set the field at all, so
+  // the `!== false` check below still removes the card by default. Since
+  // nothing else in this function changes when the card stays (state.room
+  // still has all 4 cards, so the win-check/refill logic further down are
+  // natural no-ops), this is the only place that needs to branch on it.
+  if (result.monsterDied !== false) {
+    state.room.splice(idx, 1);
+  }
 
   if (state.hp <= 0) {
     state.gameOver = true;

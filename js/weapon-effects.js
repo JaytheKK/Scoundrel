@@ -103,13 +103,22 @@ const WEAPON_EFFECTS = {
 const WEAPON_EFFECT_IDS = Object.keys(WEAPON_EFFECTS);
 const WEAPON_EFFECT_CHANCE = 0.25;
 
-/** Gives each weapon card in `deck` a 25% chance to get a random effect
+/** Gives each MELEE weapon card in `deck` a 25% chance to get a random effect
  * (vampiric/electric/sturdy/fragile). Called once per new game (see initGame() in
  * js/state.js) so which weapons — if any — have an effect is re-rolled
- * every game, not fixed to specific cards. */
+ * every game, not fixed to specific cards.
+ *
+ * Deliberately gated on `card.suit === SUITS.DIAMONDS`, not just
+ * `card.type === 'weapon'` — a Ranged weapon (SUITS.RANGED, see "Ranged
+ * Weapons" in CLAUDE.md) shares type 'weapon' with melee (so it can use the
+ * same equip slot), but none of these four effects make sense for it: Sturdy
+ * and Vampiric/Electric assume the melee damage-reduction formula, and
+ * Fragile's break-after-N-uses would collide with a ranged weapon's own,
+ * separate ammo-based break (state.weaponAmmoRemaining). Ranged weapons
+ * simply never roll an effect (card.effect stays null, its default). */
 function rollWeaponEffects(deck) {
   deck.forEach((card) => {
-    if (card.type === 'weapon' && Math.random() < WEAPON_EFFECT_CHANCE) {
+    if (card.suit === SUITS.DIAMONDS && Math.random() < WEAPON_EFFECT_CHANCE) {
       const id = WEAPON_EFFECT_IDS[Math.floor(Math.random() * WEAPON_EFFECT_IDS.length)];
       card.effect = id;
     }

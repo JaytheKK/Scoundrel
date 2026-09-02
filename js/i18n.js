@@ -87,6 +87,10 @@ const I18N = {
     canDefeatAny: 'Can defeat any monster',
     canOnlyDefeatWeaker: 'Can only defeat monsters weaker than {n}',
     masteryOverrides: 'Weapon Mastery overrides the degrade limit ({n} left)',
+    // Ranged weapons ignore the degrade limit entirely (see "Ranged
+    // Weapons" in CLAUDE.md) — shown in #weapon-status instead of
+    // canOnlyDefeatWeaker/canDefeatAny whenever a ranged weapon is equipped.
+    rangedWeaponStatus: 'No degrade limit, {filled} / {total} arrows left',
     weaponToggleLabel: 'Using weapon',
     fleeCantTwice: "Can't flee two rooms in a row",
     fleeCantThrice: "Can't flee three rooms in a row",
@@ -96,6 +100,7 @@ const I18N = {
     cancelTargetingAria: 'Cancel targeting',
     abilityInfoAria: 'Ability info',
     fragileBarTitle: '{filled} / {total} uses left before this weapon breaks',
+    ammoBarTitle: '{filled} / {total} arrows left before this weapon breaks',
     paladinProgress: "{filled} / {total} kills until Paladin's heal",
     rogueProgress: '{filled} / {total} rooms fled in a row',
     herbalistProgress: '{filled} / {total} potions healed this room',
@@ -115,8 +120,14 @@ const I18N = {
     galleryTitleMonsters: 'Monsters',
     galleryTitleShields: 'Shields',
     galleryTitleChampions: 'Champions',
+    // Section headings splitting the Weapons gallery into its two
+    // categories (see renderGallery() in js/ui.js) — not separate gallery
+    // buttons/titles, just headings inside the one Weapons grid.
+    galleryHeadingMeleeWeapons: 'Close Range',
+    galleryHeadingRangedWeapons: 'Ranged',
     strengthLabel: 'Strength {n}',
     blockLabel: 'Block {n}',
+    rangedAmmoSentence: 'Carries {n} arrows.',
     passiveAbilityLabel: 'Passive Ability',
     activeAbilityLabel: 'Active Ability',
     chooseChampionTitle: 'Choose your Champion',
@@ -178,6 +189,13 @@ const I18N = {
     fightBareHanded: 'Fought {monster} bare-handed, took {damage} damage.',
     fightVampiricSuffix: ' Vampiric weapon healed 5 HP.',
     fightElectricSuffix: ' Electric surge damaged the other monsters!',
+    // Ranged weapons (see "Ranged Weapons" in CLAUDE.md): a shot that
+    // doesn't kill leaves the monster in the room at its lower strength;
+    // rangedRetaliateSuffix is appended only on the 20% chance it strikes
+    // back before you can finish it off.
+    rangedKillMessage: 'Shot {monster} with your {weapon} for {damage} damage, defeating it.',
+    rangedHitMessage: 'Shot {monster} with your {weapon} for {damage} damage, it has {remaining} strength left.',
+    rangedRetaliateSuffix: ' It struck back for {n} damage!',
     fightFragileShattered: ' Your fragile {weapon} shatters!',
     fightFragileCrackingSingular: ' Your fragile {weapon} is cracking (1 use left).',
     fightFragileCrackingPlural: ' Your fragile {weapon} is cracking ({n} uses left).',
@@ -221,6 +239,9 @@ const I18N = {
 
       <h3>Weapons &amp; Potions</h3>
       <p>Click a weapon to equip it, it replaces whatever you had equipped. Click a potion to drink it and heal HP up to your maximum of 100, but only the first potion in a room actually heals; extra potions in the same room do nothing.</p>
+
+      <h3>Ranged Weapons</h3>
+      <p>Bows work differently from melee weapons: a bow's strength is subtracted directly from the monster's strength instead of reducing the damage you take. If that doesn't kill the monster, it stays in the room weaker than before, and there's a 20% chance it strikes back before you can finish it off. A bow ignores the weapon degrade rule, but only carries 3 arrows (shown as a bar under the weapon slot) — once they're spent, it shatters.</p>
 
       <h3>Shields</h3>
       <p>Click a shield to equip it, it replaces whatever you had equipped. A shield blocks damage that would otherwise get through, after your weapon (or bare hands) has already done its part, the shield absorbs as much of the remaining damage as its block value allows. Blocking costs the shield durability equal to the damage it absorbed; once its durability reaches 0, it shatters and is gone.</p>
@@ -299,6 +320,7 @@ const I18N = {
     canDefeatAny: 'Kann jedes Monster besiegen',
     canOnlyDefeatWeaker: 'Kann nur Monster schwächer als {n} besiegen',
     masteryOverrides: 'Waffenmeisterschaft hebt die Abnutzungsgrenze auf ({n} übrig)',
+    rangedWeaponStatus: 'Keine Abnutzungsgrenze, {filled} / {total} Pfeile übrig',
     weaponToggleLabel: 'Waffe benutzen',
     fleeCantTwice: 'Kann nicht zwei Räume hintereinander fliehen',
     fleeCantThrice: 'Kann nicht drei Räume hintereinander fliehen',
@@ -308,6 +330,7 @@ const I18N = {
     cancelTargetingAria: 'Zielen abbrechen',
     abilityInfoAria: 'Fähigkeitsinfo',
     fragileBarTitle: '{filled} / {total} Anwendungen übrig, bevor diese Waffe zerbricht',
+    ammoBarTitle: '{filled} / {total} Pfeile übrig, bevor diese Waffe zerbricht',
     paladinProgress: '{filled} / {total} Kills bis zur Heilung des Paladins',
     rogueProgress: '{filled} / {total} Räume in Folge geflohen',
     herbalistProgress: '{filled} / {total} Tränke haben in diesem Raum geheilt',
@@ -327,8 +350,11 @@ const I18N = {
     galleryTitleMonsters: 'Monster',
     galleryTitleShields: 'Schilde',
     galleryTitleChampions: 'Champions',
+    galleryHeadingMeleeWeapons: 'Nahkampf',
+    galleryHeadingRangedWeapons: 'Fernkampf',
     strengthLabel: 'Stärke {n}',
     blockLabel: 'Blockwert {n}',
+    rangedAmmoSentence: 'Trägt {n} Pfeile.',
     passiveAbilityLabel: 'Passive Fähigkeit',
     activeAbilityLabel: 'Aktive Fähigkeit',
     chooseChampionTitle: 'Wähle deinen Champion',
@@ -391,6 +417,9 @@ const I18N = {
     fightBareHanded: 'Hast {monster} bloßhändig bekämpft, {damage} Schaden erlitten.',
     fightVampiricSuffix: ' Die vampirische Waffe hat 5 LP geheilt.',
     fightElectricSuffix: ' Ein elektrischer Stoß hat die anderen Monster geschädigt!',
+    rangedKillMessage: '{monster} mit deiner {weapon} für {damage} Schaden beschossen und besiegt.',
+    rangedHitMessage: '{monster} mit deiner {weapon} für {damage} Schaden beschossen, es hat noch {remaining} Stärke.',
+    rangedRetaliateSuffix: ' Es hat für {n} Schaden zurückgeschlagen!',
     fightFragileShattered: ' Deine zerbrechliche {weapon} zerbricht!',
     fightFragileCrackingSingular: ' Deine zerbrechliche {weapon} bekommt Risse (noch 1 Anwendung übrig).',
     fightFragileCrackingPlural: ' Deine zerbrechliche {weapon} bekommt Risse (noch {n} Anwendungen übrig).',
@@ -434,6 +463,9 @@ const I18N = {
 
       <h3>Waffen &amp; Tränke</h3>
       <p>Klicke eine Waffe an, um sie auszurüsten, sie ersetzt deine bisherige Ausrüstung. Klicke einen Trank an, um ihn zu trinken und LP bis zu deinem Maximum von 100 zu heilen, aber nur der erste Trank in einem Raum heilt tatsächlich, weitere Tränke im selben Raum bewirken nichts.</p>
+
+      <h3>Fernkampfwaffen</h3>
+      <p>Bögen funktionieren anders als Nahkampfwaffen: die Stärke des Bogens wird direkt von der Stärke des Monsters abgezogen, statt den erlittenen Schaden zu verringern. Überlebt das Monster den Schuss, bleibt es geschwächt im Raum liegen, und es besteht eine Chance von 20%, dass es zurückschlägt, bevor du es endgültig besiegst. Ein Bogen ignoriert die Abnutzungsgrenze, trägt aber nur 3 Pfeile (angezeigt als Leiste unter dem Waffenslot), sind sie aufgebraucht, zerbricht er.</p>
 
       <h3>Schilde</h3>
       <p>Klicke einen Schild an, um ihn auszurüsten, er ersetzt deine bisherige Ausrüstung. Ein Schild blockt Schaden, der sonst durchkommen würde, nachdem deine Waffe (oder bloße Hände) bereits ihren Teil erledigt hat, absorbiert der Schild so viel vom verbleibenden Schaden, wie sein Blockwert erlaubt. Das Blocken kostet den Schild Haltbarkeit in Höhe des absorbierten Schadens, sobald seine Haltbarkeit 0 erreicht, zerbricht er und ist verloren.</p>

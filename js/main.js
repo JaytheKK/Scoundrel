@@ -204,6 +204,22 @@ function applyResolve(cardId, options) {
     });
   }
 
+  // Ranged weapon (see "Ranged Weapons" in CLAUDE.md): a shot that doesn't
+  // kill its target leaves that exact card (cardId) still in the room, at
+  // its new lower rank — same "-N" + shake feedback as the Electric effect
+  // above, just on the card actually being fired at rather than every
+  // OTHER monster in the room. Guarded on shotDamage (only set when
+  // monsterDied is false, see fireRangedWeapon() in js/state.js) rather than
+  // monsterDied directly, so this is a no-op for every non-ranged result too
+  // (that field is simply absent on those).
+  if (result.shotDamage) {
+    const targetEl = document.querySelector(`.card[data-id="${cardId}"]`);
+    if (targetEl) {
+      showCardDamage(targetEl, -result.shotDamage);
+      targetEl.classList.add('card--shake');
+    }
+  }
+
   return result;
 }
 
@@ -222,18 +238,43 @@ function resolveAndAnimate(cardId, options, registerSpeedUp, onFinished) {
   if (willUseWeapon) {
     // Captured from the onImpact callback below so the onDone callback (once
     // the swing has fully returned) can see whether this fight broke a
-    // Fragile weapon. See breakFragileWeapon() in js/state.js for why that
-    // actual break waits until here instead of happening at impact.
+    // Fragile/Ranged weapon. See breakEquippedWeapon() in js/state.js for
+    // why that actual break waits until here instead of happening at
+    // impact.
     let fightResult = null;
 
-    const ctl = animateWeaponAttack(
+    // A Ranged weapon gets its own draw-back/loose-shot swing shape (see
+    // animateRangedAttack() in js/ui.js, "Ranged Weapons" in CLAUDE.md)
+    // instead of melee's plain out-and-back — same onImpact/onDone contract
+    // either way, so nothing below this needs to know which one is playing.
+    const attackAnimator =
+      state.equippedWeapon && state.equippedWeapon.suit === SUITS.RANGED
+        ? animateRangedAttack
+        : animateWeaponAttack;
+
+    const ctl = attackAnimator(
       cardEl,
       () => {
-        // The state change (damage, message, etc.) lands right as the weapon
-        // visually connects, then the card fades the same way any other
-        // resolved card does.
-        cardEl.classList.add('card--resolved');
         fightResult = applyResolve(cardId, options);
+
+        // A Ranged weapon shot that didn't kill its target (see
+        // fireRangedWeapon() in js/state.js, "Ranged Weapons" in CLAUDE.md)
+        // leaves the monster's own card in the room at its new, lower rank
+        // — it isn't leaving, so no fade-out, just an immediate re-render so
+        // the card's number updates (applyResolve() above already played
+        // its "-N" + shake feedback on the still-live element).
+        if (fightResult && fightResult.monsterDied === false) {
+          renderRoom();
+          renderDeckCount();
+          renderFleeButton();
+          renderGameOverBanner(); // a retaliation hit can still be lethal
+          return;
+        }
+
+        // The state change (damage, message, etc.) already landed right as
+        // the weapon visually connected, above — now the card fades the
+        // same way any other resolved card does.
+        cardEl.classList.add('card--resolved');
 
         const fadeTimer = speedableTimeout(() => {
           renderRoom();
@@ -245,14 +286,14 @@ function resolveAndAnimate(cardId, options, registerSpeedUp, onFinished) {
       },
       () => {
         // The weapon has fully swung back into the slot, still showing
-        // itself intact (see breakFragileWeapon()'s comment in js/state.js
-        // for why fightMonster() only reported the break rather than
-        // unequipping it earlier). A Fragile weapon that just ran out of
-        // uses breaks and shatters right here, now that the slot is back at
-        // rest and not mid-swing. Only now is this action considered done,
-        // so the next queued click can start.
+        // itself intact (see breakEquippedWeapon()'s comment in js/state.js
+        // for why fightMonster()/fireRangedWeapon() only reported the break
+        // rather than unequipping it earlier). A Fragile or Ranged weapon
+        // that just ran out of uses/ammo breaks and shatters right here, now
+        // that the slot is back at rest and not mid-swing. Only now is this
+        // action considered done, so the next queued click can start.
         if (fightResult && fightResult.weaponBroke) {
-          breakFragileWeapon();
+          breakEquippedWeapon();
           animateWeaponShatter(() => {
             renderWeaponSlot();
             onFinished();

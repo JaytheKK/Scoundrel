@@ -6,14 +6,36 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
 
 ## Game Rules (reference for implementation)
 
-- **Deck (44 cards):** a standard 52-card deck with the jokers removed, plus
-  all red face cards (J, Q, K of Hearts and Diamonds) and both red Aces removed.
+The original tabletop Scoundrel this project is based on uses a standard
+52-card deck (jokers, red face cards, and both red Aces removed) with plain
+2–10/J=11/Q=12/K=13/A=14 values. **This implementation no longer uses those
+raw values** — every gameplay-facing number was multiplied by 5 in one pass
+(HP, monster/weapon/potion/shield ranks, every flat passive/active-ability
+amount, the safe-start threshold, card-tier breakpoints), and monsters were
+additionally pulled out of the clubs/spades poker-suit framing entirely into
+their own randomized pool. See the "Value rescale (×5)" note in `js/cards.js`
+and the "Monster Pool" section below for the full detail; the numbers here
+already reflect the current, rescaled implementation.
+
+- **Deck (currently 51 cards per game):** 9 melee weapon cards + 4 ranged
+  weapon cards + 9 potion cards + 3 shield cards (all fixed, see
+  `js/cards.js`'s `CARD_LIST`) + 26 monster cards randomly drawn from a
+  larger pool of 23 monster types (see "Monster Pool" below) — not a fixed
+  44/52-card deck the way the original tabletop game is. **This total is a
+  temporary/interim state**: every weapon card in `CARD_LIST` is
+  unconditionally included in every game today because the planned weapon
+  Deckbuilder (see "Ranged Weapons" below) doesn't exist yet — once it does,
+  the player will choose a subset of weapons to bring (up to 10, budget-
+  capped), so the deck's actual weapon count (and total size) will vary
+  game to game instead of always being the full catalog.
 - **Suits / roles:**
-  - **Clubs & Spades** → Monsters. Value = attack strength
-    (2–10 face value, J=11, Q=12, K=13, A=14).
-  - **Diamonds** → Weapons (value 2–10, higher = stronger).
-  - **Hearts** → Health Potions (value 2–10, higher = more healing).
-- **Health:** player starts at 20 HP, max 20 HP.
+  - **Monsters** (own pseudo-suit, `SUITS.MONSTERS`, no longer split across
+    Clubs & Spades) → value = attack strength, 10-70 across 23 types, 2 card
+    instances of each type exist in the pool, 26 are drawn per game.
+  - **Diamonds** → Weapons (value 10-50 in steps of 5, higher = stronger).
+  - **Hearts** → Health Potions (value 10-50 in steps of 5, higher = more
+    healing).
+- **Health:** player starts at 100 HP, max 100 HP.
 - **Rooms:** 4 cards are dealt face-up as a "room". The player resolves 3 of
   the 4 cards (in any order); the 4th card is left and carried over into the
   next room (which is then filled back up to 4 new cards).
@@ -26,10 +48,12 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     **lower than the last monster it defeated** — once used on a "too strong"
     monster, further use degrades/limits it. Equipping a new weapon discards
     the old one (and any monster stacked on it).
-- **Potions:** drinking a potion heals HP up to the max of 20. Only the
+- **Potions:** drinking a potion heals HP up to the max of 100. Only the
   **first** potion consumed in a given room actually heals — any additional
   potion in the same room has no effect (still must be resolved/discarded).
-- **Win condition:** clear all 44 cards from the dungeon.
+- **Win condition:** clear all monsters from the dungeon (the moment none
+  remain in the deck or room, any leftover weapons/potions/shields no longer
+  matter and the game ends immediately, see `resolveCard()` in `js/state.js`).
 - **Lose condition:** HP drops to 0 or below.
 
 > Note: rule details above are from memory of the original game — double-check
@@ -40,21 +64,24 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
 
 - The first two rooms of a game can't be "monotype" (4 monsters, 4 weapons,
   or 4 potions/shields all at once) — a 4-monster room in particular can
-  come close to killing a fresh 20 HP player outright with no weapon to
+  come close to killing a fresh 100 HP player outright with no weapon to
   fall back on, and two such rooms in a row leave no recourse at all, since
   fleeing a second room straight after fleeing the first isn't normally
   allowed. From room 3 onward there's no restriction, exactly as before
   this feature existed.
 - **On top of that**, no monster dealt into those same first two rooms may
-  have strength (rank) 10 or higher — only ranks 2-9 are allowed there.
-  Even a single J/Q/K/A-strength monster (11-14), or a plain 10, can do
-  serious damage to a fresh, weaponless player on its own, so this is
-  checked as a second, independent condition (`hasStrongMonster()` in
-  `js/state.js`) alongside the monotype check (`isRoomMonotype()`),
-  combined in `isRoomSafe()`. A rank-10+ monster isn't removed from the
-  deck, only kept out of the first two rooms specifically, it's just as
-  likely to appear from room 3 onward as it always was, so total deck
-  composition and difficulty are unaffected.
+  have strength (rank) 50 or higher (the ×5-rescaled equivalent of the
+  original "rank 10 or higher" threshold, see the "Value rescale" note in
+  `js/cards.js`) — only the milder monsters below that value from the pool
+  are allowed there. Even a single monster at or above 50 (the strongest
+  handful of the 23-type roster, previously the old J/Q/K/A-strength ranks
+  plus a plain 10) can do serious damage to a fresh, weaponless player on
+  its own, so this is checked as a second, independent condition
+  (`hasStrongMonster()` in `js/state.js`) alongside the monotype check
+  (`isRoomMonotype()`), combined in `isRoomSafe()`. A rank-50+ monster isn't
+  removed from the pool, only kept out of the first two rooms specifically,
+  it's just as likely to appear from room 3 onward as it always was, so
+  total deck composition and difficulty are unaffected.
 - Implemented as **rejection sampling, not a scripted/rigged deck** —
   `drawForRoom()` in `js/state.js` performs a full, fair Fisher–Yates
   reshuffle of the still-undealt portion of the deck and checks the room it
@@ -125,10 +152,13 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     for the same reason, but were switched to `var(--font-ui)` by request,
     to match the rest of the UI chrome now that the game has a busier
     background image behind it.
-  - `js/cards.js` — the 44 card definitions (data only)
-  - `js/monster-icons.js` — `MONSTER_NAMES`, a plain rank (2-14) → creature
-    name lookup used for the card tooltip (e.g. "7 of Clubs — Shadow
-    Assassin"). The actual artwork is separate — see "Monster artwork" below.
+  - `js/cards.js` — the fixed weapon/potion/shield card definitions (data
+    only) plus the monster pool generator, see "Monster Pool" below
+  - `js/monster-icons.js` — `MONSTER_NAMES`, a rank → creature name lookup
+    (currently 23 ranks, 10-70) used for the card tooltip (e.g. "Shadow
+    Assassin") and as the source of truth for which monster ranks exist at
+    all (`getMonsterRankPool()`, see "Monster Pool" below). The actual
+    artwork is separate — see "Monster artwork" below.
   - `js/state.js` — game state + rules logic (fight/equip/drink, room refill,
     win/lose). **No DOM code here** — keeps rules testable/reasoned about on
     their own, independent of rendering.
@@ -186,8 +216,10 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     applies to the others. `openGallery(kind)` in `js/main.js` calls
     `renderGallery(kind)` (in `js/ui.js`), which fills `#gallery-grid` with
     one tile per item straight from the existing data: weapons use
-    `images/weapons/<rank>.png` + `weaponNameFor()` for ranks 2–10, monsters
-    use `images/monsters/<rank>.png` + `monsterNameFor()` for ranks 2–14,
+    `images/weapons/<rank>.png` + `weaponNameFor()` for ranks 10-50, monsters
+    use `images/monsters/<rank>.png` + `monsterNameFor()` for whatever ranks
+    `getMonsterRankPool()` currently returns (23 ranks, 10-70, as of this
+    writing — see "Monster Pool" below), not a fixed range like weapons,
     and champions iterate the fixed `CHAMPIONS` roster in
     `js/champion-icons.js` instead of a rank range (see below).
     - **Item detail popup:** clicking a weapon/monster/champion tile opens
@@ -220,9 +252,11 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
       `js/champion-icons.js`, and make sure its artwork exists at
       `images/monsters/<rank>.png`/`images/weapons/<rank>.png`/
       `images/champions/<id>.png` — `renderGallery()` in `js/ui.js` iterates
-      every rank in a fixed range for weapons/monsters (2–10 / 2–14) but the
-      whole `CHAMPIONS` array for champions, so a new champion only needs an
-      entry added there, no range to extend. A new *kind* of card/roster
+      a fixed rank range for weapons (10-50) but reads `getMonsterRankPool()`
+      for monsters (see "Monster Pool" below) and the whole `CHAMPIONS` array
+      for champions, so a new champion or monster rank only needs an entry
+      added to its own data file, no range to remember to extend anywhere.
+      A new *kind* of card/roster
       entry (not just a new rank/champion) needs its own
       `renderGallery()`/`renderGalleryDetail()` branch, its own gallery
       button on `#start-screen`, and its own `*_NAMES`/`*_DESCRIPTIONS` (or
@@ -480,8 +514,9 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     `--hex-*` percentages (`15%/14%/85%/71%` and `40.2%/75.4%/59.9%/89.3%`
     — identical to the weapon frame's own art box, since the two frames
     share the same rail/hexagon layout, see "Card frame artwork" above).
-    Monsters is now the only kind with all 13 ranks (2-14, vs. Weapons'
-    9 and Shields' 3) using this treatment, and it was a drop-in fit at
+    Monsters is now the only kind with all of its ranks (23, 10-70 — the
+    pool has grown since this was written, see "Monster Pool" below, vs.
+    Weapons' 9 and Shields' 3) using this treatment, and it was a drop-in fit at
     that item count — nothing about the layout needed to change for the
     larger grid. **Any future kind needing this same card-frame gallery
     treatment should extend `usesCardFrame` and add one matching CSS block
@@ -724,7 +759,8 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     placed into the first empty one. Tracked by object reference, not
     `card.id`, specifically so a brand new game (`initGame()` hands out
     all-new card objects every time via `getFreshDeck()`, even though the
-    same id strings repeat every game, e.g. `"clubs-7"`) can never confuse
+    same id strings repeat every game, e.g. `"diamonds-30"` or
+    `"monster-25-1"`) can never confuse
     a leftover slot from the previous game with a same-id card in the new
     one, nothing needs to explicitly reset `roomSlots` on New Game or Play
     Again, the reference simply won't be found in the new `state.room` and
@@ -741,16 +777,23 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
 
 ## Card architecture (important — read before adding/editing cards)
 
-- Every card is defined **individually** in `js/cards.js` via its own
-  `makeCard(suit, rank, overrides)` call — not generated in a loop. This is
-  deliberate: it keeps each of the 44 cards independently editable/extendable.
-- **One file per card is intentionally NOT used** for the base 44 — they're
-  pure data with no unique behavior, so one shared `cards.js` list is enough.
-  Once a specific card gets a real special-ability, give **that card** (and
-  only that card) its own file under `js/effects/` (create the folder when
-  the first one is needed), and reference it from that card's `overrides` in
-  `cards.js` (e.g. an `effectId` matched to a lookup, or a directly imported
-  handler). Don't pre-create 44 effect files "just in case."
+- Every **weapon (melee and ranged)/potion/shield** card (25 total: 9 + 4 +
+  9 + 3) is defined **individually** in `js/cards.js`'s `CARD_LIST` via its
+  own `makeCard(suit, rank, overrides)` call — not generated in a loop. This
+  is deliberate: it keeps each of those 25 cards independently editable/
+  extendable. **Monster cards are a deliberate exception** to this, loop-
+  generated from a data table instead (`getAllMonsterCards()` in
+  `js/cards.js`) — see "Monster Pool" below for why that split makes sense
+  (every monster instance really is interchangeable pure data, unlike a
+  weapon/potion/shield card, which might later want a unique effect).
+- **One file per card is intentionally NOT used** for the base weapon/potion/
+  shield cards — they're pure data with no unique behavior, so one shared
+  `cards.js` list is enough. Once a specific card gets a real special-ability,
+  give **that card** (and only that card) its own file under `js/effects/`
+  (create the folder when the first one is needed), and reference it from
+  that card's `overrides` in `cards.js` (e.g. an `effectId` matched to a
+  lookup, or a directly imported handler). Don't pre-create one effect file
+  per card "just in case."
 - Each card has an `image` field. When `null` (nothing currently sets it to
   null — every card gets artwork automatically, see the artwork sections
   below), `fillCardFace()` in `js/ui.js` falls back to a suit-symbol
@@ -765,31 +808,103 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   wrong creature.
 - `effect` holds a weapon-effect id (`'vampiric'`/`'electric'`/`'sturdy'`,
   or `null`) — see "Weapon Effects" below. This is a *type-wide*, randomly
-  rolled effect (any of the 9 weapon cards can get one), which is a
-  different pattern from a specific named card having a fixed unique
+  rolled effect (any of the 9 melee weapon cards can get one — Ranged
+  weapons, see "Ranged Weapons" below, are deliberately excluded), which is
+  a different pattern from a specific named card having a fixed unique
   ability: for the latter (e.g. a one-of-a-kind legendary item), give
   **that card** its own file under `js/effects/` (create the folder when
   the first one is needed) and reference it from that card's `overrides`
   in `cards.js`, rather than reusing the `effect` string field.
 
+## Monster Pool (custom addition, not part of the original Scoundrel rules)
+
+- Unlike weapons/potions/shields, monster cards are **not** a fixed,
+  individually hand-written list. Every monster rank currently listed in
+  `MONSTER_NAMES` (`js/monster-icons.js`) gets exactly 2 card instances (ids
+  `"monster-<rank>-1"`/`"-2"`), generated by looping over
+  `getMonsterRankPool()` in `getAllMonsterCards()` (`js/cards.js`) — this is
+  a deliberate exception to the "every card defined individually" rule in
+  "Card architecture" above, since every monster instance really is
+  interchangeable pure data (two copies of the same creature), unlike a
+  weapon/potion/shield card, which might later want a unique effect.
+  Currently that's 23 ranks × 2 = 46 possible monster card instances, though
+  the number of ranks is meant to keep growing over time.
+- **A fresh game draws a random 26 of those (`MONSTER_DECK_COUNT` in
+  `js/monster-pool.js`) via `selectMonsterCardsForDeck()`**, called once from
+  `getFreshDeck()` in `js/cards.js`. "Max 2 copies of any one rank" falls out
+  for free, since the pool itself never holds more than 2 instances of a
+  given rank to begin with. While the pool has 26 or fewer cards total (true
+  up through 13 ranks), every card is used and there's no real selection to
+  make; today's 23-rank pool is well past that point, so a real, meaningfully
+  different subset of monsters is drawn each game.
+- **The 26 drawn cards' total value must fall within
+  `[MONSTER_VALUE_SUM_MIN, MONSTER_VALUE_SUM_MAX]`** (currently 940-1030,
+  `js/monster-pool.js`), via rejection sampling (reshuffle the whole pool,
+  take the first 26, check the sum, retry, same style as `isRoomSafe()`/
+  `drawForRoom()` in `js/state.js`) — this keeps a game from randomly rolling
+  a dungeon that's either suspiciously easy (mostly weak monsters) or
+  unfairly hard (mostly strong ones). **This range must stay centered on the
+  pool's own natural unconstrained-draw average, not just "look reasonable"
+  for the pool's value spread** — it was originally tuned for a smaller pool
+  and, left unchanged after the pool grew to 23 ranks, was found (by
+  simulating 20000 game starts) to sit well above the new pool's natural
+  average, which biased the rejection-sampling loop toward
+  over-representing strong monsters (the weakest monster showed up in only
+  ~47% of games, the strongest in ~67%, versus a uniform ~56-57% once
+  re-centered). **Any future change to the monster pool's contents (adding,
+  removing, or re-valuing monster types) changes this natural average too,
+  and must be re-simulated the same way before touching these two numbers**
+  — the bias above looked like a perfectly reasonable range on paper and
+  still produced a real, measurable skew.
+- If no attempt lands in range within `MONSTER_SELECTION_MAX_ATTEMPTS` (300,
+  a generous safety net, not a value tuned to "barely" work), falls back to
+  the closest-to-range candidate seen and logs a console warning, rather
+  than failing outright.
+- **Monster values (23 types, 10-70) are one continuous hand-tuned curve**,
+  not evenly spaced: 2-wide steps for the first 6 ("trash tier", where finer
+  granularity between weak monsters matters more), then a flat 3-wide step
+  for the remaining 17, landing exactly on 70 for the Demon Lord, still the
+  single strongest. `MONSTER_NAMES`/`MONSTER_DESCRIPTIONS`
+  (`js/monster-icons.js`) are the single source of truth for which ranks
+  exist — the deck pool (`getAllMonsterCards()`), the Monsters gallery
+  (`renderGallery('monsters')` in `js/ui.js`), and the asset preloader all
+  read from `getMonsterRankPool()` (derived from `MONSTER_NAMES.en`'s keys)
+  rather than a separately hand-maintained range, so adding a new rank there
+  is the only step needed to make a new monster show up everywhere. Adding a
+  monster rank still needs a matching artwork file at
+  `images/monsters/<rank>.png` (see "Monster artwork" below) or it falls
+  back to the suit-symbol placeholder like any other card would.
+- Monsters dropped the clubs/spades poker-suit framing entirely — there's
+  only one `SUITS.MONSTERS` pseudo-suit now (same idea as `SUITS.SHIELDS`),
+  and monster card ids look like `"monster-45-1"` rather than an old
+  `"spades-9"`-style id. Any old reference to a monster card by a
+  clubs/spades id (e.g. in a saved test fixture) is stale.
+
 ## Weapon Effects (custom addition, not part of the original Scoundrel rules)
 
-- Every weapon card has a 25% chance of getting one of four effects,
-  re-rolled at the start of every game — `rollWeaponEffects()` in
+- Every **melee** weapon card has a 25% chance of getting one of four
+  effects, re-rolled at the start of every game — `rollWeaponEffects()` in
   `js/weapon-effects.js`, called once from `initGame()` in `js/state.js`.
+  Ranged weapons (see "Ranged Weapons" below) never roll one — the check is
+  gated on `card.suit === SUITS.DIAMONDS`, not just `card.type === 'weapon'`,
+  specifically to exclude them.
   `WEAPON_EFFECTS` in that same file holds each effect's name/icon/
   description (used for the card's corner badge, tooltip, and
   `#weapon-status`); the actual gameplay logic lives in `fightMonster()` in
   `js/state.js` since it needs `state`.
-  - **Vampiric** — heals 1 HP whenever the weapon defeats a monster.
-  - **Electric** — every *other* monster currently in `state.room` loses 1
-    strength (via `weakenMonster()`, floor of 1) whenever the weapon is
+  - **Vampiric** — heals 5 HP whenever the weapon defeats a monster (the
+    ×5-rescaled equivalent of the original 1, see the "Value rescale" note
+    in `js/cards.js`).
+  - **Electric** — every *other* monster currently in `state.room` loses 5
+    strength (via `weakenMonster()`, floor of 5, again the ×5-rescaled
+    equivalent of the original 1/floor-of-1) whenever the weapon is
     used in a fight. Only `rank` (and the `label`/`name` derived from it)
     changes — `baseRank` and `image` don't, so the monster stays visually
     and nominally the same creature, just weaker.
   - **Sturdy** — `state.weaponMaxMonster` (the "can only defeat monsters
-    weaker than X" ceiling) can drop by at most 2 per fight instead of
-    dropping straight to the defeated monster's value.
+    weaker than X" ceiling) can drop by at most 10 per fight (the ×5-rescaled
+    equivalent of the original 2) instead of dropping straight to the
+    defeated monster's value.
   - **Fragile**: breaks after `FRAGILE_MAX_USES` (2) uses, no matter which
     monster it's used on. Tracked by `state.weaponFragileUsesRemaining`
     (`js/state.js`): set to `FRAGILE_MAX_USES` by `equipWeapon()` whenever a
@@ -889,11 +1004,187 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     below: a whole-card translate doesn't drag the bottom value label out
     of place the way a `transform: scale()` from the center would.
 
-## Shields (custom addition, not part of the original Scoundrel rules)
+## Ranged Weapons (custom addition, not part of the original Scoundrel rules)
+
+- A second weapon category alongside the original ("Close Range") weapons,
+  currently 4 bows (10/15/25/40 damage, named Kurzbogen/Jagdbogen/
+  Kriegsbogen/Langbogen — Short/Hunting/War/Long Bow), sharing the same
+  weapon equip slot as melee weapons — equipping one discards whatever was
+  equipped before, exactly like swapping to a different melee weapon. Uses
+  its own pseudo-suit, `SUITS.RANGED` (`js/cards.js`), alongside `SUITS.
+  DIAMONDS` (melee) — both map to `type: 'weapon'` via `suitToType()`, which
+  is what lets a ranged weapon flow through the exact same `resolveCard()`
+  dispatch, weapon equip slot, and weapon-attack swing animation as a melee
+  weapon, while still being tellable apart by `card.suit` everywhere the two
+  need different treatment (`fightMonster()`/`isWeaponUsableOn()`/
+  `equipWeapon()` in `js/state.js`, `flavorNameFor()` in `js/ui.js`).
+  Ranged and melee ranks currently overlap (both use some of the same
+  10/15/25/40 values), which is why ranged weapons need their own image
+  folder (`images/weapons/RangedWeapons/<rank>.png`, vs. melee's
+  `images/weapons/MeleeWeapons/<rank>.png` — both moved out of the old flat
+  `images/weapons/<rank>.png` when this was added) and their own name/
+  description table (`js/ranged-weapon-icons.js`, mirroring
+  `js/weapon-icons.js`'s shape exactly) — a single table keyed only by rank
+  could not have told a "10 melee" (Wooden Club) from a "10 ranged" (Short
+  Bow) apart.
+- **Completely different damage model from melee.** A melee weapon reduces
+  the damage *the player* takes (`monster rank − weapon rank`); a ranged
+  weapon instead subtracts its own rank directly from the *monster's* rank
+  (`fireRangedWeapon()` in `js/state.js`, called from `fightMonster()`,
+  which delegates to it immediately whenever the equipped weapon is Ranged
+  and legal to use — see below). If that drops the monster's rank to 0 or
+  below, it's defeated outright, exactly like a melee kill. Otherwise the
+  monster **survives at its new, lower rank and stays in the room** — the
+  one case in this game where resolving a card doesn't remove it. Example:
+  a 15-damage bow shot at a 40-value monster leaves it at rank 25, still
+  sitting in its room slot, still needing to be finished off later (by
+  another shot, or by a melee weapon/bare hands, using its new lower rank).
+  - **This meant `resolveCard()` (`js/state.js`) could no longer
+    unconditionally splice the resolved card out of `state.room` before
+    dispatching to `fightMonster()`.** It now looks the card up (keeping its
+    index) and only removes it once the result comes back, gated on
+    `result.monsterDied !== false` — every non-ranged outcome (a melee/
+    bare-handed fight, equipping something, drinking a potion) either
+    doesn't set this field at all or `fightMonster()` sets it explicitly to
+    `true`, so the default (`!== false`) still removes the card exactly as
+    before; only `fireRangedWeapon()`'s survive case ever sets it `false`.
+    Nothing else in `resolveCard()` needed to change — with the card still
+    in `state.room` (4 cards, nothing removed), the win-check and the
+    "refill once only 1 card is left" logic further down are natural
+    no-ops on their own, so the only actual branch point is the splice
+    itself.
+  - **A 20% chance (`RANGED_RETALIATE_CHANCE`, `js/state.js`) of the monster
+    striking back**, but *only* on a shot that doesn't kill it (a dead
+    monster can't retaliate) — for the *full* value it has left **after**
+    the shot's own reduction, not its original value. E.g. the 15-damage
+    bow above, fired at a 40-value monster: on a normal hit nothing happens
+    to the player; on the 20% roll, the player takes a hit worth the
+    monster's new value, 25, same as any other incoming damage from there
+    (Paladin's Blessing, then the shield block, apply to it exactly like
+    they would to a melee/bare-handed hit — see `fireRangedWeapon()`, which
+    shares that tail logic with `fightMonster()`).
+- **The weapon degrade rule (`weaponMaxMonster`) doesn't apply to Ranged
+  weapons at all** — `isWeaponUsableOn()` (`js/state.js`) short-circuits to
+  `true` for any equipped Ranged weapon regardless of what it was last used
+  on. Ammo (see below) is the only thing limiting reuse.
+- **Ammo, not the weapon-degrade rule, is what eventually retires a ranged
+  weapon.** `RANGED_AMMO_MAX` (`js/state.js`) is 3, tracked per-equip via
+  `state.weaponAmmoRemaining` — set fresh whenever a Ranged weapon is
+  equipped (`equipWeapon()`), decremented by 1 on every shot regardless of
+  outcome (kill, survive, or retaliation), and once it hits 0 the weapon
+  breaks. This mirrors the Fragile weapon effect's
+  `weaponFragileUsesRemaining` counter almost exactly (same "count down
+  every use, break at 0, deferred until the attack swing has fully
+  returned to the slot before actually unequipping" pattern, see
+  `breakEquippedWeapon()`) — which is why that function (originally
+  `breakFragileWeapon()`) was generalized to clear *both* counters, rather
+  than adding a second, near-identical "break the weapon" function. A
+  weapon is never both Fragile and Ranged at once: `rollWeaponEffects()`
+  (`js/weapon-effects.js`) is gated on `card.suit === SUITS.DIAMONDS`, not
+  just `card.type === 'weapon'`, specifically to exclude Ranged weapons —
+  Vampiric/Electric/Sturdy assume the melee damage-reduction formula, and
+  Fragile's own break-after-N-uses would collide with ammo's separate
+  break condition, so Ranged weapons simply never roll an effect
+  (`card.effect` stays `null`).
+  - **The ammo bar reuses the exact same UI as Fragile's durability bar**
+    (`#weapon-fragile-bar`, one `.ability-segment`/`.ability-segment--
+    filled` per remaining use/shot — see "Fragile's durability bar and
+    break animation" under Weapon Effects above) — the function that fills
+    it was generalized from `renderWeaponFragileBar()` to
+    `renderWeaponUsesBar()` (`js/ui.js`) to cover both cases (never both at
+    once, per the paragraph above), reading whichever counter/max applies.
+    The DOM id itself was deliberately left as `#weapon-fragile-bar` (not
+    renamed) — it's an implementation detail no other code depends on the
+    name of, and renaming it would only have touched HTML/CSS for no
+    functional benefit.
+  - `#weapon-status` shows a dedicated line for a Ranged weapon (`"No
+    degrade limit, N / 3 arrows left"`, `rangedWeaponStatus` in
+    `js/i18n.js`) instead of the melee branch's degrade-restriction/weapon-
+    effect text, in `renderWeaponSlot()` (`js/ui.js`).
+- **No corner badge on the card itself.** An earlier version showed a small
+  arrow icon (`images/symbols/ArrowSymbolTransparent.png`, user-supplied,
+  source kept as `ArrowSymbol.png`) in the same corner-badge slot a rolled
+  weapon effect uses (`.card-effect-badge`), as an at-a-glance "this is a
+  ranged weapon" cue. Removed by request, `fillCardFace()` (`js/ui.js`) now
+  shows nothing extra on a Ranged weapon's card, on either its room card or
+  the equipped weapon slot, the ammo bar under the weapon slot (see below)
+  is the only visual cue left. The icon asset itself is untouched on disk
+  (unused, not deleted) in case a future spot for it comes up.
+- **Hit feedback on the monster's own card, not the player's.** A shot that
+  doesn't kill plays a floating "-N" + `.card--shake` directly on the
+  target's still-live card element (`applyResolve()` in `js/main.js`,
+  guarded on `result.shotDamage` — only ever set when `monsterDied` is
+  `false`) — the same feedback pattern the Electric weapon effect already
+  used for the *other* monsters it weakens, just applied to the one card
+  actually being fired at. A retaliation hit, by contrast, needs no special
+  UI wiring at all: it's just a normal `state.hp` change, so the existing
+  generic before/after HP-delta comparison in `js/main.js` already animates
+  it, exactly like every other source of damage/healing in the game.
+- **Its own draw-back/loose-shot swing animation, not a reuse of melee's.**
+  `animateRangedAttack()` (`js/ui.js`) is a dedicated ranged counterpart to
+  `animateWeaponAttack()` (see "Interaction design decisions" below) —
+  `resolveAndAnimate()` (`js/main.js`) picks between the two purely on
+  `state.equippedWeapon.suit === SUITS.RANGED`, and both share the exact
+  same `onImpact`/`onDone` two-callback contract and `{ speedUp }`
+  controller shape, so nothing downstream of either needs to know which one
+  is playing. It animates the real `#weapon-slot-card` element itself, same
+  as melee (never a clone), in four legs instead of melee's three: **(1)**
+  draw back a little, in the OPPOSITE direction from the shot (like pulling
+  a bowstring taut, `RANGED_ATTACK_DRAW_FRACTION` = 22% of the full
+  slot-to-target distance, reversed), **(2)** loose the shot at the monster,
+  at twice the speed (half the duration) of melee's own out leg
+  (`RANGED_ATTACK_OUT_MS` = `WEAPON_ATTACK_OUT_MS / 2`) — this is the only
+  leg whose timing actually differs from melee, **(3)** a brief impact
+  pause, and **(4)** swing back into the weapon slot at the exact same
+  speed a melee swing returns at (`WEAPON_ATTACK_RETURN_MS`, reused
+  unchanged), all per explicit request ("nur doppelt so schnell [beim
+  Schuss], aber in der selben normalen Geschwindigkeit wieder zurück").
+  Also branches at impact on `fightResult.monsterDied === false`: instead
+  of adding `.card--resolved` and fading the card out on a timer (the
+  melee/kill path), it just re-renders the room immediately, since a
+  surviving monster's card isn't going anywhere. `renderGameOverBanner()`
+  is still called on that path too, a retaliation hit can be lethal on its
+  own.
+- **Not a rarer/random deck inclusion — the 4 bows are meant to be picked
+  by the player.** A weapon Deckbuilder (not yet built — plan is to let the
+  player choose up to 10 weapon cards, out of the full melee+ranged
+  catalog, before a run starts, capped by a total value budget of 300)
+  is why every card already carries a `deckCost` field (`js/cards.js`),
+  inert until that system exists. It defaults to `rank` (a melee weapon's
+  budget cost is just its combat strength, 1:1), but Ranged weapons
+  override it to roughly half their face-value damage (10→5, 15→8, 25→13,
+  40→20) — a melee weapon keeps delivering value across many fights until
+  it degrades past usefulness, while a Ranged weapon only ever gets
+  `RANGED_AMMO_MAX` (3) total uses, so its face-value damage number alone
+  would overstate how much of the budget it deserves to cost.
+- **The Weapons gallery is split into two headed sections, not two separate
+  gallery buttons.** `renderGallery('weapons')` (`js/ui.js`) still fills
+  the one `#gallery-grid`, just with a full-width
+  `buildGallerySectionHeading()` label (`.gallery-section-heading`, spans
+  every column the same way `#room-empty` spans the 2x2 room grid) in front
+  of each category — "Close Range" (the existing melee loop, now reading
+  `images/weapons/MeleeWeapons/`) then "Ranged" (a new loop over
+  `getRangedWeaponRankPool()`, `js/ranged-weapon-icons.js` — same
+  "derive from the name table's own keys, not a separately hand-maintained
+  range" pattern as `getMonsterRankPool()`). Ranged tiles use their own
+  `data-kind='rangedWeapons'` (not `'weapons'`) so the detail popup
+  (`renderGalleryDetail()`) can look up the right name/description table
+  and so a same-rank melee/ranged pair never collide — but they reuse the
+  melee weapon frame's exact CSS wholesale (same `.card--weapon` frame,
+  same `--art-*`/`--hex-*` box percentages, both `type: 'weapon'`), via
+  `, .gallery-item[data-kind='rangedWeapons']` added alongside every
+  `.gallery-item[data-kind='weapons']` selector in `style.css` rather than
+  a duplicated block. The detail popup's description also appends an
+  ammo-count sentence (`rangedAmmoSentence`, `js/i18n.js`) that the melee
+  branch doesn't have.
 
 - A third equippable item type on top of weapons/potions: 3 cards, ranks
-  3-5, added on top of the standard 44-card deck (`makeCard(SUITS.SHIELDS,
-  ...)` in `js/cards.js`) — the deck is 47 cards total, not 44. Shields use
+  15-25 (the ×5-rescaled equivalent of the original 3-5, see the "Value
+  rescale" note in `js/cards.js`), added on top of the standard 44-card deck
+  (`makeCard(SUITS.SHIELDS, ...)` in `js/cards.js`) — see "Game Rules" above
+  for the current full per-game card-count breakdown (51 as of "Ranged
+  Weapons" below, and temporary until the weapon Deckbuilder ships).
+  Shields use
   their own pseudo-suit (`SUITS.SHIELDS = 'shields'`) purely so they flow
   through the existing `makeCard()`/`renderCard()`/deck plumbing like every
   other card; it isn't a real playing-card suit. Names/flavor text live in
@@ -912,10 +1203,10 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   actually gets through — it stacks with a weapon, never replaces it:
   weapon (or bare hands, plus Berserker's flat reduction) reduces the
   monster's damage first, and only whatever remains left over is what the
-  shield can absorb. E.g. a 3-block shield against a 5-damage hit that a
-  weapon already reduced to 2 blocks all 2 (shield drops to 1 durability,
-  player takes 0); the same shield against a full 5-damage bare-handed hit
-  blocks 3 and shatters, player still takes the remaining 2.
+  shield can absorb. E.g. a 15-block shield against a 25-damage hit that a
+  weapon already reduced to 10 blocks all 10 (shield drops to 5 durability,
+  player takes 0); the same shield against a full 25-damage bare-handed hit
+  blocks 15 and shatters, player still takes the remaining 10.
 - **Equip UI mirrors weapons exactly, deliberately** — a shield slot
   (`#shield-slot-card`) sits immediately left of the weapon slot inside a
   shared `#equipment-slots` row, same size/scale tokens
@@ -990,18 +1281,35 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
 
 ### Monster artwork
 
-- `images/monsters/<rank>.png` (2-14, one file per rank — both suits of a
-  given rank share the same monster and image) are transparent-background
-  full-color renders, assigned automatically in `makeCard()` in
-  `js/cards.js`. **Replaced entirely** from an earlier shared sprite-sheet
-  crop (black silhouette PNGs cut from one `images/MonstersIcons.jpeg`
-  sheet) with 13 individually user-supplied renders, one per rank, kept as
+- `images/monsters/<rank>.png` (currently 23 ranks, 10-70, one file per
+  rank — see "Monster Pool" above; both card instances of a given rank
+  share the same image) are transparent-background full-color renders,
+  assigned automatically in `makeCard()` in `js/cards.js`. **Superseded
+  numbers, kept for historical/technique reference only:** the specific
+  rank-to-creature mapping in this paragraph (2 → Slime, 3 → Skeleton, etc.)
+  reflects the original 13-creature naming session and predates both the
+  ×5 value rescale and a later re-curving of all 23 ranks onto a new
+  non-uniform ladder (see "Value rescale" in `js/cards.js` and "Monster
+  Pool" above) — `MONSTER_NAMES`/`MONSTER_DESCRIPTIONS`
+  (`js/monster-icons.js`) is the current, authoritative rank-to-name
+  mapping, not this paragraph. 10 more creature types were added later
+  (Giant Rat, Cave Bat, Highwayman, Orc Grunt, Cursed Hound, Ghoul, Fallen
+  Knight, Wraith, Ogre, Vampire Lord), each with its own individually
+  user-supplied source render under `images/monsters/` (e.g. `GiantRat.jpeg`
+  / `GiantRatTransparent.png`, following the same already-transparentized,
+  crop-to-alpha-bbox pipeline described in the "Superseded" weapon/shield
+  artwork notes further below), mapped in `MONSTER_NAMES` rather than
+  documented rank-by-rank here. **Replaced entirely** from an earlier shared
+  sprite-sheet crop (black silhouette PNGs cut from one
+  `images/MonstersIcons.jpeg` sheet) with 13 individually user-supplied
+  renders, one per rank at the time, kept as
   source reference: `images/monsters/Slime.jpeg` → 2, `Skeleton.jpeg` → 3,
   `Wolf.jpeg` → 4, `SkeletonWarrior.jpeg` → 5 (Armored Skeleton),
   `Gargoyle.jpeg` → 6, `ShadowAssassin.jpeg` → 7, `FireElemental.jpeg` → 8,
   `Minotaur.jpeg` → 9, `NatureGolem.jpeg` → 10 (Golem), `LichKing.jpeg` → 11
   (The Lich), `BroodMother.jpeg` → 12, `Dragon.jpeg` → 13, and
-  `DemonLord.jpeg` → 14 — this last slot's name was also changed from
+  `DemonLord.jpeg` → 14 (ranks at the time, now 10/14/18/22/28/34/40/46/52/
+  58/64/67/70 respectively) — this last slot's name was also changed from
   "Cthulhu" to "Demon Lord" ("Dämonenfürst") in `MONSTER_NAMES`/
   `MONSTER_DESCRIPTIONS` (`js/monster-icons.js`) to match the new artwork,
   since a Lovecraftian description no longer fit a demonic-knight portrait.
@@ -1112,7 +1420,9 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
 
 ### Potion artwork
 
-- `images/potions/<rank>.png` (2-10, one file per rank) came from a
+- `images/potions/<rank>.png` (10-50 in steps of 5, one file per rank — a
+  plain ×5 rescale of the original 2-10, see "Value rescale" in
+  `js/cards.js`) came from a
   user-supplied sheet (`images/HealPotsIcons.jpeg`, kept as source
   reference), cropped the same way as the monster art but keeping color
   this time (alpha = 255 − min(R,G,B) per pixel, not forced to black) so
@@ -1126,15 +1436,20 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
 
 ### Weapon artwork
 
-- `images/weapons/<rank>.png` (2-10, one file per rank) originally came from
+- `images/weapons/<rank>.png` (10-50 in steps of 5, one file per rank — a
+  plain ×5 rescale of the original 2-10, see "Value rescale" in
+  `js/cards.js`; the source-reference filenames below predate the rescale
+  and are still named by their original 2-10 rank) originally came from
   a user-supplied sheet (`images/WeaponsIcons.jpeg`), replaced entirely by 9
   individually user-supplied renders, one per rank, kept as source
-  reference: `images/weapons/WoodenClub.jpeg` → 2, `DamagedSword.jpeg` → 3,
-  `Spear.jpeg` → 4, `Sword.jpeg` → 5, `BattleAxe.jpeg` → 6,
-  `FlamingBroadSword.jpeg` → 7, `DarkScythe.jpeg` → 8, `Jonathan.jpeg` → 9
-  (Mjölnir — the file is just named after whoever/whatever generated it, the
-  artwork itself is a lightning-wreathed hammer, matching the name), and
-  `Excalibur.jpeg` → 10. Names are in `WEAPON_NAMES` in
+  reference: `images/weapons/WoodenClub.jpeg` → rank 2 (now 10),
+  `DamagedSword.jpeg` → rank 3 (now 15), `Spear.jpeg` → rank 4 (now 20),
+  `Sword.jpeg` → rank 5 (now 25), `BattleAxe.jpeg` → rank 6 (now 30),
+  `FlamingBroadSword.jpeg` → rank 7 (now 35), `DarkScythe.jpeg` → rank 8
+  (now 40), `Jonathan.jpeg` → rank 9 (now 45) (Mjölnir — the file is just
+  named after whoever/whatever generated it, the artwork itself is a
+  lightning-wreathed hammer, matching the name), and `Excalibur.jpeg` →
+  rank 10 (now 50). Names are in `WEAPON_NAMES` in
   `js/weapon-icons.js`.
 - **Same source format and crop technique as the shield renders** (see
   "Shield artwork" above): each is a single subject on its own canvas with a
@@ -1324,12 +1639,14 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
 
 ### Shield artwork
 
-- `images/shields/<rank>.png` (3-5, one file per rank) came from three
+- `images/shields/<rank>.png` (15-25 in steps of 5, one file per rank — a
+  plain ×5 rescale of the original 3-5, see "Value rescale" in
+  `js/cards.js`) came from three
   individually user-supplied renders, one per shield, kept as source
-  reference: `images/shields/WoodenShieldDamaged.jpeg` → rank 3 (Oaken
-  Shield), `images/shields/WoodenRobustShield.jpeg` → rank 4 (Round
-  Shield), `images/shields/MetalLionShield.jpeg` → rank 5 (Lion Crest
-  Shield) — this mapping was given directly by the user, not inferred from
+  reference: `images/shields/WoodenShieldDamaged.jpeg` → rank 3, now 15
+  (Oaken Shield), `images/shields/WoodenRobustShield.jpeg` → rank 4, now 20
+  (Round Shield), `images/shields/MetalLionShield.jpeg` → rank 5, now 25
+  (Lion Crest Shield) — this mapping was given directly by the user, not inferred from
   the filenames (the rank-3 source is literally named "Damaged" because
   it's drawn with a visible crack across the rim, but it's used as that
   shield's one and only artwork, not as a damaged-state variant — see
@@ -1760,19 +2077,22 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     interleave with an in-flight fight/equip/drink animation.
   - `resolveBackstab(cardId)` (`js/state.js`) is what actually spends the
     mana and turns targeting back off, then deals the hit via
-    `weakenMonster(card, 6)` — the same rank-reduction helper the Electric
-    weapon effect already used at amount 1 (generalized to take an
-    `amount` argument for this). Backstab **never removes a monster from
-    the room outright**, no matter how weak it already is —
-    `weakenMonster()`'s existing floor-at-1 behavior applies here exactly
-    like it does for Electric, so a monster at or below 6 just drops to
-    rank 1 and still needs to be fought/resolved normally afterward, same
-    as any other monster card. If an instant-kill-on-low-rank version is
-    ever wanted instead, that needs new logic (mirroring `resolveCard()`'s
+    `weakenMonster(card, 30)` (the ×5-rescaled equivalent of the original 6,
+    see "Value rescale" in `js/cards.js`) — the same rank-reduction helper
+    the Electric weapon effect already used at its own amount (generalized
+    to take an `amount` argument for this). Backstab **never removes a
+    monster from the room outright**, no matter how weak it already is —
+    `weakenMonster()`'s existing floor-at-5 behavior (the ×5-rescaled
+    equivalent of the original floor-at-1) applies here exactly like it
+    does for Electric, so a monster at or below 35 just drops to rank 5 and
+    still needs to be fought/resolved normally afterward, same as any other
+    monster card. If an instant-kill-on-low-rank version is ever wanted
+    instead, that needs new logic (mirroring `resolveCard()`'s
     room-refill/win-condition handling for an outright removal) — it
     isn't what's implemented now.
 - **Herbalist's ability:** a flat one-shot heal — `useAbility()` heals
-  `min(3, maxHp - hp)` HP immediately, same clamped-at-max pattern as
+  `min(25, maxHp - hp)` HP (the ×5-rescaled equivalent of the original 5)
+  immediately, same clamped-at-max pattern as
   `drinkPotion()`. Returns `{ message, healed }`, where `healed` is the
   actual HP restored (0 if already at full HP) — the ability-button click
   handler (`js/main.js`) reads that generic `healed` field (not a
@@ -1795,7 +2115,8 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     `setTimeout` once its `ability-heal-particle-float` animation finishes.
 - **Paladin's ability — "Blessing":** activating it sets
   `state.paladinResistCharges = 3`. `fightMonster()` (`js/state.js`) then
-  reduces the next 3 hits that would deal any damage by 2 each (never below
+  reduces the next 3 hits that would deal any damage by 10 each (the
+  ×5-rescaled equivalent of the original 2, never below
   0, and never counting a hit that was already fully stopped by the weapon
   as one of the 3), decrementing the counter each time, applied right where
   Berserker's passive flat reduction is (after the weapon/bare-handed damage
@@ -2179,8 +2500,11 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     shared entry point for starting a game (see "New Game / rules" above),
     `startTutorial()` calls it exactly like any real "New Game" would, just
     passing a champion and a deck instead of opening champion-select.
-  - `getCardById(id)` (`js/cards.js`) is a plain lookup into `CARD_LIST` by
-    id (e.g. `"clubs-7"`), added specifically so `TUTORIAL_DECK_IDS` in
+  - `getCardById(id)` (`js/cards.js`) is a plain lookup by id (e.g.
+    `"diamonds-30"` or `"monster-25-1"`), checking `CARD_LIST` first and
+    falling back to the full monster pool (`getAllMonsterCards()`, see
+    "Monster Pool" above) so it can resolve monster ids too, added
+    specifically so `TUTORIAL_DECK_IDS` in
     `js/tutorial.js` could reference exact cards by name instead of
     duplicating their data.
 - **The scripted deck (`TUTORIAL_DECK_IDS`, `js/tutorial.js`) is 17 cards,
@@ -2200,7 +2524,7 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     exceeds the shield's remaining durability, shattering it (this is
     specifically the **2nd monster in this room**, matching how the shield
     is introduced, see the shield HP/durability math below). This fight is
-    also the game's 5th monster kill, so Paladin's passive (heal 2 HP every
+    also the game's 5th monster kill, so Paladin's passive (heal 10 HP every
     5 kills) fires here too, entirely for free, no separate step needed,
     the normal fight message already announces it.
   - **Room 4:** fled whole (not resolved card by card) specifically to
@@ -2213,9 +2537,9 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     mana only trickles in 1 per room change via `gainMana()`, and grinding
     out several more real room changes just to reach the ability once would
     kill the pacing) so Blessing can be triggered and immediately shown
-    reducing the next hit by 2.
+    reducing the next hit by 10.
   - HP is tracked by hand across the whole script and never drops below
-    ~5/20 (ends there, after the final Blessing-reduced hit), tuned
+    ~38/100 (ends there, after the final Blessing-reduced hit), tuned
     deliberately so the run always survives to the end screen. **Any future
     edit to `TUTORIAL_DECK_IDS`, `TUTORIAL_STEPS`, or the rules those steps
     exercise (weapon degrade math, shield block math, Paladin's passive/

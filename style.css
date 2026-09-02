@@ -840,6 +840,33 @@ button:disabled::before {
   gap: 0.75rem;
 }
 
+/* Splits the Weapons gallery into its "Close Range" / "Ranged" categories
+   (see buildGallerySectionHeading()/renderGallery() in js/ui.js, "Ranged
+   Weapons" in CLAUDE.md) — a plain label inside #gallery-grid rather than
+   two separate gallery panels, spanning every column the same way
+   #room-empty spans the 2x2 room grid (see CLAUDE.md's "Fixed card
+   positions within the 2x2 grid"). Only ever used inside the weapons grid
+   today, but not scoped to .gallery-grid--weapons specifically — a heading
+   spanning full width is a generic enough need that any future gallery kind
+   needing the same split can reuse it as-is. */
+.gallery-section-heading {
+  grid-column: 1 / -1;
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border-bottom: 1px solid var(--accent);
+  padding-bottom: 0.2rem;
+  margin-top: 0.3rem;
+}
+
+/* First heading in the grid needs no extra top gap above it — only the
+   later ones (a new category starting) do. */
+.gallery-section-heading:first-child {
+  margin-top: 0;
+}
+
 /* Light card-colored background (not --surface-hover) is deliberate: the
    monster/weapon artwork itself is a solid black silhouette (see the
    "Monster/Weapon artwork" sections in CLAUDE.md) meant to sit on the
@@ -993,7 +1020,8 @@ button:disabled::before {
   align-items: start;
 }
 
-.gallery-item[data-kind='weapons'] {
+.gallery-item[data-kind='weapons'],
+.gallery-item[data-kind='rangedWeapons'] {
   /* Overrides .gallery-item's own cream background: unlike the champions
      tile (whose frame background covers this same element), the weapon
      frame sits on the smaller nested .gallery-item-portrait, so without
@@ -1013,7 +1041,8 @@ button:disabled::before {
   padding: 0.2rem;
 }
 
-.gallery-item[data-kind='weapons'] .gallery-item-portrait {
+.gallery-item[data-kind='weapons'] .gallery-item-portrait,
+.gallery-item[data-kind='rangedWeapons'] .gallery-item-portrait {
   position: relative;
   width: 100%;
   max-width: none;
@@ -1037,7 +1066,8 @@ button:disabled::before {
    card entirely. A wrapper div (non-replaced, so auto width/height DOES
    fill the space between the insets) fixes this, with the <img> inside it
    sized by plain max-width/max-height instead. */
-.gallery-item[data-kind='weapons'] .gallery-item-art {
+.gallery-item[data-kind='weapons'] .gallery-item-art,
+.gallery-item[data-kind='rangedWeapons'] .gallery-item-art {
   position: absolute;
   left: 15%;
   top: 14%;
@@ -1049,7 +1079,8 @@ button:disabled::before {
   pointer-events: none;
 }
 
-.gallery-item[data-kind='weapons'] .gallery-item-art img {
+.gallery-item[data-kind='weapons'] .gallery-item-art img,
+.gallery-item[data-kind='rangedWeapons'] .gallery-item-art img {
   width: auto;
   height: auto;
   /* 85% rather than 100%, a deliberate 15% shrink of just the weapon
@@ -1070,7 +1101,8 @@ button:disabled::before {
    cause of a hover screenshot looking like the gold outline enclosed a
    patch of empty space below the card: the name text was still there and
    correctly laid out, just unreadable against the dark background. */
-.gallery-item[data-kind='weapons'] .gallery-item-name {
+.gallery-item[data-kind='weapons'] .gallery-item-name,
+.gallery-item[data-kind='rangedWeapons'] .gallery-item-name {
   color: var(--text);
   /* Same display font as .champion-select-name/.champion-select-desc and
      the champions gallery's own .gallery-item-name override, for the same
@@ -1085,7 +1117,8 @@ button:disabled::before {
    instead of sitting below it as a plain sibling, specifically so it can
    be centered in the frame's hexagon via the same --hex-* box
    .card-value-label uses (40.3% / 75.5% / 59.7% / 89.3%). */
-.gallery-item[data-kind='weapons'] .gallery-item-rank {
+.gallery-item[data-kind='weapons'] .gallery-item-rank,
+.gallery-item[data-kind='rangedWeapons'] .gallery-item-rank {
   position: absolute;
   left: 40.3%;
   top: 75.5%;
@@ -1314,6 +1347,7 @@ button:disabled::before {
    88.5-89.3% down, see the --hex-* boxes above) so it never dims the
    value number. */
 .gallery-item[data-kind='weapons'] .gallery-item-portrait::after,
+.gallery-item[data-kind='rangedWeapons'] .gallery-item-portrait::after,
 .gallery-item[data-kind='shields'] .gallery-item-portrait::after,
 .gallery-item[data-kind='monsters'] .gallery-item-portrait::after {
   content: '';
@@ -1335,7 +1369,8 @@ button:disabled::before {
   pointer-events: none;
 }
 
-.gallery-item[data-kind='weapons'] .gallery-item-portrait::after {
+.gallery-item[data-kind='weapons'] .gallery-item-portrait::after,
+.gallery-item[data-kind='rangedWeapons'] .gallery-item-portrait::after {
   mask-image: url('images/frames/weapon.png');
   -webkit-mask-image: url('images/frames/weapon.png');
 }
@@ -1351,6 +1386,7 @@ button:disabled::before {
 }
 
 .gallery-item[data-kind='weapons'] .gallery-item-portrait::after,
+.gallery-item[data-kind='rangedWeapons'] .gallery-item-portrait::after,
 .gallery-item[data-kind='shields'] .gallery-item-portrait::after,
 .gallery-item[data-kind='monsters'] .gallery-item-portrait::after {
   mask-size: 100% 100%;

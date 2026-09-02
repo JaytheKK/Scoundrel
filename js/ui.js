@@ -55,6 +55,10 @@ function fillCardFace(el, card) {
     badge.title = `${effect.name}: ${effect.description}`;
     el.appendChild(badge);
   }
+  // Ranged weapons (SUITS.RANGED) deliberately show no corner badge — tried
+  // as a reuse of the rolled-weapon-effect badge slot with an arrow icon,
+  // removed by request. The ammo bar under the weapon slot (see
+  // renderWeaponUsesBar()) is the only "this is a ranged weapon" cue now.
 
   const value = document.createElement('div');
   value.className = 'card-value-label';
@@ -84,7 +88,13 @@ function cardTier(rank) {
 function flavorNameFor(card) {
   if (card.type === 'monster') return monsterNameFor(card.baseRank);
   if (card.type === 'potion') return potionNameFor(card.baseRank);
-  if (card.type === 'weapon') return weaponNameFor(card.baseRank);
+  // Ranged weapons (SUITS.RANGED) share type 'weapon' with melee (DIAMONDS),
+  // but ranged and melee ranks overlap — checked first, via card.suit, or a
+  // ranged card (e.g. a rank-10 Short Bow) would show the melee name for
+  // that same rank (Wooden Club) instead. See "Ranged Weapons" in CLAUDE.md.
+  if (card.type === 'weapon') {
+    return card.suit === SUITS.RANGED ? rangedWeaponNameFor(card.baseRank) : weaponNameFor(card.baseRank);
+  }
   if (card.type === 'shield') return shieldNameFor(card.baseRank);
   return null;
 }
@@ -652,6 +662,16 @@ function renderWeaponSlot() {
     status.textContent = t('fightingBareHanded');
   } else if (!state.equippedWeapon) {
     status.textContent = t('noWeaponEquipped');
+  } else if (state.equippedWeapon.suit === SUITS.RANGED) {
+    // Ranged weapons ignore the degrade rule entirely (see
+    // isWeaponUsableOn() in js/state.js) and never carry a rolled weapon
+    // effect (see rollWeaponEffects() in js/weapon-effects.js), so neither
+    // of the two pieces the melee branch below shows applies here — just
+    // the ammo count, which the bar under the slot also shows visually.
+    status.textContent = t('rangedWeaponStatus', {
+      filled: Math.max(0, state.weaponAmmoRemaining),
+      total: RANGED_AMMO_MAX,
+    });
   } else {
     // Sword Master's Weapon Mastery (see fightMonster()/isWeaponUsableOn()
     // in js/state.js) lifts the degrade restriction entirely while active —
@@ -668,34 +688,43 @@ function renderWeaponSlot() {
     status.textContent = effect ? `${restriction}. ${effect.name}: ${effect.description}` : restriction;
   }
 
-  renderWeaponFragileBar();
+  renderWeaponUsesBar();
 }
 
-/** Fills #weapon-fragile-bar with one segment per FRAGILE_MAX_USES, mirroring
+/** Fills #weapon-fragile-bar (id kept from when this only handled Fragile —
+ * see below) with one segment per remaining use, mirroring
  * renderChampionAbilityBar()'s discrete filled/unfilled segments (same CSS
  * classes, .ability-segment/.ability-segment--filled, just a second bar
- * instance), full when a Fragile weapon (see js/weapon-effects.js) is
- * freshly equipped, one segment drains per use (state.weaponFragileUsesRemaining,
- * js/state.js) until it empties right as the weapon breaks. Hidden entirely
- * for a non-Fragile weapon or no weapon at all. Called from renderWeaponSlot()
- * itself (not a separate call site to remember) so it can never drift out of
- * sync with whichever weapon is currently equipped. */
-function renderWeaponFragileBar() {
+ * instance). Covers TWO distinct "this weapon breaks after N uses" cases
+ * that can never both apply at once (see rollWeaponEffects() in
+ * js/weapon-effects.js): a Fragile melee weapon
+ * (state.weaponFragileUsesRemaining, counts down to 0 over FRAGILE_MAX_USES
+ * fights) and a Ranged weapon (state.weaponAmmoRemaining, counts down over
+ * RANGED_AMMO_MAX shots, see "Ranged Weapons" in CLAUDE.md) — full when
+ * freshly equipped either way, one segment drains per use, hidden entirely
+ * for a plain melee weapon (no effect) or no weapon at all. Called from
+ * renderWeaponSlot() itself (not a separate call site to remember) so it
+ * can never drift out of sync with whichever weapon is currently equipped. */
+function renderWeaponUsesBar() {
   const bar = document.getElementById('weapon-fragile-bar');
-  const fragile = state.equippedWeapon && state.equippedWeapon.effect === 'fragile';
+  const weapon = state.equippedWeapon;
+  const isFragile = weapon && weapon.effect === 'fragile';
+  const isRanged = weapon && weapon.suit === SUITS.RANGED;
 
-  if (!fragile) {
+  if (!isFragile && !isRanged) {
     bar.classList.add('hidden');
     bar.innerHTML = '';
     bar.title = '';
     return;
   }
 
-  const filled = Math.max(0, state.weaponFragileUsesRemaining);
+  const total = isRanged ? RANGED_AMMO_MAX : FRAGILE_MAX_USES;
+  const remaining = isRanged ? state.weaponAmmoRemaining : state.weaponFragileUsesRemaining;
+  const filled = Math.max(0, remaining);
   bar.classList.remove('hidden');
-  bar.title = t('fragileBarTitle', { filled, total: FRAGILE_MAX_USES });
+  bar.title = t(isRanged ? 'ammoBarTitle' : 'fragileBarTitle', { filled, total });
   bar.innerHTML = '';
-  for (let i = 0; i < FRAGILE_MAX_USES; i++) {
+  for (let i = 0; i < total; i++) {
     const segment = document.createElement('div');
     segment.className = 'ability-segment' + (i < filled ? ' ability-segment--filled' : '');
     bar.appendChild(segment);
@@ -870,12 +899,18 @@ function buildGalleryItem(kind, image, name, key, rankLabel) {
   item.dataset.kind = kind;
   item.dataset.key = key;
 
-  // Weapons, Shields, and Monsters all get the real in-game card frame
-  // (see .gallery-item[data-kind='weapons']/[data-kind='shields']/
-  // [data-kind='monsters'] in style.css) instead of the plain flat icon
-  // tile — this needs two structural differences from the plain-tile
-  // layout below, so all three are gated on the same flag.
-  const usesCardFrame = kind === 'weapons' || kind === 'shields' || kind === 'monsters';
+  // Weapons (melee and ranged), Shields, and Monsters all get the real
+  // in-game card frame (see .gallery-item[data-kind='weapons']/
+  // [data-kind='rangedWeapons']/[data-kind='shields']/[data-kind='monsters']
+  // in style.css) instead of the plain flat icon tile — this needs two
+  // structural differences from the plain-tile layout below, so all four
+  // are gated on the same flag. Ranged weapons reuse the exact same
+  // '.card--weapon' frame/box percentages as melee (both are type 'weapon',
+  // see "Ranged Weapons" in CLAUDE.md), just under their own 'rangedWeapons'
+  // kind so the detail popup (renderGalleryDetail() below) can tell a ranged
+  // rank apart from a melee one at the same rank value.
+  const usesCardFrame =
+    kind === 'weapons' || kind === 'rangedWeapons' || kind === 'shields' || kind === 'monsters';
 
   const portrait = document.createElement('div');
   portrait.className = 'gallery-item-portrait';
@@ -921,6 +956,19 @@ function buildGalleryItem(kind, image, name, key, rankLabel) {
   return item;
 }
 
+/** A full-width label inside #gallery-grid, splitting the Weapons gallery
+ * into its two categories (Close Range / Ranged) without needing two
+ * separate gallery buttons/panels — see renderGallery()'s 'weapons' branch
+ * below. Spans every column the same way #room-empty spans the 2x2 room
+ * grid (see CLAUDE.md's "Fixed card positions within the 2x2 grid"), via
+ * .gallery-section-heading's own grid-column: 1 / -1 in style.css. */
+function buildGallerySectionHeading(text) {
+  const heading = document.createElement('div');
+  heading.className = 'gallery-section-heading';
+  heading.textContent = text;
+  return heading;
+}
+
 /** Fills #gallery-overlay for one of 'champions' / 'weapons' / 'monsters' /
  * 'shields'. Weapons/Monsters/Shields list every rank's artwork + flavor
  * name (same data as the card tooltips, see flavorNameFor() above);
@@ -949,11 +997,32 @@ function renderGallery(kind) {
   // of 5 instead of 1.
   if (kind === 'weapons') {
     title.textContent = t('galleryTitleWeapons');
+    // Split into two headed sections rather than two separate gallery
+    // buttons/panels, per the "close range vs ranged" category split (see
+    // "Ranged Weapons" in CLAUDE.md) — both groups still share the one
+    // #gallery-grid, just with a full-width heading in front of each.
+    grid.appendChild(buildGallerySectionHeading(t('galleryHeadingMeleeWeapons')));
     for (let rank = 10; rank <= 50; rank += 5) {
       grid.appendChild(
-        buildGalleryItem('weapons', `images/weapons/${rank}.png`, weaponNameFor(rank), rank)
+        buildGalleryItem(
+          'weapons',
+          `images/weapons/MeleeWeapons/${rank}.png`,
+          weaponNameFor(rank),
+          rank
+        )
       );
     }
+    grid.appendChild(buildGallerySectionHeading(t('galleryHeadingRangedWeapons')));
+    getRangedWeaponRankPool().forEach((rank) => {
+      grid.appendChild(
+        buildGalleryItem(
+          'rangedWeapons',
+          `images/weapons/RangedWeapons/${rank}.png`,
+          rangedWeaponNameFor(rank),
+          rank
+        )
+      );
+    });
   } else if (kind === 'monsters') {
     title.textContent = t('galleryTitleMonsters');
     // Reads the same pool getFreshDeck()'s monster selection draws from
@@ -991,9 +1060,14 @@ function renderGalleryDetail(kind, key) {
   let isHtml = false;
 
   if (kind === 'weapons') {
-    image = `images/weapons/${key}.png`;
+    image = `images/weapons/MeleeWeapons/${key}.png`;
     name = weaponNameFor(key);
     description = weaponDescriptionFor(key);
+    subtitle = t('strengthLabel', { n: rankLabel(key) });
+  } else if (kind === 'rangedWeapons') {
+    image = `images/weapons/RangedWeapons/${key}.png`;
+    name = rangedWeaponNameFor(key);
+    description = `${rangedWeaponDescriptionFor(key)} ${t('rangedAmmoSentence', { n: RANGED_AMMO_MAX })}`;
     subtitle = t('strengthLabel', { n: rankLabel(key) });
   } else if (kind === 'monsters') {
     image = `images/monsters/${key}.png`;
@@ -1391,8 +1465,9 @@ function animateShieldShatter(onDone) {
 }
 
 /** Plays the weapon slot's "broke" shatter, for a Fragile weapon that just
- * ran out of uses (see js/weapon-effects.js and breakFragileWeapon() in
- * js/state.js). See animateSlotShatter() above. Callers must wait until any
+ * ran out of uses or a Ranged weapon that just ran out of ammo (see
+ * js/weapon-effects.js and breakEquippedWeapon() in js/state.js). See
+ * animateSlotShatter() above. Callers must wait until any
  * in-flight weapon-attack swing (animateWeaponAttack() below) has fully
  * returned to the slot before calling this, or the shards would be clipped
  * from the slot's mid-swing, off-position transform instead of its resting
@@ -1477,6 +1552,109 @@ function animateWeaponAttack(monsterEl, onImpact, onDone = () => {}) {
         );
         if (speedRequested) current.speedUp();
       }, WEAPON_ATTACK_IMPACT_MS);
+      if (speedRequested) current.speedUp();
+    }
+  );
+
+  return {
+    speedUp() {
+      speedRequested = true;
+      if (current) current.speedUp();
+    },
+  };
+}
+
+// --- ranged weapon-attack animation -----------------------------------------
+
+// A bow shot gets its own swing shape rather than reusing animateWeaponAttack
+// above (see "Ranged Weapons" in CLAUDE.md): draw back a little in the
+// OPPOSITE direction from the shot first (like pulling a bowstring taut),
+// then loose the shot at the monster — that "out" leg alone runs at twice
+// the speed (half the duration) of a melee swing's own out leg, by request.
+// The impact pause and the return-to-slot leg keep melee's exact timing (a
+// bow "returns to the slot at the same normal speed" a sword does), so only
+// WEAPON_ATTACK_OUT_MS is halved here, nothing else.
+const RANGED_ATTACK_DRAW_MS = 240;
+// A brief, still hold at full draw before loosing the shot — by request
+// ("zurückziehen, ganz kurz stehen bleiben, und dann sehr rasch
+// beschleunigt losschießen"), reads as the archer holding aim for an
+// instant rather than the draw flowing straight into the shot.
+const RANGED_ATTACK_HOLD_MS = 110;
+const RANGED_ATTACK_OUT_MS = WEAPON_ATTACK_OUT_MS / 2;
+// How far the draw-back leg pulls, as a fraction of the full slot-to-target
+// distance, in the reverse direction — "a bit", not a full mirror of the shot.
+const RANGED_ATTACK_DRAW_FRACTION = 0.22;
+
+/** Same idea as animateWeaponAttack() above (animates the real
+ * #weapon-slot-card element itself, not a clone, so the slot is simply
+ * empty-looking for the instant its card is "out"), but with a bow-specific
+ * five-leg swing: draw back, hold, loose the shot, pause on impact, return.
+ * See the comments below for which legs share melee's timing and which
+ * don't. Same `onImpact`/`onDone` contract and `{ speedUp }` controller
+ * shape as animateWeaponAttack(), cascading through every remaining leg
+ * once called. */
+function animateRangedAttack(monsterEl, onImpact, onDone = () => {}) {
+  const slot = document.getElementById('weapon-slot-card');
+  const slotRect = slot.getBoundingClientRect();
+  const targetRect = monsterEl.getBoundingClientRect();
+
+  const dx = targetRect.left + targetRect.width / 2 - (slotRect.left + slotRect.width / 2);
+  const dy = targetRect.top + targetRect.height / 2 - (slotRect.top + slotRect.height / 2);
+
+  slot.style.position = 'relative';
+  slot.style.zIndex = '60';
+
+  let current = null;
+  let speedRequested = false;
+
+  // Leg 1: draw back, a little, in the opposite direction from the shot.
+  current = animateTransform(
+    slot,
+    {
+      transform: `translate(${-dx * RANGED_ATTACK_DRAW_FRACTION}px, ${-dy * RANGED_ATTACK_DRAW_FRACTION}px) rotate(8deg) scale(0.96)`,
+    },
+    RANGED_ATTACK_DRAW_MS,
+    'cubic-bezier(0.4, 0, 0.6, 1)',
+    () => {
+      // Leg 2: hold at full draw for a beat before loosing the shot.
+      current = speedableTimeout(() => {
+        // Leg 3: loose the shot — twice as fast as a melee swing's out leg
+        // (RANGED_ATTACK_OUT_MS), and with a much steeper ease-in than
+        // melee's own swing (which gathers speed gradually): this one sits
+        // almost still for the first stretch of the leg, then rockets to
+        // the target right at the end, reading as a sudden release rather
+        // than a smooth lunge.
+        current = animateTransform(
+          slot,
+          { transform: `translate(${dx}px, ${dy}px) rotate(-16deg) scale(1.08)` },
+          RANGED_ATTACK_OUT_MS,
+          'cubic-bezier(0.85, 0, 1, 0.6)',
+          () => {
+            onImpact();
+
+            current = speedableTimeout(() => {
+              // Leg 4: return to the weapon slot, same speed as a melee swing.
+              current = animateTransform(
+                slot,
+                { transform: 'translate(0, 0) rotate(0deg) scale(1)' },
+                WEAPON_ATTACK_RETURN_MS,
+                'cubic-bezier(0.2, 0.65, 0.3, 1)',
+                () => {
+                  slot.style.transition = '';
+                  slot.style.transform = '';
+                  slot.style.zIndex = '';
+                  slot.style.position = '';
+                  current = null;
+                  onDone();
+                }
+              );
+              if (speedRequested) current.speedUp();
+            }, WEAPON_ATTACK_IMPACT_MS);
+            if (speedRequested) current.speedUp();
+          }
+        );
+        if (speedRequested) current.speedUp();
+      }, RANGED_ATTACK_HOLD_MS);
       if (speedRequested) current.speedUp();
     }
   );
