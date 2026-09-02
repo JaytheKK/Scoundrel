@@ -107,9 +107,32 @@ const state = {
                               // paladinResistCharges. This used to also lift
                               // the weapon's degrade restriction entirely
                               // (isWeaponUsableOn() below); that effect has
-                              // been removed from Berserker and moved to a
-                              // different champion, so the two active
-                              // abilities don't overlap.
+                              // been removed from Berserker and moved to the
+                              // Sword Master champion instead (see
+                              // swordmasterMasteryCharges below), so the two
+                              // active abilities don't overlap.
+  swordmasterMasteryCharges: 0, // Sword Master's active ability ("Weapon
+                              // Mastery"): set to 3 by useAbility() below.
+                              // While > 0, the equipped weapon ignores
+                              // weaponMaxMonster (the "only usable on a
+                              // monster weaker than the last one it
+                              // defeated" degrade rule) entirely — see
+                              // isWeaponUsableOn() below — so a degraded
+                              // weapon can strike anything again. Counts
+                              // down by 1 on every one of the next 3 weapon
+                              // fights, whether or not the override was
+                              // actually needed that fight (see the gotcha
+                              // comment in fightMonster() — this is the
+                              // exact same mechanic Berserker's Frenzy used
+                              // to have, moved here; that gotcha is why the
+                              // decrement isn't gated on "only when it
+                              // mattered"). Never counts down on a
+                              // bare-handed fight, since a bare-handed fight
+                              // never touches the weapon's degrade ceiling
+                              // in the first place. 0 = ability inactive —
+                              // renderAbilityActiveGlow() (js/ui.js) reads
+                              // this directly, same pattern as Paladin's/
+                              // Berserker's own charge counters.
 
   // Whether fighting a monster should use the equipped weapon (when legal)
   // or go bare-handed. Normally a plain UI preference controlled by the
@@ -256,6 +279,7 @@ function initGame(championId = null, options = {}) {
   state.paladinResistCharges = 0;
   state.rogueTargeting = false;
   state.berserkerFrenzyCharges = 0;
+  state.swordmasterMasteryCharges = 0;
   state.useWeaponPreference = true;
 }
 
@@ -346,6 +370,13 @@ function useAbility() {
     return { message: t('abilityBerserkerFrenzy', { name: champ.name }) };
   }
 
+  if (state.champion === 'swordmaster') {
+    // See swordmasterMasteryCharges in the state object above and
+    // isWeaponUsableOn()/fightMonster() below.
+    state.swordmasterMasteryCharges = 3;
+    return { message: t('abilitySwordmasterMastery', { name: champ.name }) };
+  }
+
   return { message: t('abilityNotImplemented', { name: champ.name }) };
 }
 
@@ -384,15 +415,17 @@ function resolveBackstab(cardId) {
 }
 
 /** Whether the equipped weapon may currently be used against this monster
- * (ignoring player choice — just whether the rules allow it at all), gated
- * by weaponMaxMonster (the "only usable on a monster weaker than the last
- * one it defeated" degrade rule). Berserker's active ability used to lift
- * this restriction, but that's been moved to a different champion, see
- * fightMonster() below for what Berserker's ability does now. */
+ * (ignoring player choice — just whether the rules allow it at all).
+ * Normally gated by weaponMaxMonster (the "only usable on a monster weaker
+ * than the last one it defeated" degrade rule) — Sword Master's active
+ * ability ("Weapon Mastery", see useAbility() above) lifts that restriction
+ * entirely while swordmasterMasteryCharges > 0, so a degraded weapon can
+ * strike anything again. */
 function isWeaponUsableOn(card) {
+  const mastered = state.champion === 'swordmaster' && state.swordmasterMasteryCharges > 0;
   return (
     !!state.equippedWeapon &&
-    (state.weaponMaxMonster === null || card.rank < state.weaponMaxMonster)
+    (mastered || state.weaponMaxMonster === null || card.rank < state.weaponMaxMonster)
   );
 }
 
@@ -435,6 +468,19 @@ function fightMonster(card, useWeapon = true) {
     if (state.berserkerFrenzyCharges === 0) state.useWeaponPreference = true;
   }
 
+  // Sword Master's active ability ("Weapon Mastery"): while
+  // swordmasterMasteryCharges > 0, the equipped weapon ignores its degrade
+  // limit entirely (see isWeaponUsableOn() above) and can strike any
+  // monster. Computed from weaponMaxMonster BEFORE it gets overwritten
+  // below, purely to decide the flavor text (did the degrade rule actually
+  // need overriding this time, or was the weapon already legal anyway?) —
+  // the charge itself always ticks down on the next 3 weapon fights,
+  // whether or not it was actually needed each time (see the gotcha below).
+  const masteryActive =
+    weaponUsable && state.champion === 'swordmaster' && state.swordmasterMasteryCharges > 0;
+  const masteryOverrode =
+    masteryActive && state.weaponMaxMonster !== null && card.rank >= state.weaponMaxMonster;
+
   // Ids of monsters weakened this fight (currently only via Electric) — the
   // caller (main.js) uses this to play a "-1" + shake on those cards.
   const weakenedIds = [];
@@ -443,15 +489,42 @@ function fightMonster(card, useWeapon = true) {
   if (weaponUsable) {
     damage = Math.max(card.rank - weapon.rank, 0);
 
+    // GOTCHA: an earlier version only decremented swordmasterMasteryCharges
+    // when masteryOverrode was true (i.e. only on a fight the restriction
+    // would otherwise have blocked). That traps the counter: the very first
+    // mastery-overridden kill of a strong monster raises weaponMaxMonster
+    // (the ceiling, set below) up to that monster's rank, which then makes
+    // the weapon legally usable on almost everything for a long stretch
+    // afterward — so the restriction stops engaging, the remaining
+    // charge(s) never get spent, and the button/status line sits stuck on
+    // e.g. "1 left" indefinitely while the player keeps fighting freely.
+    // Always spending a charge on every weapon fight while active makes it
+    // a plain, predictable "next 3 weapon fights" counter instead — this
+    // hit Berserker's old Frenzy ability first (see the comment on
+    // frenzyActive above), and Weapon Mastery inherits the same mechanic,
+    // so it inherits the same gotcha.
+    if (masteryActive) state.swordmasterMasteryCharges -= 1;
+
     // Weapon degrade: normally the weapon can only be used again on a
     // monster weaker than the one it just defeated. Sturdy limits how far
     // that usable-strength ceiling can drop in one fight (max -10, the ×5
     // rescale of the original -2, see the "Value rescale" note in
     // js/cards.js) instead of dropping straight to the defeated monster's
-    // value.
+    // value. Sword Master's passive is a weaker version of the same idea
+    // (max -15, see CHAMPION_DESCRIPTIONS in js/champion-icons.js) — if
+    // both apply (a Sturdy weapon on a Sword Master), the smaller, more
+    // generous cap wins. Weapon Mastery only lifts the *restriction* for
+    // this swing (via isWeaponUsableOn() above) — the ceiling itself still
+    // updates normally afterward according to this same formula, so a
+    // later, non-mastered swing still respects the degrade rule (and
+    // Sword Master's passive cap keeps applying even then).
+    let maxDrop = weapon.effect === 'sturdy' ? 10 : null;
+    if (state.champion === 'swordmaster') {
+      maxDrop = maxDrop === null ? 15 : Math.min(maxDrop, 15);
+    }
     const previousCeiling = state.weaponMaxMonster === null ? weapon.rank : state.weaponMaxMonster;
     state.weaponMaxMonster =
-      weapon.effect === 'sturdy' ? Math.max(card.rank, previousCeiling - 10) : card.rank;
+      maxDrop === null ? card.rank : Math.max(card.rank, previousCeiling - maxDrop);
 
     if (weapon.effect === 'electric') {
       state.room.forEach((roomCard) => {
@@ -557,12 +630,17 @@ function fightMonster(card, useWeapon = true) {
   // weakenMonster()) still shows the right creature.
   const monsterLabel = monsterNameFor(card.baseRank) || card.name;
   const weaponLabel = weaponUsable ? weaponNameFor(weapon.baseRank) || weapon.name : null;
-  // Vampiric only heals if the weapon was actually usable this fight, which
-  // (via isWeaponUsableOn()) already implies the monster was within the
-  // weapon's degrade limit. Also never heal on a lethal hit: state.hp was already clamped to 0
-  // above, and healing after death let the player survive every fight at
-  // 1 HP forever (the vampiric-immortality bug) — gate on state.hp > 0.
-  const vampiricHeals = weaponUsable && weapon.effect === 'vampiric' && state.hp > 0;
+  // Vampiric only heals if the weapon actually defeated the monster within
+  // its normal degrade limit — true on a fresh weapon's first swing
+  // (weaponMaxMonster was null, so any monster counts as "under the limit"),
+  // and true afterward only while card.rank is still below weaponMaxMonster.
+  // Sword Master's Weapon Mastery can make weaponUsable true even when the
+  // monster is AT or ABOVE that limit (masteryOverrode) — that swing must
+  // not heal. Also never heal on a lethal hit: state.hp was already clamped
+  // to 0 above, and healing after death let the player survive every fight
+  // at 1 HP forever (the vampiric-immortality bug) — gate on state.hp > 0.
+  const vampiricHeals =
+    weaponUsable && weapon.effect === 'vampiric' && !masteryOverrode && state.hp > 0;
   // True the instant a Fragile weapon's uses reach 0 on this fight. See
   // breakFragileWeapon() above for why this only *reports* the break rather
   // than unequipping the weapon here directly.
@@ -605,6 +683,21 @@ function fightMonster(card, useWeapon = true) {
     const left = state.berserkerFrenzyCharges;
     message += left > 0 ? t('frenzyActiveLeft', { n: left }) : t('frenzyFaded');
   }
+  // masteryActive is already gated on weaponUsable (see where it's
+  // computed), so there's no bare-handed case to exclude here the way
+  // Frenzy's reporting above has to.
+  if (masteryActive) {
+    const left = state.swordmasterMasteryCharges;
+    if (masteryOverrode) {
+      message += left > 0
+        ? t('masteryOverpoweredLeft', { n: left })
+        : t('masteryOverpoweredFaded');
+    } else {
+      message += left > 0
+        ? t('masteryActiveLeft', { n: left })
+        : t('masteryFaded');
+    }
+  }
   if (blocked > 0) {
     const shieldLabel = shieldNameFor(shieldBefore.baseRank) || shieldBefore.name;
     message += shieldBroke
@@ -622,8 +715,9 @@ function fightMonster(card, useWeapon = true) {
 /** Pure, read-only preview of the damage a monster card would deal if
  * fought right now, mirroring fightMonster()'s damage math exactly (weapon/
  * bare-handed choice via useWeaponPreference, Berserker's flat reduction,
- * Paladin's Blessing, Frenzy's boosted bare-handed reduction, then the shield
- * block), but never mutating any state (no weapon degrade, no shield
+ * Paladin's Blessing, Frenzy's boosted bare-handed reduction, Weapon
+ * Mastery's degrade-limit override, then the shield block), but never
+ * mutating any state (no weapon degrade, no shield
  * durability loss, no charge spent). Used only to show a "how much would
  * this cost me" hint on hover (see showCardTooltip() in js/ui.js), which
  * can be called any number of times without side effects.
@@ -641,7 +735,10 @@ function previewMonsterDamage(card) {
   let vampiric = false;
   if (weaponUsable) {
     rawDamage = Math.max(card.rank - weapon.rank, 0);
-    vampiric = weapon.effect === 'vampiric';
+    const masteryActive = state.champion === 'swordmaster' && state.swordmasterMasteryCharges > 0;
+    const masteryOverrode =
+      masteryActive && state.weaponMaxMonster !== null && card.rank >= state.weaponMaxMonster;
+    vampiric = weapon.effect === 'vampiric' && !masteryOverrode;
   } else {
     rawDamage = card.rank;
     if (state.champion === 'berserker') {

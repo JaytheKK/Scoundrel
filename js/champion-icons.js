@@ -38,6 +38,7 @@ const CHAMPION_BASE = [
   { id: 'herbalist', image: 'images/champions/herbalist.png' },
   { id: 'rogue', image: 'images/champions/rogue.png' },
   { id: 'berserker', image: 'images/champions/berserker.png' },
+  { id: 'swordmaster', image: 'images/champions/swordmaster.png' },
 ];
 
 const CHAMPION_NAMES = {
@@ -46,12 +47,14 @@ const CHAMPION_NAMES = {
     herbalist: 'Herbalist',
     rogue: 'Rogue',
     berserker: 'Berserker',
+    swordmaster: 'Sword Master',
   },
   de: {
     paladin: 'Paladin',
     herbalist: 'Kräuter\u00ADkundige',
     rogue: 'Schurke',
     berserker: 'Berserker',
+    swordmaster: 'Schwert­meister',
   },
 };
 
@@ -68,12 +71,14 @@ const CHAMPION_FLAVOR = {
     herbalist: "A wandering healer, well versed in poultices and the dungeon's hidden remedies.",
     rogue: "A quick-fingered thief who slips past danger and strikes when it's least expected.",
     berserker: 'A battle-hardened warrior who shrugs off pain and hits hardest with bare fists.',
+    swordmaster: 'A disciplined duelist who has spent a lifetime perfecting the care and use of a blade.',
   },
   de: {
     paladin: 'Ein frommer Ritter, der heiligen Glauben in Klinge und Schild lenkt.',
     herbalist: 'Eine Kräuterkundige, bewandert in Umschlägen und den verborgenen Heilmitteln des Dungeons.',
     rogue: 'Ein flinkfingriger Dieb, der der Gefahr ausweicht und zuschlägt, wenn man es am wenigsten erwartet.',
     berserker: 'Ein kampferprobter Krieger, der Schmerz ignoriert und am härtesten mit bloßen Fäusten zuschlägt.',
+    swordmaster: 'Ein disziplinierter Duellant, der sein Leben der Pflege und dem Einsatz der Klinge gewidmet hat.',
   },
 };
 
@@ -83,12 +88,14 @@ const CHAMPION_DESCRIPTIONS = {
     herbalist: 'You can drink two potions per room instead of one',
     rogue: 'You are allowed to flee two rooms in a row instead of one',
     berserker: 'Fighting bare-handed, you take 10 less damage from monsters',
+    swordmaster: "Your weapon's degrade limit can never drop by more than 15 per fight",
   },
   de: {
     paladin: 'Für alle 5 besiegten Monster heilst du 10 LP',
     herbalist: 'Du kannst zwei Tränke pro Raum trinken statt nur einen',
     rogue: 'Du darfst zwei Räume hintereinander fliehen statt nur einen',
     berserker: 'Im bloßhändigen Kampf erleidest du 10 weniger Schaden von Monstern',
+    swordmaster: 'Die Abnutzungsgrenze deiner Waffe kann pro Kampf nie um mehr als 15 sinken',
   },
 };
 

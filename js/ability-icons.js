@@ -28,6 +28,10 @@ const ABILITY_ICONS = {
   herbalist: 'images/abilities/HerbalistAbilityTransparent.png',
   rogue: 'images/abilities/RogueAbilityTransparent.png',
   berserker: 'images/abilities/BerserkerAbilityTransparent.png',
+  // No artwork yet for Sword Master's ability — left unmapped, per the
+  // "leave a new champion's image null until its art exists" convention
+  // (see js/champion-icons.js); abilityIconFor() falls back to no icon
+  // shown (renderAbilityButton() in js/ui.js) until this gets an entry.
 };
 
 function abilityIconFor(championId) {
@@ -44,6 +48,7 @@ const ABILITY_MANA_COST = {
   herbalist: 4,
   rogue: 3,
   berserker: 4,
+  swordmaster: 4,
 };
 
 function abilityManaCostFor(championId) {
@@ -79,6 +84,10 @@ const ABILITY_DETAILS = {
       name: 'Frenzy',
       description: "For the next 2 fights, bare-handed hits take 40 less damage instead of the passive's 10.",
     },
+    swordmaster: {
+      name: 'Weapon Mastery',
+      description: 'For the next 3 weapon fights, the weapon ignores its degrade limit and can strike any monster.',
+    },
   },
   de: {
     paladin: {
@@ -96,6 +105,10 @@ const ABILITY_DETAILS = {
     berserker: {
       name: 'Raserei',
       description: 'Für die nächsten 2 Kämpfe verursachen waffenlose Treffer 40 statt der passiven 10 weniger Schaden.',
+    },
+    swordmaster: {
+      name: 'Waffenmeisterschaft',
+      description: 'Für die nächsten 3 Waffenkämpfe ignoriert die Waffe ihre Abnutzungsgrenze und kann jedes Monster treffen.',
     },
   },
 };

@@ -405,9 +405,11 @@ function renderManaRing() {
 /** Toggles #ability-wrap's pulsing golden .ability-wrap--active glow (see
  * style.css) while the current champion's active ability has an ongoing
  * effect running — Paladin's paladinResistCharges (counts down as he takes
- * reduced-damage hits) or Berserker's berserkerFrenzyCharges (counts down
+ * reduced-damage hits), Berserker's berserkerFrenzyCharges (counts down
  * as his bare-handed fights take boosted damage reduction, see
- * fightMonster() in js/state.js) — either way the glow disappears the
+ * fightMonster() in js/state.js), or Sword Master's swordmasterMasteryCharges
+ * (counts down as his weapon ignores its degrade limit, see fightMonster()
+ * in js/state.js) — either way the glow disappears the
  * instant its counter hits 0. Lives on #ability-wrap rather than
  * #ability-btn itself — see the
  * comment on .ability-wrap--active::after in style.css for why (short
@@ -421,7 +423,8 @@ function renderManaRing() {
 function renderAbilityActiveGlow() {
   const active =
     (state.champion === 'paladin' && state.paladinResistCharges > 0) ||
-    (state.champion === 'berserker' && state.berserkerFrenzyCharges > 0);
+    (state.champion === 'berserker' && state.berserkerFrenzyCharges > 0) ||
+    (state.champion === 'swordmaster' && state.swordmasterMasteryCharges > 0);
   document.getElementById('ability-wrap').classList.toggle('ability-wrap--active', active);
 }
 
@@ -650,10 +653,17 @@ function renderWeaponSlot() {
   } else if (!state.equippedWeapon) {
     status.textContent = t('noWeaponEquipped');
   } else {
+    // Sword Master's Weapon Mastery (see fightMonster()/isWeaponUsableOn()
+    // in js/state.js) lifts the degrade restriction entirely while active —
+    // reflect that here too, so this line doesn't keep claiming a
+    // restriction that currently doesn't apply.
+    const mastered = state.champion === 'swordmaster' && state.swordmasterMasteryCharges > 0;
     const restriction =
-      state.weaponMaxMonster === null
-        ? t('canDefeatAny')
-        : t('canOnlyDefeatWeaker', { n: state.weaponMaxMonster });
+      mastered
+        ? t('masteryOverrides', { n: state.swordmasterMasteryCharges })
+        : state.weaponMaxMonster === null
+          ? t('canDefeatAny')
+          : t('canOnlyDefeatWeaker', { n: state.weaponMaxMonster });
     const effect = state.equippedWeapon.effect && WEAPON_EFFECTS[state.equippedWeapon.effect];
     status.textContent = effect ? `${restriction}. ${effect.name}: ${effect.description}` : restriction;
   }

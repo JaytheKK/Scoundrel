@@ -242,7 +242,8 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
     clicking a card in-game — no separate "confirm" step. `initGame()` in
     `js/state.js` now takes a `championId` param and stores it on
     `state.champion`; each passive is implemented inline, gated on that id,
-    right where it's relevant — Paladin/Berserker in `fightMonster()`,
+    right where it's relevant — Paladin/Berserker/Sword Master in
+    `fightMonster()`/`isWeaponUsableOn()`,
     Herbalist in `drinkPotion()` (raises the "only first potion heals per
     room" cap from `state.potionsDrunkThisRoom`), Rogue in `fleeRoom()`
     (raises the "can't flee twice in a row" cap from `state.fleeStreak`) —
@@ -1642,6 +1643,72 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
   (see "Champion portrait next to the HP bar" above). If a new champion is
   added before its artwork exists, leave its `image` as `null` — see
   "Portrait placeholder for missing artwork" above.
+- **Sword Master's portrait (`images/champions/swordmaster.png`) used a
+  different source format and crop technique from the 4 champions above,**
+  since its source render (`images/champions/SwordMaster.jpeg`, kept as
+  source reference) isn't a 2x2 sheet of thin line-art portraits on a plain
+  white background — it's a full-color circular medallion illustration on
+  its own individual canvas (a tea-stained parchment background outside the
+  circle), the exact same format the paladin/herbalist/rogue/berserker
+  portraits actually turned out to already be cropped from
+  (`PaladinIconNew.jpeg`/`HerbalistIconNew.jpeg`/`RogueIconNew.jpeg`/
+  `BerserkIconNew.jpeg`, also kept as source reference, which supersede the
+  stale "2x2 sheet, alpha = 255 − min(R,G,B)" pipeline this file's own
+  comment in `js/champion-icons.js` still describes — that comment
+  describes an even earlier pipeline no longer in use for any of the 4).
+  For this format, cropping is just "keep the circle, drop the parchment
+  outside it" — no alpha-threshold reconstruction of thin linework needed,
+  since it's a full-color painting, not line art on a removed background.
+  - **Finding the exact crop box (a tight square tangent to the circle) by
+    eye or by simple dark-pixel thresholding didn't work reliably** — the
+    parchment background itself has brown mottled stains and a darker
+    vignette near the canvas edges, dark enough in places to fail a
+    naive "threshold dark pixels, take the largest connected blob's
+    bounding box" approach (it merged the actual circular border with
+    unrelated dark background texture into one blob spanning nearly the
+    entire canvas, nowhere close to the true circle). **Fixed with
+    image-registration instead of segmentation**: since the 4 existing
+    champion portraits (700x700 PNGs) and their own individual source
+    JPEGs (2048x2048, same circular-medallion format) already existed as a
+    known-correct example pair, the exact crop box used for one of them
+    (Berserker) was recovered by directly searching for the square crop
+    region whose content, resized down, best matches the known output
+    (`berserker.png`) — a coarse grid search over crop position/size
+    scored by mean pixel difference (on a small downsampled resolution for
+    speed), refined with `scipy.optimize.minimize` (Nelder-Mead) around the
+    best coarse candidate. This recovered crop box, applied to
+    `BerserkIconNew.jpeg`, reproduced `berserker.png` almost exactly
+    (median/25th/75th/95th percentile pixel values matched exactly once
+    compared with an alpha mask applied to both, confirming the recovered
+    box was correct, not just close) — an earlier whole-image, unmasked
+    mean-pixel-difference check had looked alarming (means differed by
+    ~40/255) but that was a red herring caused by comparing raw RGB in the
+    fully-transparent corner regions, which hold leftover, never-rendered
+    pixel data unrelated to what's actually visible.
+  - Since a second, independent check (a dark-pixel connected-component
+    scan) had already found that `SwordMaster.jpeg` and `BerserkIconNew.jpeg`
+    share the *exact same* large-component bounding box pixel-for-pixel,
+    the two source images are evidently generated from the same fixed
+    template/composition (same circle position and radius on the canvas
+    every time) — so the crop box recovered from Berserker's known-correct
+    example was reused verbatim for Sword Master, rather than re-deriving
+    it from scratch, and produced a clean, correctly-centered circular crop
+    on the first try (verified by compositing the result over the page's
+    actual dark background, per this file's usual verification method, and
+    confirming no visible parchment halo or off-center circle). **If a
+    future champion's source art arrives in this same "circular medallion
+    on its own parchment canvas" format, try this exact same crop box
+    first before re-deriving one** — only fall back to the registration
+    search above if the new source turns out to use a different circle
+    position/radius than this established batch.
+  - Resized to 700x700 (matching the 4 existing champion portraits'
+    resolution — see "Second real-world bug" under "Loading screen" above
+    for why that specific size matters for load performance) with a
+    circular alpha mask inscribed exactly touching all 4 edges of that
+    square (a ~2px Gaussian blur on the mask only, feathering the cut edge
+    the same "soft-mask, not soft-color" way every other crop in this file
+    does) — this is why the circle in every one of these 5 portraits
+    visually fills its own square canvas edge-to-edge with no margin.
 
 ## Champion Active Abilities (custom addition, not part of the original Scoundrel rules)
 
@@ -1767,41 +1834,66 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
       that needs to extend past a `<button>`'s own box should live on a
       non-button ancestor the same way, not on the button itself.
 - **Berserker's ability — "Frenzy":** deliberately **not** another
-  damage-reduction counter — an earlier version ("Rage") reduced incoming
-  damage by 4 for 3 hits, the exact same mechanic as Paladin's Blessing
-  under different flavor text, which read as a reskin rather than a
-  distinct ability once actually played. Frenzy instead lifts a
-  *restriction* rather than reducing damage, so it occupies different
-  system space entirely:
-  - Activating it sets `state.berserkerFrenzyCharges = 4`.
+  damage-reduction counter *on top of* Paladin's Blessing — an earlier
+  version ("Rage") reduced incoming damage by 4 for 3 hits, the exact same
+  mechanic as Blessing under different flavor text, which read as a reskin
+  rather than a distinct ability once actually played. A later version
+  ("Frenzy" v2, see below) instead lifted a *restriction* (the weapon's
+  degrade limit), but that mechanic was in turn moved off Berserker onto
+  the Sword Master champion (see "Sword Master's ability" below) so the two
+  champions' active abilities don't overlap. Frenzy as it exists now
+  activating it sets `state.berserkerFrenzyCharges = 2` and, for the next 2
+  fights (weapon or bare-handed alike, ticking down regardless — same
+  "unconditional counter" reasoning as the bug/gotcha under Sword Master's
+  ability below), boosts the passive's flat bare-handed damage reduction
+  from 10 up to 40 (replacing it, not stacking with it). Since the boost
+  only ever applies to a bare-handed fight, activating it also forces
+  `state.useWeaponPreference` to `false` (so both charges don't silently
+  burn on weapon fights with zero effect), automatically restored to `true`
+  the instant the charges run out — `renderWeaponToggle()` (`js/ui.js`)
+  keeps the "Using weapon" checkbox in sync with that forced flip. Same
+  golden `.ability-wrap--active` glow as every other champion's ongoing
+  effect (`renderAbilityActiveGlow()`'s `berserker` branch), same
+  "can span fights/rooms/flees, only a fight burns a charge" lifecycle as
+  Paladin's Blessing.
+- **Sword Master's ability — "Weapon Mastery":** this is the mechanic
+  Berserker's Frenzy used to have (see above) before it was moved here, so
+  it's an *exact* transplant with two numbers changed (3 charges instead of
+  4, this champion's own `ABILITY_MANA_COST` instead of Berserker's) rather
+  than a new mechanic designed from scratch:
+  - Activating it sets `state.swordmasterMasteryCharges = 3`.
     `isWeaponUsableOn(card)` (`js/state.js`) then ignores
     `weaponMaxMonster` (the "weapon can only be used again on a monster
     weaker than the last one it defeated" degrade rule) entirely while
-    `berserkerFrenzyCharges > 0` — a fully degraded weapon can strike any
+    `swordmasterMasteryCharges > 0` — a fully degraded weapon can strike any
     monster again, full stop.
-  - The charge ticks down on **every one of the next 4 weapon fights**,
+  - The charge ticks down on **every one of the next 3 weapon fights**,
     whether or not the override was actually needed that particular fight
-    — a plain, predictable "next 4 weapon fights" counter. `fightMonster()`
-    still separately computes `frenzyOverrode` (from the pre-fight
-    `weaponMaxMonster` value, before it gets overwritten for the next
-    fight) purely to pick the right flavor text — "overpowered the
-    weapon's limit" when it was actually blocked, vs. a plainer "Frenzy is
-    active" when the swing would've been legal anyway — but `frenzyActive`
-    (just "was the weapon used while charges > 0") is what actually
-    decrements the counter.
-    - **Bug/gotcha, found via playtesting:** an earlier version *only*
-      decremented on a fight `frenzyOverrode` was true for (mirroring
-      Paladin's "only counts if there was actually damage to reduce"
-      rule), reasoning a charge shouldn't be "wasted" on a swing that was
-      already legal. This looked fine in isolated tests but broke in real
-      play: the very first frenzied kill of a strong monster sets
-      `weaponMaxMonster` (the ceiling) to that monster's high rank — same
-      formula as any other kill — which then makes the weapon legally
-      usable on almost everything for a long stretch afterward. The
-      restriction stops engaging, so the remaining charge(s) never get
-      spent, and the ability button/status line sit stuck showing e.g.
-      "1 left" indefinitely while the player keeps fighting freely — it
-      looks like the ability never expires. Reported by the player as "the
+    — a plain, predictable "next 3 weapon fights" counter, never on a
+    bare-handed fight (a bare-handed fight never touches the weapon's
+    degrade ceiling in the first place, so there's nothing for the charge
+    to apply to). `fightMonster()` still separately computes
+    `masteryOverrode` (from the pre-fight `weaponMaxMonster` value, before
+    it gets overwritten for the next fight) purely to pick the right
+    flavor text — "overpowered the weapon's limit" when it was actually
+    blocked, vs. a plainer "Weapon Mastery is active" when the swing
+    would've been legal anyway — but `masteryActive` (just "was the weapon
+    used while charges > 0") is what actually decrements the counter.
+    - **Bug/gotcha, found via playtesting when this was still Berserker's
+      Frenzy (moved here verbatim, since the underlying mechanic and its
+      failure mode are unchanged):** an earlier version *only* decremented
+      on a fight `masteryOverrode` was true for (mirroring Paladin's "only
+      counts if there was actually damage to reduce" rule), reasoning a
+      charge shouldn't be "wasted" on a swing that was already legal. This
+      looked fine in isolated tests but broke in real play: the very first
+      mastery-overridden kill of a strong monster sets `weaponMaxMonster`
+      (the ceiling) to that monster's high rank — same formula as any other
+      kill — which then makes the weapon legally usable on almost
+      everything for a long stretch afterward. The restriction stops
+      engaging, so the remaining charge(s) never get spent, and the ability
+      button/status line sit stuck showing e.g. "1 left" indefinitely while
+      the player keeps fighting freely — it looks like the ability never
+      expires. Reported by the player (back when this was Frenzy) as "the
       limit never goes away even though it still says 1 left" after
       killing ~10 monsters. Fixed by making the charge unconditional (see
       above) — **don't reintroduce an "only spend it when it mattered"
@@ -1809,34 +1901,54 @@ card game by Zach Gage & Kurt Bieg, built with plain HTML/CSS/JavaScript
       guaranteed to keep recurring at a steady rate; here it wasn't, because
       using the ability changes the very condition (`weaponMaxMonster`)
       that would trigger its own future use.
+  - Sword Master's **passive** (`CHAMPION_DESCRIPTIONS.swordmaster` in
+    `js/champion-icons.js`) shares the same spot in `fightMonster()` as the
+    Sturdy weapon effect — the "usable-strength ceiling can never drop by
+    more than N per fight" cap — just weaker (max drop 15, vs. Sturdy's 10).
+    If a Sturdy weapon is equipped while playing Sword Master, the smaller
+    (more generous) of the two caps wins, computed as a single `maxDrop`
+    value in `fightMonster()` rather than two separate, conflicting
+    ceiling-update branches.
   - The degrade ceiling (`weaponMaxMonster`) still updates normally after a
-    Frenzied swing (same Sturdy-aware formula as any other fight) — Frenzy
-    only lifts the restriction check for that one swing, it doesn't stop
-    the weapon from degrading. A later, non-Frenzied (or charge-exhausted)
-    swing still respects whatever ceiling that fight left behind.
-  - Same golden `.ability-wrap--active` glow as Paladin's Blessing —
-    `renderAbilityActiveGlow()` has an `||` branch for
-    `state.champion === 'berserker' && state.berserkerFrenzyCharges > 0` —
-    and the counter hitting 0 is what ends the effect, same "can span
-    fights/rooms/flees" behavior as Paladin's.
-  - `renderWeaponSlot()` (`js/ui.js`) also reflects Frenzy directly in
-    `#weapon-status`'s restriction line while active (`"Frenzy overrides
-    the degrade limit (N left)"` instead of the normal `"Can only defeat
-    monsters weaker than X"`), since that line would otherwise keep
+    mastered swing (same Sturdy/passive-aware formula as any other fight,
+    see above) — Weapon Mastery only lifts the restriction check for that
+    one swing, it doesn't stop the weapon from degrading. A later,
+    non-mastered (or charge-exhausted) swing still respects whatever
+    ceiling that fight left behind (still subject to the passive's own 15
+    cap either way).
+  - Same golden `.ability-wrap--active` glow as every other champion's
+    ongoing effect — `renderAbilityActiveGlow()` has an `||` branch for
+    `state.champion === 'swordmaster' && state.swordmasterMasteryCharges > 0`
+    — and the counter hitting 0 is what ends the effect, same "can span
+    fights/rooms/flees" behavior as Paladin's/Berserker's.
+  - `renderWeaponSlot()` (`js/ui.js`) also reflects Weapon Mastery directly
+    in `#weapon-status`'s restriction line while active (`"Weapon Mastery
+    overrides the degrade limit (N left)"` instead of the normal `"Can only
+    defeat monsters weaker than X"`), since that line would otherwise keep
     claiming a restriction that doesn't currently apply. Called both from
     the normal post-fight re-render and right after activating the ability
     (`js/main.js`'s ability-button handler), so the status text updates
     immediately on activation, not just after the next fight.
+  - No dedicated ability-icon artwork yet (`ABILITY_ICONS` in
+    `js/ability-icons.js` has no `swordmaster` entry) — `abilityIconFor()`
+    falls back to showing no icon on `#ability-btn` until one is supplied,
+    same "leave it unmapped until the art exists" convention as a new
+    champion's portrait (see "Portrait placeholder for missing artwork"
+    above).
   - **Lesson for future champion abilities:** if a new ability ends up
     being "reduce/increase a number by X for N uses" in the same spot
     another champion's ability already occupies, prefer lifting/granting a
     *rule exception* instead (bypassing a restriction, changing what's
     legal) so each champion's active ability is mechanically distinct, not
-    just reskinned flavor text over the same math.
+    just reskinned flavor text over the same math — this is exactly why
+    the degrade-limit-override mechanic itself was moved off Berserker
+    (onto Sword Master) rather than left to coexist with Berserker's own
+    reworked, damage-reduction-flavored Frenzy.
 - **Mana cost per champion** — the numbers to tweak if these ever need
   rebalancing — lives in one place: `ABILITY_MANA_COST` in
   `js/ability-icons.js` (`abilityManaCostFor()` reads from it everywhere
-  else). Currently: Paladin 5, Herbalist 4, Rogue 3, Berserker 4.
+  else). Currently: Paladin 5, Herbalist 4, Rogue 3, Berserker 4,
+  Sword Master 4.
 - **Ability name/description text** — the plain-language explanation shown
   in both the rules screen and the info popup below — lives in one place
   too: `ABILITY_DETAILS` in `js/ability-icons.js` (`abilityDetailsFor()`).
