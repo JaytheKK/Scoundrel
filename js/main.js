@@ -560,7 +560,10 @@ function closeGallery() {
 }
 
 document.getElementById('champions-btn').addEventListener('click', () => openGallery('champions'));
-document.getElementById('weapons-btn').addEventListener('click', () => openGallery('weapons'));
+// weapons-btn no longer opens the gallery — see "--- Deckbuilder ---" below,
+// it now opens openDeckbuilder() instead, per request ("Es soll der neue
+// Weapons Menü button sein, gallerie wird also durch den deck builder
+// ersetzt").
 document.getElementById('monsters-btn').addEventListener('click', () => openGallery('monsters'));
 document.getElementById('shields-btn').addEventListener('click', () => openGallery('shields'));
 document.getElementById('anleitung-btn').addEventListener('click', () => openMenu(false));
@@ -604,6 +607,61 @@ document.getElementById('gallery-detail-overlay').addEventListener('click', (eve
   if (event.target.id === 'gallery-detail-overlay') closeGalleryDetail();
 });
 
+// --- Deckbuilder (weapon loadout) -------------------------------------------
+// Replaces what used to be the Weapons gallery (see js/deckbuilder.js for
+// the selection state/rules and renderDeckbuilder()/buildDeckbuilderWeapon
+// Tile() in js/ui.js for the tiles themselves).
+
+function openDeckbuilder() {
+  renderDeckbuilder();
+  document.getElementById('deckbuilder-overlay').classList.remove('hidden');
+}
+
+function closeDeckbuilder() {
+  document.getElementById('deckbuilder-overlay').classList.add('hidden');
+}
+
+document.getElementById('weapons-btn').addEventListener('click', openDeckbuilder);
+document.getElementById('deckbuilder-close-btn').addEventListener('click', closeDeckbuilder);
+
+// Clicking the dimmed backdrop (not the panel itself) closes the Deckbuilder.
+document.getElementById('deckbuilder-overlay').addEventListener('click', (event) => {
+  if (event.target.id === 'deckbuilder-overlay') closeDeckbuilder();
+});
+
+// Clicking an available weapon (the pool below the loadout slots) selects it
+// into the loadout, unless the loadout is already full (DECKBUILDER_MAX_
+// SLOTS) or adding it would push the deckCost sum over DECKBUILDER_BUDGET —
+// either way the clicked tile just wiggles instead of moving
+// (canSelectDeckbuilderWeapon() in js/deckbuilder.js says which), and the
+// specific stat line that blocked it (slot count or budget) wiggles too, so
+// it's clear which limit was actually hit.
+document.getElementById('deckbuilder-pool').addEventListener('click', (event) => {
+  const item = event.target.closest('.gallery-item');
+  if (!item) return;
+  const result = selectDeckbuilderWeapon(item.dataset.cardId);
+  if (!result.ok) {
+    triggerDeckbuilderWiggle(item);
+    if (result.reason === 'slots') {
+      triggerDeckbuilderWiggle(document.getElementById('deckbuilder-slot-count'));
+    } else if (result.reason === 'budget') {
+      triggerDeckbuilderWiggle(document.getElementById('deckbuilder-budget'));
+    }
+    return;
+  }
+  renderDeckbuilder();
+});
+
+// Clicking a filled loadout slot removes it, sending it back down into the
+// pool below — always succeeds (there's no limit on removing), so this
+// never needs the wiggle feedback the pool click handler above does.
+document.getElementById('deckbuilder-slots').addEventListener('click', (event) => {
+  const item = event.target.closest('.gallery-item');
+  if (!item) return;
+  deselectDeckbuilderWeapon(item.dataset.cardId);
+  renderDeckbuilder();
+});
+
 // --- champion-select screen --------------------------------------------------
 // Shown whenever a new game is started (see every "New Game"/"Play Again"
 // listener above, and the room's empty-state CTA) — the actual game only
@@ -640,8 +698,10 @@ document.addEventListener('keydown', (event) => {
     closeMenu();
     closeGalleryDetail();
     closeGallery();
+    closeDeckbuilder();
     closeChampionSelect();
     closeOptions();
+    closeCardFlip();
   }
 });
 
@@ -670,6 +730,151 @@ document.body.addEventListener('mouseout', (event) => {
   // <img>), this isn't a real "leave" yet, so don't hide the tooltip.
   if (target && !target.contains(event.relatedTarget)) hideCardTooltip();
 });
+
+// --- card flip (right-click / long-press to see a card's description) ------
+// See flipCard()/closeCardFlip() in js/ui.js and CLAUDE.md's "Card flip
+// (description back face)" for the full write-up. Delegated on <body>, same
+// reasoning as the hover tooltip above (room cards/Deckbuilder tiles are
+// torn down and rebuilt on every render) — every flippable element carries
+// its description via a plain `data-flip-desc` attribute (set by
+// renderCard()/renderWeaponSlot()/renderShieldSlot()/
+// buildDeckbuilderWeaponTile() in js/ui.js), read here rather than
+// duplicating that lookup logic.
+
+document.body.addEventListener('contextmenu', (event) => {
+  const target = event.target.closest('[data-flip-desc]');
+  if (!target) return;
+  // Suppress the browser's own right-click context menu on a flippable
+  // card — flipCard() is the replacement "see more" affordance here.
+  event.preventDefault();
+  flipCard(target);
+});
+
+// A long press does the same thing as right-click, on ANY pointer type —
+// not just touch. Originally this only listened for touch events (phones
+// have no right-click), but "generell einfach rechtsklick und
+// gedrückthalten macht beides" (right-click AND press-and-hold should both
+// just work, in general) — reported not working on a laptop trackpad/mouse,
+// which never fires touch events at all. mousedown/mouseup below cover
+// that the same way touchstart/touchend do for touch, both arming the same
+// CARD_FLIP_LONGPRESS_MS timer via armFlipLongPress().
+const CARD_FLIP_LONGPRESS_MS = 500;
+const FLIP_LONGPRESS_MOVE_TOLERANCE_PX = 10;
+let flipLongPressTimer = null;
+// Set the instant a long press actually fires flipCard() — consumed by the
+// capture-phase 'click' listener further down to swallow the one ghost
+// click that always follows a press-then-release on the same element
+// (touch's synthetic click emulation, or a plain mouse's own native
+// mousedown+mouseup→click sequence — both would otherwise immediately hit
+// the freshly-flipped card and flip it right back closed again before it
+// could be read). Cleared either when consumed, or by its own short safety
+// timeout below in case no click ever actually follows (e.g. the pointer
+// was dragged off before release, so browsers don't fire one at all).
+let suppressNextCardClick = false;
+
+function armFlipLongPress(target) {
+  flipLongPressTimer = setTimeout(() => {
+    flipLongPressTimer = null;
+    suppressNextCardClick = true;
+    setTimeout(() => {
+      suppressNextCardClick = false;
+    }, 400);
+    flipCard(target);
+  }, CARD_FLIP_LONGPRESS_MS);
+}
+
+function cancelFlipLongPress() {
+  if (flipLongPressTimer) clearTimeout(flipLongPressTimer);
+  flipLongPressTimer = null;
+}
+
+// Mouse: only the primary button counts as a "press" here — a real
+// right-click already opens the flip immediately via 'contextmenu' above,
+// it doesn't need this timer too.
+let flipMouseDownPos = null;
+document.body.addEventListener('mousedown', (event) => {
+  if (event.button !== 0) return;
+  const target = event.target.closest('[data-flip-desc]');
+  if (!target) return;
+  flipMouseDownPos = { x: event.clientX, y: event.clientY };
+  armFlipLongPress(target);
+});
+document.body.addEventListener('mouseup', cancelFlipLongPress);
+// Real movement past a small tolerance cancels a pending press (a
+// deliberately-held mouse can still wobble a pixel or two, unlike touch,
+// so this needs a small tolerance rather than cancelling on any move at
+// all — see the touchmove handler further down for the touch equivalent,
+// which doesn't need one).
+document.body.addEventListener('mousemove', (event) => {
+  if (!flipMouseDownPos || !flipLongPressTimer) return;
+  const dx = event.clientX - flipMouseDownPos.x;
+  const dy = event.clientY - flipMouseDownPos.y;
+  if (Math.hypot(dx, dy) > FLIP_LONGPRESS_MOVE_TOLERANCE_PX) cancelFlipLongPress();
+});
+
+// Touch: same idea, no movement tolerance needed (a held finger is
+// naturally steadier than a held mouse, and any real touchmove reliably
+// means an intentional scroll/drag).
+document.body.addEventListener(
+  'touchstart',
+  (event) => {
+    const target = event.target.closest('[data-flip-desc]');
+    if (!target) return;
+    armFlipLongPress(target);
+  },
+  { passive: true }
+);
+document.body.addEventListener('touchend', cancelFlipLongPress);
+document.body.addEventListener('touchmove', cancelFlipLongPress);
+document.body.addEventListener('touchcancel', cancelFlipLongPress);
+
+// Clicking (or right-clicking again) anywhere on an already-flipped card
+// closes it — there's no separate "✕" button, the card itself is the
+// toggle, same as flipping a real playing card back over. Capture phase
+// (registered on `document`, not `body`, and with `true`) so this always
+// runs BEFORE the card's own normal delegated click handler (fighting a
+// monster, selecting a Deckbuilder weapon, etc. — see the #room/
+// #deckbuilder-pool/#deckbuilder-slots listeners above) gets a chance to
+// see the same click, `stopPropagation()` then keeps it from ever reaching
+// those. Without this, clicking a flipped card to close it would also
+// trigger whatever the card would normally do.
+document.addEventListener(
+  'click',
+  (event) => {
+    if (suppressNextCardClick) {
+      suppressNextCardClick = false;
+      // Only actually swallow it if it's the ghost click landing back on
+      // the card that was just flipped — the 400ms safety-clear above is
+      // generous enough that, in theory, an unrelated genuine click could
+      // sneak in first (e.g. the pointer was dragged off before release,
+      // so the ghost click never came); that one should proceed normally
+      // rather than being eaten for no reason.
+      if (activeCardFlip && activeCardFlip.el.contains(event.target)) {
+        event.stopPropagation();
+        event.preventDefault();
+        return;
+      }
+    }
+    const target = event.target.closest('.card-flip-active');
+    if (!target) return;
+    event.stopPropagation();
+    event.preventDefault();
+    closeCardFlip();
+  },
+  true
+);
+
+document.addEventListener(
+  'contextmenu',
+  (event) => {
+    const target = event.target.closest('.card-flip-active');
+    if (!target) return;
+    event.preventDefault();
+    event.stopPropagation();
+    closeCardFlip();
+  },
+  true
+);
 
 // --- initial page load -------------------------------------------------------
 // Apply the stored (or default) language to the static UI before anything

@@ -354,14 +354,16 @@ button:disabled::before {
 }
 
 /* --- menu popup (New Game + rules) -----------------------------------------
-   #gallery-overlay (Champions/Weapons/Monsters galleries, see further down)
-   and #champion-select-overlay (the "pick a champion" screen shown whenever
-   a new game starts) share this exact chrome — same dimmed backdrop, panel,
+   #gallery-overlay (Champions/Monsters/Shields galleries, see further down),
+   #deckbuilder-overlay (the weapon-loadout screen, see further down), and
+   #champion-select-overlay (the "pick a champion" screen shown whenever a
+   new game starts) share this exact chrome — same dimmed backdrop, panel,
    close button, and title treatment — so they're styled via the same
    selectors rather than duplicated. Only their inner content differs. */
 
 #menu-overlay,
 #gallery-overlay,
+#deckbuilder-overlay,
 #champion-select-overlay,
 #options-overlay {
   position: fixed;
@@ -377,6 +379,7 @@ button:disabled::before {
 
 #menu-overlay.hidden,
 #gallery-overlay.hidden,
+#deckbuilder-overlay.hidden,
 #champion-select-overlay.hidden,
 #options-overlay.hidden {
   display: none;
@@ -384,6 +387,7 @@ button:disabled::before {
 
 #menu-panel,
 #gallery-panel,
+#deckbuilder-panel,
 #champion-select-panel,
 #options-panel {
   position: relative;
@@ -399,9 +403,15 @@ button:disabled::before {
 }
 
 /* Champion-select gets a bit more room than the menu/gallery panels since
-   its tiles carry a full description line, not just a name + rank. */
+   its tiles carry a full description line, not just a name + rank. The
+   Deckbuilder needs even more (loadout slots + a whole pool of tiles both
+   stacked in one panel), so it gets the widest fixed width of the three. */
 #champion-select-panel {
   width: min(38rem, 100%);
+}
+
+#deckbuilder-panel {
+  width: min(42rem, 100%);
 }
 
 @keyframes menu-in {
@@ -417,6 +427,7 @@ button:disabled::before {
 
 #menu-close-btn,
 #gallery-close-btn,
+#deckbuilder-close-btn,
 #champion-select-close-btn,
 #options-close-btn {
   position: absolute;
@@ -428,6 +439,7 @@ button:disabled::before {
 
 #menu-title,
 #gallery-title,
+#deckbuilder-title,
 #champion-select-title,
 #options-title {
   font-family: var(--font-display);
@@ -1011,13 +1023,118 @@ button:disabled::before {
    has, so here the frame lives on .gallery-item-portrait alone (which
    doubles as the card box) and .gallery-item-name stays below it, in
    normal flex flow, rather than pulled inside the frame. */
-#gallery-grid.gallery-grid--weapons {
-  /* Widened from an initial 5.5rem — reported as making the whole tile
-     (frame + hover outline) look too small/cramped, closer to
-     champions' own 8.5rem column now. */
+/* #deckbuilder-slots/#deckbuilder-pool (the Deckbuilder's loadout-slot grid
+   and its weapon pool below it, see renderDeckbuilder() in js/ui.js) reuse
+   .gallery-item[data-kind='weapons']/[data-kind='rangedWeapons']'s tile
+   styling wholesale (that's an attribute selector, not scoped to
+   #gallery-grid, so it applies here automatically) — this is just their own
+   grid-container layout, the same numbers the old #gallery-grid.gallery-
+   grid--weapons rule used before the Weapons gallery was replaced by the
+   Deckbuilder (see CLAUDE.md's "Ranged Weapons"/weapon Deckbuilder note). */
+#deckbuilder-slots,
+#deckbuilder-pool {
+  display: grid;
   grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
   gap: 0.9rem;
   align-items: start;
+}
+
+/* A row of exactly DECKBUILDER_MAX_SLOTS (js/deckbuilder.js) boxes — some
+   filled with a weapon tile, some empty placeholders — so the grid never
+   reflows to a different column count as the loadout fills up or empties
+   out, only individual cells swap between "tile" and "placeholder". */
+#deckbuilder-slots {
+  margin-bottom: 0.5rem;
+}
+
+/* Empty loadout slot: same aspect ratio as a weapon tile's own portrait
+   (.gallery-item-portrait[data-kind='weapons'], 100 / 140) so a row of mixed
+   filled/empty slots lines up evenly, plain dashed-outline styling matching
+   every other empty equip slot in the game (.weapon-slot-empty/.shield-
+   slot-empty, .portrait-placeholder). */
+.deckbuilder-slot-empty {
+  width: 100%;
+  aspect-ratio: 100 / 140;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+}
+
+/* Two small stat lines above the loadout slots (slot count, deckCost budget
+   sum) — see renderDeckbuilder() in js/ui.js. */
+#deckbuilder-stats {
+  display: flex;
+  justify-content: center;
+  gap: 1.2rem;
+  margin-bottom: 0.75rem;
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* Highlights whichever stat is currently at its cap (loadout full, or
+   deckCost budget maxed) — a quiet, standing hint for why the next click on
+   an available weapon might wiggle instead of adding it (see
+   triggerDeckbuilderWiggle() in js/ui.js for the click-time feedback
+   itself). Same accent-colored "this is the active/limiting one" treatment
+   used elsewhere (e.g. .lang-btn--active), not a new color language. */
+.deckbuilder-stat--full {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.deckbuilder-section-title {
+  font-family: var(--font-ui);
+  color: var(--accent);
+  font-size: 1rem;
+  margin: 0 0 0.6rem;
+  text-align: center;
+}
+
+/* Deck-point cost badge (Deckbuilder tiles only, via buildGalleryItem()'s
+   `cost` param in js/ui.js) — a small circular badge on a weapon tile's
+   portrait, styled to match .card-effect-badge (a rolled weapon effect's
+   own corner badge on a real in-game card, see .card-effect-badge above)
+   as closely as a percentage-based box can, per request ("Mache den Wert
+   der Karte im Deckbuilder gleich wie die Eigenschaft... ich möchte den
+   weißen Ring nicht") — same dark translucent fill and position (top/left
+   converted from .card-effect-badge's own 18px/22px-of-a-140x100-card
+   pixel numbers into the equivalent 12.9%/22% of this portrait box),
+   deliberately WITHOUT .card-effect-badge's light border ring. Deliberately
+   separate from the strength number already shown in the frame's hexagon
+   further down (.gallery-item-rank, bottom-center): that number is combat
+   strength, this one is how much of the loadout's deckCost budget the card
+   spends, and for a ranged weapon the two differ (see CARD_LIST's deckCost
+   overrides in js/cards.js), so they need to read as two distinct things
+   in two distinct places, not the same number shown twice in one spot. */
+.gallery-item-cost {
+  position: absolute;
+  top: 12.9%;
+  left: 22%;
+  /* width alone (height comes from aspect-ratio), on purpose: the portrait
+     box this badge sits on isn't square (weapon tiles are taller than
+     wide, aspect-ratio: 100 / 140), so a plain "width: 20%; height: 20%"
+     of that same non-square box computed two different pixel sizes and
+     rendered an oval instead of a circle — width + aspect-ratio: 1 / 1
+     guarantees a true circle regardless of the parent's own ratio. */
+  width: 20%;
+  aspect-ratio: 1 / 1;
+  min-width: 1.05rem;
+  border-radius: 50%;
+  background: rgba(69, 69, 69, 0.382);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Black, not white — reported as hard to read against this badge's own
+     dark translucent fill; var(--card-text) is the same near-black used
+     everywhere else on a light card/parchment surface in this project. */
+  color: var(--card-text);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  /* 0.62rem bumped 10% per request. */
+  font-size: 0.68rem;
+  line-height: 1;
+  pointer-events: none;
 }
 
 .gallery-item[data-kind='weapons'],
@@ -1129,7 +1246,7 @@ button:disabled::before {
   justify-content: center;
   font-family: var(--font-ui);
   /* This hexagon box scales with the grid column (currently ~25-26px tall
-     at the widened 7.5rem column, see #gallery-grid.gallery-grid--weapons
+     at the widened 7.5rem column, see #deckbuilder-slots/#deckbuilder-pool
      above) — 0.9rem still leaves a comfortable margin on all sides for a
      2-digit value like "10" at that box size (checked via
      canvas.measureText() against the box's real rendered width, same
@@ -2237,6 +2354,16 @@ button:disabled::before {
 }
 
 .card--shake {
+  animation: card-shake 0.3s ease-in-out;
+}
+
+/* Deckbuilder feedback (see triggerDeckbuilderWiggle() in js/ui.js): reuses
+   the exact same card-shake keyframe as .card--shake above, just its own
+   class since it's applied to a plain .gallery-item tile or a stat-line
+   <span>, not a .card — the loadout is full, or adding the clicked weapon
+   would go over the deckCost budget (see canSelectDeckbuilderWeapon() in
+   js/deckbuilder.js). */
+.deckbuilder-item--wiggle {
   animation: card-shake 0.3s ease-in-out;
 }
 
@@ -3481,6 +3608,134 @@ body.tutorial-active .toggle-wrapper {
 
 .tooltip-damage-vamp {
   color: var(--success);
+}
+
+/* --- card flip (description back face) -------------------------------------
+   Right-click / long-press flips any card-shaped element carrying
+   data-flip-desc to show its full description — see flipCard()/
+   closeCardFlip() in js/ui.js for the full write-up and CLAUDE.md's "Card
+   flip (description back face)".
+
+   el ITSELF becomes the flip's front face — a wrapper is inserted at el's
+   old position in the DOM/layout, and el (with every one of its own real
+   classes, background/frame art, tier glow, pulse pseudo-elements, box
+   shadow, all untouched) is moved inside it as `.card-flip-inner`'s first
+   child, alongside a new `.card-flip-face--back` sibling holding the name/
+   description. Both faces occupy the exact same box (see the sizing note
+   below) and only `.card-flip-inner` itself carries the rotateY transform,
+   so el's real frame/artwork and the back face rotate together as one
+   rigid object.
+
+   An earlier version instead left el in place and moved el's *children*
+   into a brand new `.card-flip-face--front` div, leaving el's own
+   background (the card's illustrated frame) un-rotated on the stationary
+   el underneath. That looked like only the weapon icon flipping in 3D
+   while the surrounding card frame stayed flat — reported directly
+   ("flipped das icon von der waffe, aber die karte nicht") — and caused a
+   visible scale/size mismatch right around the 90° mark, since the frame
+   and the extracted content foreshortened at different rates (one of them
+   not rotating at all). Moving el itself, not just its children, fixes
+   this at the root: there's only one rotating object, so nothing can ever
+   get out of sync with anything else.
+
+   An even earlier version (before that) cloned el into a position: fixed
+   overlay anchored to a one-time getBoundingClientRect() snapshot — that
+   desynced the instant the real card's scroll container (e.g.
+   #deckbuilder-panel) scrolled, since the fixed clone stayed put on screen
+   while the hidden real card scrolled away underneath it. Moving el itself
+   (this version) sidesteps that failure mode too, for the same reason: el
+   never leaves its real DOM subtree, so there's no second coordinate to
+   keep in sync. */
+
+/* The new static container left at el's original spot in the layout —
+   carries the perspective a 3D flip needs, and is what main.js's capture-
+   phase "click closes the flip"/suppress-ghost-click listeners look for via
+   .closest('.card-flip-active') (an ancestor search, so it still matches
+   through el and .card-flip-inner). position: relative anchors
+   .card-flip-inner's position: absolute; inset: 0 to this box specifically;
+   flex-shrink: 0 keeps it from being squeezed narrower than el's real size
+   by a flex row (e.g. #room) while flipped — a plain new div has neither
+   property by default the way el's own .card/.gallery-item class did.
+   flipCard() sets this element's width/height inline, from el's own
+   measured rect, since it's otherwise empty of any content that could size
+   it. */
+.card-flip-active {
+  position: relative;
+  perspective: 1200px;
+  flex-shrink: 0;
+}
+
+.card-flip-inner {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  transition: transform 0.5s ease;
+  transform-style: preserve-3d;
+}
+
+.card-flip-inner--flipped {
+  transform: rotateY(180deg);
+}
+
+/* Shared by el itself (the front face) and the new back-face div.
+   position: absolute; inset: 0 sizes each face to fill .card-flip-inner's
+   box (which flipCard() sizes to match el's own original rect) exactly:
+   el already carries its own explicit width/height (.card's fixed
+   calc()s), so the "left/width/right all specified" case just makes the
+   browser ignore the redundant `right`/`bottom` from inset and keep el's
+   real size unchanged; a Deckbuilder tile (.gallery-item, no explicit
+   size of its own) instead stretches to fill that same box exactly, via
+   the ordinary auto-width-solves-from-inset case. Either way the face
+   ends up pixel-identical to el's real, original box, no separate sizing
+   rule needed per element kind. */
+.card-flip-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Same parchment-on-wood look as #card-tooltip (images/backgrounds/
+   GalleryBackground.png, the same warm border color) rather than a flat
+   var(--card-bg) rectangle — reported as reading like a plain white box
+   that broke the card's own illustrated-frame look; this keeps the back
+   face feeling like part of the same card, not a generic popup. */
+.card-flip-face--back {
+  transform: rotateY(180deg);
+  background-color: var(--card-bg);
+  background-image: url('images/backgrounds/GalleryBackground.png');
+  background-size: cover;
+  background-position: center;
+  border: 2px solid #8c6239;
+  border-radius: var(--radius);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.4rem;
+  overflow: hidden;
+  text-align: center;
+}
+
+.card-flip-back-name {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 0.68rem;
+  /* var(--accent) (a gold/tan) was hard to read against the back face's own
+     parchment background, per request — var(--card-text) (near-black) is
+     the same dark color every other piece of text on a light card/parchment
+     surface in this project already uses. */
+  color: var(--card-text);
+  line-height: 1.2;
+}
+
+.card-flip-back-desc {
+  font-size: 0.6rem;
+  line-height: 1.32;
+  color: var(--card-text);
+  overflow-y: auto;
 }
 
 #tutorial-coachmark-text {

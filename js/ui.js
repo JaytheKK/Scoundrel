@@ -126,6 +126,29 @@ function cardTooltipText(card) {
   return effect ? `${name} (${effect.name})` : name;
 }
 
+/** The fuller flavor blurb shown on a card's flipped-over back face (see
+ * "Card flip (description back face)" in CLAUDE.md and flipCard() further
+ * down) — a different, longer text from cardTooltipText() above, which only
+ * shows the short flavor name on hover. Reads from whichever description
+ * table matches the card's type (monsterDescriptionFor()/
+ * potionDescriptionFor()/weaponDescriptionFor()/
+ * rangedWeaponDescriptionFor()/shieldDescriptionFor()), keyed off
+ * `baseRank` like flavorNameFor() above so a weakened monster still shows
+ * its own real description. Appends the ammo-count sentence for a Ranged
+ * weapon, same as the old Weapons gallery's detail popup used to. */
+function cardDescriptionText(card) {
+  if (card.type === 'monster') return monsterDescriptionFor(card.baseRank);
+  if (card.type === 'potion') return potionDescriptionFor(card.baseRank);
+  if (card.type === 'weapon') {
+    if (card.suit === SUITS.RANGED) {
+      return `${rangedWeaponDescriptionFor(card.baseRank)} ${t('rangedAmmoSentence', { n: RANGED_AMMO_MAX })}`;
+    }
+    return weaponDescriptionFor(card.baseRank);
+  }
+  if (card.type === 'shield') return shieldDescriptionFor(card.baseRank);
+  return null;
+}
+
 /** Builds the small "damage you'd take" line shown under a monster card's
  * hover tooltip (see showCardTooltip() below), from previewMonsterDamage()
  * in js/state.js, a live, read-only preview that already accounts for an
@@ -179,6 +202,12 @@ function renderCard(card) {
   // instead, so the name shows in the game's own styled bubble rather than
   // the browser's default tooltip box.
   el.dataset.tooltip = cardTooltipText(card);
+  // Right-click / long-press flip target (see flipCard() further down) —
+  // data-flip-desc is what the delegated listeners in js/main.js actually
+  // key off (a card with no description, if that ever happens, simply
+  // never flips); data-flip-name is just the heading shown above it.
+  el.dataset.flipName = flavorNameFor(card) || card.name;
+  el.dataset.flipDesc = cardDescriptionText(card) || '';
   fillCardFace(el, card);
   return el;
 }
@@ -246,6 +275,10 @@ function renderRoom() {
   // a brand-new card it was never actually shown for. See showCardTooltip()/
   // hideCardTooltip() further down.
   hideCardTooltip();
+  // Same reasoning for an open card flip (see closeCardFlipImmediate() in
+  // this file) — a flipped room card's DOM structure is about to be wiped
+  // out by the innerHTML reset below either way.
+  closeCardFlipImmediate();
   const roomEl = document.getElementById('room');
   roomEl.innerHTML = '';
 
@@ -639,17 +672,22 @@ function renderWeaponSlot() {
   // so any tooltip currently anchored to it would otherwise be left
   // showing stale or leftover text.
   hideCardTooltip();
+  closeCardFlipImmediate();
 
   if (!state.equippedWeapon) {
     slot.className = 'card weapon-slot-empty';
     slot.style.removeProperty('--edge-rgb');
     delete slot.dataset.suit;
     delete slot.dataset.tooltip;
+    delete slot.dataset.flipName;
+    delete slot.dataset.flipDesc;
     slot.innerHTML = '<img class="slot-icon" src="images/symbols/SwordSymbolTransparent.png" alt="">';
   } else {
     slot.className = `card card--weapon card--tier-${cardTier(state.equippedWeapon.rank)}`;
     slot.dataset.suit = state.equippedWeapon.suit;
     slot.dataset.tooltip = cardTooltipText(state.equippedWeapon);
+    slot.dataset.flipName = flavorNameFor(state.equippedWeapon) || state.equippedWeapon.name;
+    slot.dataset.flipDesc = cardDescriptionText(state.equippedWeapon) || '';
     applyGlowColor(slot, state.equippedWeapon);
     fillCardFace(slot, state.equippedWeapon);
   }
@@ -739,18 +777,23 @@ function renderShieldSlot() {
 
   // See the matching call in renderWeaponSlot() above.
   hideCardTooltip();
+  closeCardFlipImmediate();
 
   if (!state.equippedShield) {
     slot.className = 'card shield-slot-empty';
     slot.style.removeProperty('--edge-rgb');
     delete slot.dataset.suit;
     delete slot.dataset.tooltip;
+    delete slot.dataset.flipName;
+    delete slot.dataset.flipDesc;
     slot.innerHTML = '<img class="slot-icon" src="images/symbols/ShieldSymbolTransparent.png" alt="">';
   } else {
     const shield = state.equippedShield;
     slot.className = `card card--shield card--tier-${cardTier(shield.rank)}`;
     slot.dataset.suit = shield.suit;
     slot.dataset.tooltip = cardTooltipText(shield);
+    slot.dataset.flipName = flavorNameFor(shield) || shield.name;
+    slot.dataset.flipDesc = cardDescriptionText(shield) || '';
     applyGlowColor(slot, shield);
     fillCardFace(slot, shield);
   }
@@ -807,6 +850,164 @@ function showCardTooltip(el) {
 
 function hideCardTooltip() {
   document.getElementById('card-tooltip').classList.add('hidden');
+}
+
+// --- card flip (description back face) --------------------------------------
+// Right-click (desktop) or a long press (touch, where there's no right-click
+// — see the delegated contextmenu/touch listeners in js/main.js) on ANY
+// card-shaped element carrying data-flip-desc flips it in place to reveal
+// its full flavor description on the back, per explicit request ("Die Karte
+// soll dann sich umdrehen, eine Flip Animation... wichtig weil wir später
+// wichtige Beschreibungen brauchen. In-Game soll das auch gehen"). Wired up
+// on real room cards (renderCard()), the equipped weapon/shield slots
+// (renderWeaponSlot()/renderShieldSlot()), and Deckbuilder tiles
+// (buildDeckbuilderWeaponTile()) — see CLAUDE.md's "Card flip (description
+// back face)" for the full write-up. Deliberately NOT added to the
+// Monsters/Shields/Champions galleries, which already have their own
+// working "click a tile to see its description" flow (the detail popup,
+// see renderGalleryDetail()) that this doesn't need to replace.
+
+// Kept in sync with .card-flip-inner's transition-duration in style.css —
+// same "one JS constant matching one CSS duration" pattern as
+// CARD_ANIMATION_MS in js/main.js.
+const CARD_FLIP_MS = 500;
+
+// The single currently-open flip, or null — only one card can be examined
+// at a time; a second right-click/long-press elsewhere while one is already
+// open is a no-op (see flipCard()) rather than silently closing the first,
+// since that risked feeling accidental. { el, wrapper, inner } — el is the
+// real card element itself (NOT a clone, see flipCard() below for why),
+// temporarily relocated inside wrapper/inner; wrapper is the new static
+// container flipCard() left at el's original spot in the DOM/layout.
+let activeCardFlip = null;
+
+/** Moves el back out of the flip structure to exactly where it was before
+ * flipCard() touched it (right before `wrapper`, then wrapper itself is
+ * discarded) and drops el's `.card-flip-face` marker class. Shared by
+ * closeCardFlip() (once the closing animation has actually finished) and
+ * closeCardFlipImmediate() (right away, no animation). A no-op if wrapper
+ * has already been detached some other way. */
+function restoreFlippedElement(flip) {
+  flip.el.classList.remove('card-flip-face');
+  if (flip.wrapper.parentNode) {
+    flip.wrapper.parentNode.insertBefore(flip.el, flip.wrapper);
+    flip.wrapper.remove();
+  }
+}
+
+/** Flips the currently-open card (if any) back to its front face and, once
+ * the closing half of the animation has actually finished, restores el to
+ * exactly how/where it looked before flipCard() ever touched it. Safe to
+ * call with nothing open (a no-op) — used by the global click/contextmenu
+ * listeners in js/main.js and the Escape key. */
+function closeCardFlip() {
+  const flip = activeCardFlip;
+  if (!flip) return;
+  activeCardFlip = null;
+  // If el was already moved out from under us by something else while the
+  // flip was open (see closeCardFlipImmediate() below), there's nothing
+  // left here to animate/restore.
+  if (flip.el.parentNode !== flip.inner) return;
+  flip.inner.classList.remove('card-flip-inner--flipped');
+  const restore = () => {
+    if (flip.el.parentNode !== flip.inner) return;
+    restoreFlippedElement(flip);
+  };
+  flip.inner.addEventListener('transitionend', restore, { once: true });
+  // Safety net in case transitionend never fires for some reason.
+  setTimeout(restore, CARD_FLIP_MS + 60);
+}
+
+/** Drops the currently-open flip's state WITHOUT animating it closed, but
+ * still restores el to its real place in the DOM immediately — for use
+ * only right before something else is about to tear down/rebuild the same
+ * element's content anyway (renderRoom()/renderWeaponSlot()/
+ * renderShieldSlot()/renderDeckbuilder(), each already calling this at
+ * their own top, same "about to repaint, clear any transient state first"
+ * reasoning hideCardTooltip() there already follows). A room card gets
+ * discarded and rebuilt from scratch regardless, so restoring its exact
+ * position first is moot there, but #weapon-slot-card/#shield-slot-card
+ * are persistent nodes reused (not recreated) across renders — without
+ * putting el back under its real parent (#weapon-slot-wrap) first, the
+ * next renderWeaponSlot()/renderShieldSlot() would still find and update
+ * the right element by id, but leave it permanently stuck one level too
+ * deep inside a now-orphaned wrapper/inner, breaking every percentage-
+ * based/absolutely-positioned sibling that assumes it sits directly under
+ * that wrapper (e.g. #weapon-fragile-bar). A blunt "any re-render just
+ * closes the flip" rule rather than only closing when the *specific*
+ * flipped element is the one being rebuilt — simpler to reason about, and
+ * examining a card's description while some other action re-renders the
+ * screen is a reasonable enough time to let the peek end anyway. */
+function closeCardFlipImmediate() {
+  const flip = activeCardFlip;
+  activeCardFlip = null;
+  if (!flip) return;
+  restoreFlippedElement(flip);
+}
+
+/** Flips `el` (any element with data-flip-name/data-flip-desc set, see the
+ * comment above the CARD_FLIP_MS constant) in place to show its
+ * description. el ITSELF becomes the flip's rotating front face — see the
+ * long "card flip" comment in style.css for the full reasoning (in short:
+ * an earlier version left el static and only rotated its extracted
+ * children, which looked like the artwork flipping inside a stationary
+ * card frame; moving el itself, background/frame art and all, fixes that
+ * at the root, since there's only one rotating object left to ever get out
+ * of sync).
+ *
+ * A new `wrapper` div is inserted at el's current position in the
+ * DOM/layout (sized, inline, from el's own measured rect, since it starts
+ * out otherwise empty of any content that could size it) — this is what
+ * keeps el's spot in a flex row (#room) or grid (a Deckbuilder pool/slots
+ * grid) reserved while el itself is momentarily elsewhere. el is then
+ * moved inside a new `.card-flip-inner` (appended into `wrapper`),
+ * alongside a new `.card-flip-face--back` sibling holding the name/
+ * description; both get `position: absolute; inset: 0` from the shared
+ * `.card-flip-face` class in style.css, which — per that rule's own
+ * comment — resolves to exactly el's original box either way, regardless
+ * of whether el has its own explicit size (a real `.card`) or not (a
+ * `.gallery-item` Deckbuilder tile). */
+function flipCard(el) {
+  if (activeCardFlip) return; // one at a time, see the comment above
+  const desc = el.dataset.flipDesc;
+  if (!desc) return;
+  const name = el.dataset.flipName || '';
+
+  const rect = el.getBoundingClientRect();
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'card-flip-active';
+  wrapper.style.width = `${rect.width}px`;
+  wrapper.style.height = `${rect.height}px`;
+  el.parentNode.insertBefore(wrapper, el);
+
+  const back = document.createElement('div');
+  back.className = 'card-flip-face card-flip-face--back';
+  const backName = document.createElement('div');
+  backName.className = 'card-flip-back-name';
+  backName.textContent = name;
+  const backDesc = document.createElement('div');
+  backDesc.className = 'card-flip-back-desc';
+  backDesc.textContent = desc;
+  back.appendChild(backName);
+  back.appendChild(backDesc);
+
+  const inner = document.createElement('div');
+  inner.className = 'card-flip-inner';
+  el.classList.add('card-flip-face');
+  inner.appendChild(el);
+  inner.appendChild(back);
+  wrapper.appendChild(inner);
+
+  activeCardFlip = { el, wrapper, inner };
+
+  // Triggered on the next frame so the unflipped state actually paints
+  // first — adding the class in the same synchronous pass that builds the
+  // structure would let the browser skip straight to the flipped state
+  // with no visible transition.
+  requestAnimationFrame(() => {
+    inner.classList.add('card-flip-inner--flipped');
+  });
 }
 
 function renderMessage(text) {
@@ -887,13 +1088,18 @@ function fillPortrait(el, image, name, letter) {
   }
 }
 
-/** Builds one portrait+name+rank tile for #gallery-grid. Clicking it opens
- * the detail popup (see openGalleryDetail() in main.js) — `kind`/`key` are
- * stashed as dataset attributes so the click handler (delegated on
- * #gallery-grid) knows which item was clicked without needing a closure per
- * tile. `rankLabel` overrides the default "String(key)" bottom line — pass
- * '' to omit it entirely (used for champions, which have no rank). */
-function buildGalleryItem(kind, image, name, key, rankLabel) {
+/** Builds one portrait+name+rank tile — used both for #gallery-grid (where
+ * clicking it opens the detail popup, see openGalleryDetail() in main.js)
+ * and, via buildDeckbuilderWeaponTile() further down, for the Deckbuilder's
+ * slot/pool tiles (where clicking it selects/deselects instead). `kind`/
+ * `key` are stashed as dataset attributes so a delegated click handler knows
+ * which item was clicked without needing a closure per tile. `rankLabel`
+ * overrides the default "String(key)" bottom line — pass '' to omit it
+ * entirely (used for champions, which have no rank). `cost`, if given, adds
+ * a small corner badge showing a weapon's Deckbuilder deckCost (js/cards.js)
+ * — separate from the strength number already shown in the frame's hexagon,
+ * since for a ranged weapon the two differ (see js/deckbuilder.js). */
+function buildGalleryItem(kind, image, name, key, rankLabel, cost) {
   const item = document.createElement('div');
   item.className = 'gallery-item';
   item.dataset.kind = kind;
@@ -953,15 +1159,24 @@ function buildGalleryItem(kind, image, name, key, rankLabel) {
     }
   }
 
+  if (usesCardFrame && cost !== undefined) {
+    const costEl = document.createElement('div');
+    costEl.className = 'gallery-item-cost';
+    costEl.textContent = String(cost);
+    costEl.title = t('deckbuilderCostTitle', { n: cost });
+    portrait.appendChild(costEl);
+  }
+
   return item;
 }
 
-/** A full-width label inside #gallery-grid, splitting the Weapons gallery
- * into its two categories (Close Range / Ranged) without needing two
- * separate gallery buttons/panels — see renderGallery()'s 'weapons' branch
- * below. Spans every column the same way #room-empty spans the 2x2 room
- * grid (see CLAUDE.md's "Fixed card positions within the 2x2 grid"), via
- * .gallery-section-heading's own grid-column: 1 / -1 in style.css. */
+/** A full-width label, splitting a grid of tiles into headed categories
+ * without needing separate panels — originally built for the Weapons
+ * gallery's Close Range/Ranged split, now reused by the Deckbuilder's pool
+ * (renderDeckbuilder() below) for the exact same split. Spans every column
+ * the same way #room-empty spans the 2x2 room grid (see CLAUDE.md's "Fixed
+ * card positions within the 2x2 grid"), via .gallery-section-heading's own
+ * grid-column: 1 / -1 in style.css. */
 function buildGallerySectionHeading(text) {
   const heading = document.createElement('div');
   heading.className = 'gallery-section-heading';
@@ -969,11 +1184,12 @@ function buildGallerySectionHeading(text) {
   return heading;
 }
 
-/** Fills #gallery-overlay for one of 'champions' / 'weapons' / 'monsters' /
- * 'shields'. Weapons/Monsters/Shields list every rank's artwork + flavor
- * name (same data as the card tooltips, see flavorNameFor() above);
- * Champions lists the fixed CHAMPIONS roster (js/champion-icons.js) instead
- * of a rank range. */
+/** Fills #gallery-overlay for one of 'champions' / 'monsters' / 'shields'.
+ * Monsters/Shields list every rank's artwork + flavor name (same data as the
+ * card tooltips, see flavorNameFor() above); Champions lists the fixed
+ * CHAMPIONS roster (js/champion-icons.js) instead of a rank range. Weapons
+ * used to be a fourth kind here — see renderDeckbuilder() further down for
+ * where that view now lives. */
 function renderGallery(kind) {
   const title = document.getElementById('gallery-title');
   const grid = document.getElementById('gallery-grid');
@@ -984,46 +1200,20 @@ function renderGallery(kind) {
   // style.css) — same frame art and aspect-ratio as the champion-select
   // screen, since Weapons/Monsters/Shields only ever need small icon tiles.
   grid.classList.toggle('gallery-grid--champions', kind === 'champions');
-  // Weapons, Shields, and Monsters each get the same illustrated-card-frame
-  // treatment as Champions, each with its own frame/positioning (see
-  // .gallery-item[data-kind='weapons']/[data-kind='shields']/
-  // [data-kind='monsters'] in style.css).
-  grid.classList.toggle('gallery-grid--weapons', kind === 'weapons');
+  // Shields and Monsters each get the same illustrated-card-frame treatment
+  // as Champions, each with its own frame/positioning (see .gallery-item
+  // [data-kind='shields']/[data-kind='monsters'] in style.css). Weapons used
+  // to be a third kind here too ('weapons'/'rangedWeapons') — that whole
+  // gallery view has been replaced by the Deckbuilder (js/deckbuilder.js,
+  // renderDeckbuilder() below), which reuses buildGalleryItem() directly for
+  // its own tiles instead of going through renderGallery()/this function.
   grid.classList.toggle('gallery-grid--shields', kind === 'shields');
   grid.classList.toggle('gallery-grid--monsters', kind === 'monsters');
 
   // Ranges are the ×5-rescaled rank values (see the "Value rescale" note in
-  // js/cards.js) — old rank 2-10/2-14/3-5 is now 10-50/10-70/15-25, in steps
-  // of 5 instead of 1.
-  if (kind === 'weapons') {
-    title.textContent = t('galleryTitleWeapons');
-    // Split into two headed sections rather than two separate gallery
-    // buttons/panels, per the "close range vs ranged" category split (see
-    // "Ranged Weapons" in CLAUDE.md) — both groups still share the one
-    // #gallery-grid, just with a full-width heading in front of each.
-    grid.appendChild(buildGallerySectionHeading(t('galleryHeadingMeleeWeapons')));
-    for (let rank = 10; rank <= 50; rank += 5) {
-      grid.appendChild(
-        buildGalleryItem(
-          'weapons',
-          `images/weapons/MeleeWeapons/${rank}.png`,
-          weaponNameFor(rank),
-          rank
-        )
-      );
-    }
-    grid.appendChild(buildGallerySectionHeading(t('galleryHeadingRangedWeapons')));
-    getRangedWeaponRankPool().forEach((rank) => {
-      grid.appendChild(
-        buildGalleryItem(
-          'rangedWeapons',
-          `images/weapons/RangedWeapons/${rank}.png`,
-          rangedWeaponNameFor(rank),
-          rank
-        )
-      );
-    });
-  } else if (kind === 'monsters') {
+  // js/cards.js) — old rank 2-14/3-5 is now 10-70/15-25, in steps of 5
+  // instead of 1.
+  if (kind === 'monsters') {
     title.textContent = t('galleryTitleMonsters');
     // Reads the same pool getFreshDeck()'s monster selection draws from
     // (getMonsterRankPool() in js/monster-icons.js), not a hardcoded range —
@@ -1059,17 +1249,13 @@ function renderGalleryDetail(kind, key) {
   let image, name, description, subtitle;
   let isHtml = false;
 
-  if (kind === 'weapons') {
-    image = `images/weapons/MeleeWeapons/${key}.png`;
-    name = weaponNameFor(key);
-    description = weaponDescriptionFor(key);
-    subtitle = t('strengthLabel', { n: rankLabel(key) });
-  } else if (kind === 'rangedWeapons') {
-    image = `images/weapons/RangedWeapons/${key}.png`;
-    name = rangedWeaponNameFor(key);
-    description = `${rangedWeaponDescriptionFor(key)} ${t('rangedAmmoSentence', { n: RANGED_AMMO_MAX })}`;
-    subtitle = t('strengthLabel', { n: rankLabel(key) });
-  } else if (kind === 'monsters') {
+  // 'weapons'/'rangedWeapons' used to be handled here too, back when the
+  // Weapons gallery opened this same detail popup on a tile click — see
+  // renderDeckbuilder()/buildDeckbuilderWeaponTile() for where a weapon
+  // tile's flavor text (weaponDescriptionFor()/rangedWeaponDescriptionFor())
+  // is shown now instead (a native title tooltip, since the Deckbuilder's
+  // own click behavior is select/deselect, not "open a detail popup").
+  if (kind === 'monsters') {
     image = `images/monsters/${key}.png`;
     name = monsterNameFor(key);
     description = monsterDescriptionFor(key);
@@ -1116,6 +1302,117 @@ function renderGalleryDetail(kind, key) {
   } else {
     textEl.textContent = description || '';
   }
+}
+
+// --- Deckbuilder (weapon loadout, replaces the old Weapons gallery — see
+// js/deckbuilder.js for the selection state/rules and openDeckbuilder()/the
+// click wiring in js/main.js) -------------------------------------------
+
+/** One weapon tile for the Deckbuilder — reuses buildGalleryItem() wholesale
+ * (the exact same illustrated card-frame treatment the old Weapons gallery
+ * tiles had, see "Weapons gallery reuses the real in-game weapon card
+ * frame" in CLAUDE.md) so a tile looks identical whether it's sitting in a
+ * loadout slot or the pool below, just with its deckCost badge added (see
+ * buildGalleryItem()'s `cost` param) and `dataset.cardId` set to the card's
+ * real js/cards.js id, so the click handlers in js/main.js can select/
+ * deselect it directly rather than reconstructing an id from kind+rank. */
+function buildDeckbuilderWeaponTile(card) {
+  const isRanged = card.suit === SUITS.RANGED;
+  const kind = isRanged ? 'rangedWeapons' : 'weapons';
+  const name = isRanged ? rangedWeaponNameFor(card.rank) : weaponNameFor(card.rank);
+  const item = buildGalleryItem(kind, card.image, name, card.rank, undefined, card.deckCost);
+  item.dataset.cardId = card.id;
+  // Right-click / long-press flip target (see flipCard() in this file) —
+  // carries the flavor text the old Weapons gallery's detail popup used to
+  // show (see the removed 'weapons'/'rangedWeapons' branches in
+  // renderGalleryDetail() above). The Deckbuilder's own click behavior is
+  // select/deselect, not "open a detail popup", so a native title tooltip
+  // isn't the right fit here either — flip is.
+  item.dataset.flipName = name;
+  item.dataset.flipDesc = isRanged
+    ? `${rangedWeaponDescriptionFor(card.rank)} ${t('rangedAmmoSentence', { n: RANGED_AMMO_MAX })}`
+    : weaponDescriptionFor(card.rank);
+  return item;
+}
+
+/** Fills #deckbuilder-slots (always exactly DECKBUILDER_MAX_SLOTS boxes,
+ * js/deckbuilder.js — empty ones as a plain dashed placeholder) and
+ * #deckbuilder-pool (every weapon NOT currently selected, split into the
+ * same Close Range/Ranged sections the old Weapons gallery used, via
+ * buildGallerySectionHeading()), plus the slot-count/budget stat lines.
+ * Called after every change to deckbuilderState (select, deselect) and once
+ * on openDeckbuilder() — always a full re-render rather than patching
+ * individual tiles in and out, simple and cheap enough at this scale (at
+ * most 13 weapon cards total). */
+function renderDeckbuilder() {
+  // Same reasoning as renderRoom()'s closeCardFlipImmediate() call — every
+  // tile is about to be torn down and rebuilt from scratch below.
+  closeCardFlipImmediate();
+  const selectedIds = getSelectedWeaponIds();
+  const selectedSet = new Set(selectedIds);
+  const sum = selectedWeaponValueSum();
+
+  const slotCountEl = document.getElementById('deckbuilder-slot-count');
+  const budgetEl = document.getElementById('deckbuilder-budget');
+  slotCountEl.textContent = t('deckbuilderSlotsLabel', {
+    n: selectedIds.length,
+    max: DECKBUILDER_MAX_SLOTS,
+  });
+  budgetEl.textContent = t('deckbuilderBudgetLabel', { n: sum, max: DECKBUILDER_BUDGET });
+  // Highlights whichever stat is currently at its cap — a quiet hint for why
+  // the next click might wiggle instead of adding a weapon, on top of the
+  // wiggle itself (see triggerDeckbuilderWiggle() below).
+  slotCountEl.classList.toggle(
+    'deckbuilder-stat--full',
+    selectedIds.length >= DECKBUILDER_MAX_SLOTS
+  );
+  budgetEl.classList.toggle('deckbuilder-stat--full', sum >= DECKBUILDER_BUDGET);
+
+  const slotsGrid = document.getElementById('deckbuilder-slots');
+  slotsGrid.innerHTML = '';
+  for (let i = 0; i < DECKBUILDER_MAX_SLOTS; i++) {
+    const id = selectedIds[i];
+    const card = id ? getCardById(id) : null;
+    if (card) {
+      slotsGrid.appendChild(buildDeckbuilderWeaponTile(card));
+    } else {
+      const empty = document.createElement('div');
+      empty.className = 'deckbuilder-slot-empty';
+      slotsGrid.appendChild(empty);
+    }
+  }
+
+  const pool = document.getElementById('deckbuilder-pool');
+  pool.innerHTML = '';
+  const meleeCards = getAllWeaponCards().filter(
+    (card) => card.suit === SUITS.DIAMONDS && !selectedSet.has(card.id)
+  );
+  const rangedCards = getAllWeaponCards().filter(
+    (card) => card.suit === SUITS.RANGED && !selectedSet.has(card.id)
+  );
+  if (meleeCards.length > 0) {
+    pool.appendChild(buildGallerySectionHeading(t('galleryHeadingMeleeWeapons')));
+    meleeCards.forEach((card) => pool.appendChild(buildDeckbuilderWeaponTile(card)));
+  }
+  if (rangedCards.length > 0) {
+    pool.appendChild(buildGallerySectionHeading(t('galleryHeadingRangedWeapons')));
+    rangedCards.forEach((card) => pool.appendChild(buildDeckbuilderWeaponTile(card)));
+  }
+}
+
+/** Briefly wiggles `el` (reuses the exact same card-shake keyframe as
+ * .card--shake elsewhere in the game, see CLAUDE.md) — used both on a pool
+ * tile that couldn't be added (loadout full, or adding it would go over
+ * budget, see canSelectDeckbuilderWeapon() in js/deckbuilder.js) and, for
+ * whichever limit actually blocked it, on that stat line too, so it's clear
+ * which one was hit. Removes-then-re-adds the class with a forced reflow in
+ * between (same gotcha as animateShieldShake() elsewhere in this file) so
+ * back-to-back clicks each restart the animation instead of silently
+ * no-op-ing on an already-present class. */
+function triggerDeckbuilderWiggle(el) {
+  el.classList.remove('deckbuilder-item--wiggle');
+  void el.offsetWidth;
+  el.classList.add('deckbuilder-item--wiggle');
 }
 
 // --- champion-select screen (shown whenever a new game is started) ---------

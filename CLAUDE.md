@@ -17,17 +17,17 @@ their own randomized pool. See the "Value rescale (×5)" note in `js/cards.js`
 and the "Monster Pool" section below for the full detail; the numbers here
 already reflect the current, rescaled implementation.
 
-- **Deck (currently 51 cards per game):** 9 melee weapon cards + 4 ranged
-  weapon cards + 9 potion cards + 3 shield cards (all fixed, see
-  `js/cards.js`'s `CARD_LIST`) + 26 monster cards randomly drawn from a
-  larger pool of 23 monster types (see "Monster Pool" below) — not a fixed
-  44/52-card deck the way the original tabletop game is. **This total is a
-  temporary/interim state**: every weapon card in `CARD_LIST` is
-  unconditionally included in every game today because the planned weapon
-  Deckbuilder (see "Ranged Weapons" below) doesn't exist yet — once it does,
-  the player will choose a subset of weapons to bring (up to 10, budget-
-  capped), so the deck's actual weapon count (and total size) will vary
-  game to game instead of always being the full catalog.
+- **Deck (up to 47 cards per game, varies by loadout):** whichever weapon
+  cards the player picked in the Deckbuilder (see "Weapon Deckbuilder"
+  below, up to 10 of the 9 melee + 4 ranged cards in `js/cards.js`'s
+  `CARD_LIST`, defaults to all 9 melee) + 9 potion cards + 3 shield cards
+  (both always included in full, also from `CARD_LIST`) + 26 monster cards
+  randomly drawn from a larger pool of 23 monster types (see "Monster Pool"
+  below) — not a fixed 44/52-card deck the way the original tabletop game
+  is, and not even a fixed size game to game the way it briefly was before
+  the Deckbuilder existed, since the player's own weapon loadout now
+  directly decides how many weapon cards (and therefore how many cards
+  total) are in the deck.
 - **Suits / roles:**
   - **Monsters** (own pseudo-suit, `SUITS.MONSTERS`, no longer split across
     Clubs & Spades) → value = attack strength, 10-70 across 23 types, 2 card
@@ -154,6 +154,10 @@ already reflect the current, rescaled implementation.
     background image behind it.
   - `js/cards.js` — the fixed weapon/potion/shield card definitions (data
     only) plus the monster pool generator, see "Monster Pool" below
+  - `js/deckbuilder.js` — the weapon Deckbuilder's selection state and rules
+    (which weapon cards the player has chosen to bring, and the slot-count/
+    deckCost-budget limits on that choice), no DOM code, see "Weapon
+    Deckbuilder" below
   - `js/monster-icons.js` — `MONSTER_NAMES`, a rank → creature name lookup
     (currently 23 ranks, 10-70) used for the card tooltip (e.g. "Shadow
     Assassin") and as the source of truth for which monster ranks exist at
@@ -1146,17 +1150,17 @@ already reflect the current, rescaled implementation.
   is still called on that path too, a retaliation hit can be lethal on its
   own.
 - **Not a rarer/random deck inclusion — the 4 bows are meant to be picked
-  by the player.** A weapon Deckbuilder (not yet built — plan is to let the
-  player choose up to 10 weapon cards, out of the full melee+ranged
-  catalog, before a run starts, capped by a total value budget of 300)
-  is why every card already carries a `deckCost` field (`js/cards.js`),
-  inert until that system exists. It defaults to `rank` (a melee weapon's
-  budget cost is just its combat strength, 1:1), but Ranged weapons
-  override it to roughly half their face-value damage (10→5, 15→8, 25→13,
-  40→20) — a melee weapon keeps delivering value across many fights until
-  it degrades past usefulness, while a Ranged weapon only ever gets
-  `RANGED_AMMO_MAX` (3) total uses, so its face-value damage number alone
-  would overstate how much of the budget it deserves to cost.
+  by the player.** This is why every card already carries a `deckCost`
+  field (`js/cards.js`) — see "Weapon Deckbuilder" below for the screen
+  that actually reads it now (up to 10 weapon cards, out of the full
+  melee+ranged catalog, capped by a total value budget of 300). It
+  defaults to `rank` (a melee weapon's budget cost is just its combat
+  strength, 1:1), but Ranged weapons override it to roughly half their
+  face-value damage (10→5, 15→8, 25→13, 40→20) — a melee weapon keeps
+  delivering value across many fights until it degrades past usefulness,
+  while a Ranged weapon only ever gets `RANGED_AMMO_MAX` (3) total uses, so
+  its face-value damage number alone would overstate how much of the
+  budget it deserves to cost.
 - **The Weapons gallery is split into two headed sections, not two separate
   gallery buttons.** `renderGallery('weapons')` (`js/ui.js`) still fills
   the one `#gallery-grid`, just with a full-width
@@ -1182,9 +1186,9 @@ already reflect the current, rescaled implementation.
   15-25 (the ×5-rescaled equivalent of the original 3-5, see the "Value
   rescale" note in `js/cards.js`), added on top of the standard 44-card deck
   (`makeCard(SUITS.SHIELDS, ...)` in `js/cards.js`) — see "Game Rules" above
-  for the current full per-game card-count breakdown (51 as of "Ranged
-  Weapons" below, and temporary until the weapon Deckbuilder ships).
-  Shields use
+  for the current per-game card-count breakdown (varies with the player's
+  Deckbuilder loadout, see "Weapon Deckbuilder" below, unlike shields and
+  potions which are always included in full). Shields use
   their own pseudo-suit (`SUITS.SHIELDS = 'shields'`) purely so they flow
   through the existing `makeCard()`/`renderCard()`/deck plumbing like every
   other card; it isn't a real playing-card suit. Names/flavor text live in
@@ -1278,6 +1282,173 @@ already reflect the current, rescaled implementation.
   "Strength N" — a shield's number is a block/durability value, not an
   attack or heal amount, so labeling it "Strength" would be misleading.
   Keep that distinction if shields ever get more display surfaces.
+
+## Weapon Deckbuilder (custom addition, not part of the original Scoundrel
+rules)
+
+- The "planned weapon Deckbuilder" the "Ranged Weapons" section above used
+  to describe as not yet built is now implemented in `js/deckbuilder.js`
+  (state/rules, no DOM code, same discipline as `js/state.js`) and
+  `renderDeckbuilder()`/`buildDeckbuilderWeaponTile()` in `js/ui.js` (the
+  UI). **It replaces the old Weapons gallery entirely** — the start
+  screen's nav button (`weapons-btn`, unchanged position and `id`, but
+  relabeled from "Weapons" to **"Weapon Deck"** / "Waffendeck" — see
+  `weapons` in `js/i18n.js` — specifically so the label itself signals the
+  deck can be adjusted here, not just viewed, per explicit request) now
+  opens `openDeckbuilder()` instead of `openGallery('weapons')`, per an
+  explicit request ("Es soll der neue Weapons Menü button sein, gallerie
+  wird also durch den deck builder ersetzt"). `renderGallery()`/
+  `renderGalleryDetail()` (`js/ui.js`) no longer have a
+  `'weapons'`/`'rangedWeapons'` branch — that flow (open a read-only
+  detail popup on click) doesn't fit the Deckbuilder's own click behavior
+  (select/deselect), so it was removed rather than left dead;
+  `weaponDescriptionFor()`/`rangedWeaponDescriptionFor()`'s flavor text
+  didn't disappear, though — see "Card flip (description back face)"
+  below for where it's shown now.
+- **Two limits, both enforced independently:** `DECKBUILDER_MAX_SLOTS`
+  (`js/deckbuilder.js`, currently 10 — "jetzt werden es 10", i.e. this
+  number specifically, not a permanent ceiling, so it's kept as one plain
+  easy-to-raise constant) caps how many weapon cards the loadout can hold;
+  `DECKBUILDER_BUDGET` caps the sum of their `deckCost` (`js/cards.js`).
+  `canSelectDeckbuilderWeapon(card)` checks slots first, then budget, and
+  both checks apply regardless of the other — going over budget blocks a
+  pick even with an empty slot still available, per explicit request
+  ("auch wenn es noch einen Slot gäbe der offen wäre, geht ja nicht weil
+  der max Wert nicht überschritten werden darf").
+  - **`DECKBUILDER_BUDGET` is 270, not the 300 this section's plan
+    originally proposed** (before anyone had actually added up what the
+    melee set costs) — 270 is deliberately exactly the 9 melee weapons'
+    own deckCost sum (10+15+...+50), found to be the correct total only
+    after the first implementation pass (a doc comment had incorrectly
+    assumed it summed to 300). Picking the *actual* melee sum as the
+    budget, rather than a rounder number above it, is what makes the
+    default all-melee loadout sit exactly AT the cap (not comfortably
+    under it) even with a slot still free — swapping in a bow genuinely
+    requires removing something first, the budget can't just be padded
+    out for free using the one open slot. (With the original 300, and
+    today's 13-card catalog summing to 316 total, even the 10 priciest
+    cards only added up to 293 — the budget could never actually be the
+    constraint that blocks a pick, `DECKBUILDER_MAX_SLOTS` always won
+    first. 270 fixes that for the current catalog; re-check this same
+    arithmetic — total catalog deckCost vs. this budget — if the catalog
+    ever grows, so this cap doesn't quietly go dormant again.)
+- **Default loadout (`DECKBUILDER_DEFAULT_IDS`):** all 9 melee weapons, no
+  bows — deckCost sums to exactly `DECKBUILDER_BUDGET` (9 slots used, 1
+  slot but 0 points under the two caps), reproducing the pre-Deckbuilder
+  game's feel (every melee weapon always in the deck) as the starting
+  point. This selection is plain module-level state in
+  `js/deckbuilder.js` (`deckbuilderState.selectedIds`), not part of
+  `state` in `js/state.js` — it's a meta-choice made before a game exists,
+  the same way champion-select's choice is just an argument to
+  `initGame()` rather than something read off `state`. Unlike a champion
+  pick, though, it persists across games (nothing resets it), since it's
+  meant to be a standing loadout, not a per-run choice.
+- **A plain compacted list, not a fixed-position slot map.** Unlike the
+  in-room 2x2 grid's `roomSlots` (see "Fixed card positions within the 2x2
+  grid" above), `deckbuilderState.selectedIds`'s order is just selection
+  order — removing one shifts every later id down to fill the gap, rather
+  than leaving that slot empty and everything else pinned in place. There
+  was no equivalent "don't let other cards reflow" request here, and
+  reference-based tracking like `roomSlots` uses would add real complexity
+  (the Deckbuilder's cards are the *shared, catalog* card objects straight
+  from `CARD_LIST`, not fresh per-game instances, so there's no risk of
+  the id-collision-across-games problem `roomSlots` was built to avoid in
+  the first place) for no requested benefit, so it was kept as the
+  simplest thing that works.
+- **Selecting/deselecting:** clicking a tile in the pool below the slots
+  (`#deckbuilder-pool`, delegated click listener in `js/main.js`) calls
+  `selectDeckbuilderWeapon(cardId)`; clicking a filled tile in the loadout
+  row above (`#deckbuilder-slots`) calls `deselectDeckbuilderWeapon(cardId)`
+  and always succeeds (there's no limit on removing, only adding).
+  `renderDeckbuilder()` is a full re-render after either — simple and
+  cheap enough at this scale (13 weapon cards, tops) rather than patching
+  individual tiles in and out. Both grids share the exact same tile
+  markup: `buildDeckbuilderWeaponTile(card)` calls `buildGalleryItem()`
+  (`js/ui.js`) with `kind: 'weapons'`/`'rangedWeapons'` — the very same
+  illustrated-card-frame tile the old Weapons gallery used (see "Weapons
+  gallery reuses the real in-game weapon card frame" above) — so a tile
+  looks identical whether it's sitting in a loadout slot or the pool,
+  `dataset.cardId` (a new field on top of `buildGalleryItem()`'s existing
+  `dataset.kind`/`dataset.key`) is what the click handlers key off, since
+  a plain rank number alone can't distinguish a melee card from a
+  same-rank ranged one the way the real card id can.
+- **The deckCost badge** (`buildGalleryItem()`'s new `cost` param,
+  rendered by `.gallery-item-cost` in `style.css`) is a small circular
+  badge positioned like `.card-effect-badge` (a rolled weapon effect's own
+  corner badge on a real in-game card, see "Weapon Effects" above) — same
+  dark translucent fill, same top/left position (converted from
+  `.card-effect-badge`'s own 18px/22px-of-a-140x100-card pixel numbers into
+  the equivalent 12.9%/22% of this portrait box) — per explicit request
+  ("Mache den Wert der Karte im Deckbuilder gleich wie die Eigenschaft, du
+  musst die Position noch anpassen und ich möchte den weißen Ring nicht").
+  A first version placed it flush in the tile's very top-left corner
+  (`top: 5%; left: 5%`) with a light border ring, matching
+  `.card-effect-badge`'s fill/shape but not its actual position or its
+  borderless-once-corrected look — moved to the position above and had its
+  border removed on a direct follow-up request. Its number was originally
+  white on the badge's dark fill, bumped to `var(--card-text)` (near-black)
+  and 10% larger (`0.62rem` → `0.68rem`) on a second follow-up request,
+  since white read poorly against the fill once the number itself became
+  the badge's only remaining detail (no border left to frame it against).
+  Deliberately separate from the strength number already shown in the
+  frame's hexagon lower down (`.gallery-item-rank`, bottom-center) — for a
+  ranged weapon the two numbers differ (e.g. the Long Bow shows strength
+  40 in the hexagon, cost 20 in the badge), so they need to read as two
+  distinct things in two distinct corners, not the same number shown
+  twice in one spot. Only ever passed for Deckbuilder tiles — the badge
+  stays entirely unused everywhere else `buildGalleryItem()` is called
+  (Monsters/Shields/Champions galleries), since `cost` there is just
+  `undefined`.
+- **Wiggle feedback when a pick is blocked.** `triggerDeckbuilderWiggle(el)`
+  (`js/ui.js`) reuses the exact same `card-shake` keyframe `.card--shake`
+  already uses elsewhere (see "Rogue's Backstab targeting mode" above for
+  the sibling continuous-wiggle version), just under its own
+  `.deckbuilder-item--wiggle` class since it's applied to a plain
+  `.gallery-item` tile or a `#deckbuilder-stats` `<span>`, never a
+  `.card`. Same remove-then-re-add-with-a-forced-reflow gotcha as
+  `animateShieldShake()` — needed so back-to-back blocked clicks each
+  restart the animation instead of silently no-op-ing on an
+  already-present class. Two things wiggle together, per the original
+  request: the clicked pool tile itself (either limit), and whichever stat
+  line (`#deckbuilder-slot-count` for `reason: 'slots'`,
+  `#deckbuilder-budget` for `reason: 'budget'`) actually blocked it, so
+  it's clear which cap was hit. Independently, `renderDeckbuilder()` also
+  gives whichever stat is currently AT its cap a standing
+  `.deckbuilder-stat--full` accent-color highlight (same "this is the
+  active/limiting one" treatment as `.lang-btn--active`) — a quiet, always
+  -visible hint for why the next click might wiggle, on top of the
+  click-time wiggle itself.
+- **Reaching a real game:** `getFreshDeck()` (`js/cards.js`) no longer
+  unconditionally includes every `CARD_LIST` weapon card — it now takes
+  every non-weapon `CARD_LIST` card (potions, shields) unconditionally,
+  plus `getSelectedWeaponCardsForDeck()`'s cards (the Deckbuilder's
+  current selection, resolved from ids back to full card objects via
+  `getCardById()`), plus the usual freshly-drawn 26 monster cards. Nothing
+  else needed to change: `rollWeaponEffects()` still only rolls an effect
+  for `SUITS.DIAMONDS` cards regardless of how many are actually in the
+  deck, and the "safe start"/monster-value-sum logic in `js/state.js`
+  never assumed a fixed deck size to begin with.
+- **Layout:** `#deckbuilder-overlay`/`#deckbuilder-panel`/
+  `#deckbuilder-close-btn`/`#deckbuilder-title` reuse the exact same
+  shared chrome as `#menu-overlay`/`#gallery-overlay`/
+  `#champion-select-overlay`/`#options-overlay` (dimmed backdrop, panel,
+  close button, title — see the shared selectors in `style.css`), just
+  added to those same selector groups rather than duplicated, same pattern
+  every other overlay in this project already follows.
+  `#deckbuilder-panel` gets its own, wider fixed width (42rem, wider than
+  champion-select's 38rem) since it has to fit both the loadout slots and
+  the whole weapon pool stacked in one panel. `#deckbuilder-slots`/
+  `#deckbuilder-pool` reuse the exact grid-column sizing the old
+  `#gallery-grid.gallery-grid--weapons` rule used (now removed, since
+  nothing sets that class on `#gallery-grid` anymore) — `.gallery-item
+  [data-kind='weapons']`/`[data-kind='rangedWeapons']`'s own tile styling
+  is an attribute selector, not scoped to `#gallery-grid`, so it already
+  applies to these two new containers automatically with no changes
+  needed there. `.deckbuilder-slot-empty` (an empty loadout slot) matches
+  a weapon tile's own portrait aspect ratio (100 / 140) so a row of mixed
+  filled/empty slots lines up evenly, same dashed-outline look as every
+  other empty equip slot in the game (`.weapon-slot-empty`/
+  `.shield-slot-empty`).
 
 ### Monster artwork
 
@@ -2462,6 +2633,203 @@ already reflect the current, rescaled implementation.
   `speedUp` via the `registerSpeedUp` callback the queued action receives,
   and call `onFinished()` once fully done) rather than firing immediately,
   or rapid clicking will reintroduce the same interleaving bug.
+
+## Card flip (description back face) (custom addition, not part of the
+original Scoundrel rules)
+
+- Right-click (desktop) or a long press (touch, where there's no
+  right-click) on any card-shaped element flips it in place, a real 3D
+  animation, to reveal its full flavor description on the back — added
+  because the Weapons gallery's old "click a tile to open a detail popup"
+  flow no longer exists once a weapon tile's click means select/deselect
+  instead (see "Weapon Deckbuilder" above), so descriptions needed a new
+  home that doesn't collide with a card's normal click behavior anywhere
+  else in the game either. Per explicit request: "generell einfach
+  rechtsklick und gedrückthalten macht beides, dass die Karte umgedreht
+  wird" (right-click and long-press both just flip the card, in general) —
+  and, since "wir später wichtige Beschreibungen brauchen" (future
+  features will need important descriptions shown this way too), this was
+  built as one generic, reusable mechanism from the start rather than a
+  one-off for the Deckbuilder alone.
+- **Works on real room cards, the equipped weapon/shield slot, and
+  Deckbuilder tiles — deliberately NOT the Monsters/Shields/Champions
+  galleries**, which already have their own working "click a tile to see
+  its description" flow (the detail popup, `renderGalleryDetail()`) that
+  didn't need replacing. Any element that should be flippable carries its
+  description via a plain `data-flip-desc` attribute (and a
+  `data-flip-name` heading to go with it) — set by `renderCard()`/
+  `renderWeaponSlot()`/`renderShieldSlot()` (via a new `cardDescriptionText
+  (card)` helper in `js/ui.js`, mirroring `flavorNameFor()`'s per-type
+  branching but returning the *fuller* blurb — `monsterDescriptionFor()`/
+  `potionDescriptionFor()`/`weaponDescriptionFor()`/
+  `rangedWeaponDescriptionFor()`/`shieldDescriptionFor()` — rather than the
+  short name `cardTooltipText()` shows on hover) and by
+  `buildDeckbuilderWeaponTile()`. `potionDescriptionFor()`/
+  `POTION_DESCRIPTIONS` (`js/potion-icons.js`) are new — potions never had
+  a gallery of their own, so no description table existed for them before
+  this feature needed one for every card type. A future card-shaped
+  element that should support this same flip just needs those two dataset
+  attributes set; nothing else to wire up per-element, the delegated
+  listeners below (like the hover tooltip's) already cover it.
+- **el ITSELF becomes the flip's rotating front face**, `flipCard(el)`/
+  `closeCardFlip()`/`closeCardFlipImmediate()` in `js/ui.js` — a new
+  `wrapper` div (`.card-flip-active`) is inserted at el's current spot in
+  the DOM/layout, sized inline from el's own measured
+  `getBoundingClientRect()`; el (with every one of its own real classes,
+  frame/background art, tier glow, pulse pseudo-elements, box shadow,
+  fully intact) is then moved inside a new `.card-flip-inner` appended into
+  `wrapper`, alongside a new `.card-flip-face--back` sibling holding the
+  name/description. Both faces get `position: absolute; inset: 0` from the
+  shared `.card-flip-face` class, which resolves to exactly el's original
+  box either way (an explicit-size `.card` keeps its own width/height per
+  CSS's over-constrained-inset rule; a size-less `.gallery-item` Deckbuilder
+  tile instead stretches to fill that same box). el never leaves its real
+  DOM subtree (just gets relocated one level deeper temporarily), so it
+  still scrolls/resizes exactly like any other card, no coordinate
+  snapshot to ever go stale. A standard two-face 3D flip (`perspective` +
+  `transform-style: preserve-3d` + `backface-visibility: hidden`, see
+  `style.css`). Clicking (or right-clicking again) anywhere on the flipped
+  card closes it — no separate "✕" button, the card itself is the toggle,
+  same as flipping a real playing card back over.
+  - **Superseded first version, kept here for the lesson it taught:** the
+    very first implementation cloned el into a `position: fixed` overlay
+    anchored to a one-time `getBoundingClientRect()` snapshot, with the
+    real el hidden via `visibility: hidden` underneath it. This looked
+    right in isolated testing but broke as soon as the real card's scroll
+    container (e.g. `#deckbuilder-panel`, which has its own internal
+    `overflow-y: auto`, not the page itself) was scrolled after opening a
+    flip: the fixed overlay stayed put at its captured screen position
+    while the real, hidden card scrolled away underneath it, so the
+    flipped card visibly "stuck" in place instead of scrolling with
+    everything else — reported directly by the user.
+  - **Superseded second version, also kept for the lesson it taught:** the
+    fix for the version above kept el itself static in its real DOM spot
+    and instead moved only el's *children* into a new `.card-flip-face
+    --front` div appended as el's own child, leaving el's own background
+    (a real card's illustrated frame, painted via a CSS class on el itself)
+    un-rotated and un-hidden underneath the whole time. This looked correct
+    on a Deckbuilder tile (whose frame art actually lives on a nested
+    `.gallery-item-portrait` child, which gets swept into the front face
+    along with everything else), but on a real room/weapon/shield card the
+    frame background sits directly on el — visually this read as only the
+    weapon's icon flipping in 3D while the surrounding card frame stayed
+    flat, reported directly ("flipped das icon von der waffe, aber die
+    karte nicht"), and produced a visible size/scale mismatch right around
+    the 90° mark, since the frame (not rotating, always full-size) and the
+    extracted content (foreshortening through the 3D rotation) were
+    changing size at different rates relative to each other, reported as
+    the card "größer und kleiner skaliert... nicht smooth". This also
+    needed an explicit inline-height lock on el before moving its children
+    out (a `.gallery-item`'s height, unlike `.card`'s fixed `calc()`, comes
+    purely from its own now-departed children's natural content height,
+    and collapsed to ~0 without it) — moving el itself instead removes the
+    entire category of bug at once: there's only one rotating object, so
+    there's nothing left that can ever get out of sync with anything else,
+    and (per the `.card-flip-face` sizing note above) no separate height
+    lock is needed either, since the browser's own inset-vs-explicit-size
+    resolution reproduces el's original box automatically.
+  - **The back face's look.** Reported as reading like "a plain white box"
+    that broke the card's own illustrated-frame feel —
+    `.card-flip-face--back` uses the same parchment-on-wood texture as
+    `#card-tooltip` (`images/backgrounds/GalleryBackground.png`, same warm
+    brown border color `#8c6239`) instead of a flat `var(--card-bg)`
+    rectangle, so it reads as part of the same card rather than a generic
+    popup. Its name heading (`.card-flip-back-name`) was originally
+    `var(--accent)` (a gold/tan), reported as hard to read against the
+    parchment and switched to `var(--card-text)` (near-black) — the same
+    dark color every other piece of text on a light card/parchment surface
+    in this project already uses.
+  - Only one flip open at a time (`activeCardFlip` in `js/ui.js`) — a
+    second right-click elsewhere while one is already open is a no-op
+    rather than silently swapping to the new card, since that risked
+    feeling accidental (a stray right-click on the wrong spot silently
+    replacing what the player was actually reading).
+  - `CARD_FLIP_MS` (500) is kept in sync with `.card-flip-inner`'s CSS
+    `transition-duration`, same "one JS constant matching one CSS value"
+    pattern as `CARD_ANIMATION_MS` in `js/main.js` — `closeCardFlip()`
+    waits for the real `transitionend` event before actually restoring el
+    to its original spot (so the closing half of the flip is visible, not
+    an instant cut), with a `setTimeout(restore, CARD_FLIP_MS + 60)`
+    safety net in case `transitionend` never fires.
+  - **`closeCardFlipImmediate()`** drops the flip state with no animation,
+    but still synchronously restores el to its exact original DOM position
+    (right before `wrapper`, then discards `wrapper`) — called at the top
+    of `renderRoom()`/`renderWeaponSlot()`/`renderShieldSlot()`/
+    `renderDeckbuilder()`, the only places a flippable element's content
+    gets torn down and rebuilt (same "about to repaint, clear any
+    transient state first" reasoning those functions already apply to
+    `hideCardTooltip()`). A room card gets discarded and rebuilt from
+    scratch regardless, so restoring its exact position first is moot
+    there, but `#weapon-slot-card`/`#shield-slot-card` are persistent DOM
+    nodes reused (not recreated) across renders — without this restore,
+    the next `renderWeaponSlot()`/`renderShieldSlot()` would still find and
+    update the right element by id, but leave it permanently stuck one
+    level too deep inside a now-orphaned `wrapper`/`.card-flip-inner`,
+    breaking every sibling that assumes it sits directly under
+    `#weapon-slot-wrap` (e.g. `#weapon-fragile-bar`'s positioning, or
+    `.card-effect-badge`'s own percentage math). A blunt "any re-render of
+    any of these four just closes whichever flip is open" rule, not scoped
+    to only close a flip if the *specific* element being rebuilt is the one
+    that's flipped — simpler to reason about, and examining a card's
+    description while some other, unrelated action re-renders the screen
+    is a reasonable enough time to let the peek end anyway. `closeCardFlip()`'s
+    own restore step additionally guards against a flip having already been
+    torn down this way mid-animation (`if (flip.el.parentNode !==
+    flip.inner) return;`), for the case where something closes it
+    immediately elsewhere before the animated close's own timer/
+    `transitionend` fires.
+- **Right-click AND long-press work with either a mouse or touch,
+  delegated on `<body>`/`document`** (`js/main.js`), same reasoning as the
+  existing hover-tooltip listeners just above them (room cards/Deckbuilder
+  tiles are torn down and rebuilt on every render, so a per-element
+  listener would need constant re-attaching):
+  - `contextmenu` on `[data-flip-desc]` calls `event.preventDefault()`
+    (suppressing the browser's own right-click menu there specifically,
+    nowhere else) then `flipCard(target)`.
+  - **Long press originally only listened for touch events** (`touchstart`
+    arming a `CARD_FLIP_LONGPRESS_MS` (500) timer) — reasoned as correct
+    since phones have no right-click. Reported not working on a laptop:
+    "generell einfach rechtsklick und gedrückthalten macht beides" (both
+    should just work, in general) turned out to mean literally any pointer
+    type, and a laptop trackpad/mouse never fires touch events at all, so
+    the long-press path was silently unreachable there. Fixed by adding
+    the identical timer-arming logic for `mousedown`/`mouseup` (button 0
+    only — a real right-click already opens the flip immediately via
+    `contextmenu`, it doesn't need this path too), sharing one
+    `armFlipLongPress(target)`/`cancelFlipLongPress()` pair with the touch
+    listeners. `mousemove` cancels a pending press only past a small
+    tolerance (`FLIP_LONGPRESS_MOVE_TOLERANCE_PX`, 10px) rather than on any
+    movement at all, unlike `touchmove`'s unconditional cancel — a held
+    mouse can wobble a pixel or two without meaning to cancel, a held
+    finger is naturally steadier and any real `touchmove` reliably means
+    an intentional scroll/drag.
+  - **Gotcha, applies to both pointer types:** a long press's matching
+    release (`mouseup`, or touch's synthetic post-`touchend` click
+    emulation) always fires a normal `click` shortly after — since
+    `flipCard()` already flipped the card open by then, that click would
+    otherwise land right back on it and immediately close it again before
+    the player could read anything. A `suppressNextCardClick` flag, set
+    the instant a long press's timer actually fires (with its own short
+    safety-clear timeout in case no click ever follows, e.g. the pointer
+    was dragged off before release), is checked by a **capture-phase**
+    `click` listener on `document` — capture, not the usual bubble phase,
+    so it runs before the card's own normal delegated click handler
+    (`#room`/`#deckbuilder-pool`/`#deckbuilder-slots`, all bubble-phase)
+    ever sees the same click; consuming the flag there and calling
+    `stopPropagation()` keeps that normal handler from firing at all for
+    this one swallowed click. The flag is only actually consumed if the
+    click's target is inside `activeCardFlip.el` — a genuine, unrelated
+    click happening to land within the short safety window elsewhere on
+    the page is left alone rather than eaten for no reason. This same
+    capture-phase listener (plus a matching capture-phase `contextmenu`
+    one) is also what makes clicking/right-clicking an *already*-flipped
+    card close it: `event.target.closest('.card-flip-active')` catches
+    that case once the suppression check above has already fallen
+    through.
+- **Escape closes an open flip too** — `closeCardFlip()` was added to the
+  existing Escape-key handler alongside every modal overlay's own close
+  function (`closeMenu()`/`closeGallery()`/`closeDeckbuilder()`/etc.),
+  same list, same pattern.
 
 ## Tutorial (custom addition, not part of the original Scoundrel rules)
 

@@ -271,15 +271,27 @@ function getAllMonsterCards() {
   return cards;
 }
 
-/** Returns a fresh copy of this game's full deck (the fixed weapon/potion/
- * shield cards from CARD_LIST, shallow-copied, plus a freshly-selected 26
- * monster cards from the monster pool — see selectMonsterCardsForDeck() in
- * js/monster-pool.js), so runtime state never mutates CARD_LIST or the
- * monster pool. */
+/** Returns a fresh copy of this game's full deck: every non-weapon card from
+ * CARD_LIST (potions, shields) unconditionally, plus whichever weapon cards
+ * are currently selected in the Deckbuilder (js/deckbuilder.js — up to
+ * DECKBUILDER_MAX_SLOTS cards, deckCost summing to at most
+ * DECKBUILDER_BUDGET, see getSelectedWeaponCardsForDeck() there), plus a
+ * freshly-selected 26 monster cards from the monster pool (see
+ * selectMonsterCardsForDeck() in js/monster-pool.js). Everything is
+ * shallow-copied, so runtime state never mutates CARD_LIST, the monster
+ * pool, or the Deckbuilder's own selection array.
+ *
+ * This is the "planned weapon Deckbuilder" CLAUDE.md's "Ranged Weapons"
+ * section used to describe as not yet built (every weapon card was
+ * unconditionally included until now) — that plan is now implemented, see
+ * js/deckbuilder.js. */
 function getFreshDeck() {
-  const fixedCards = CARD_LIST.map((card) => ({ ...card }));
+  const nonWeaponCards = CARD_LIST.filter((card) => card.type !== 'weapon').map((card) => ({
+    ...card,
+  }));
+  const weaponCards = getSelectedWeaponCardsForDeck().map((card) => ({ ...card }));
   const monsterCards = selectMonsterCardsForDeck(getAllMonsterCards());
-  return [...fixedCards, ...monsterCards];
+  return [...nonWeaponCards, ...weaponCards, ...monsterCards];
 }
 
 /** Looks up one card by id (e.g. "diamonds-30", or "monster-45-1") from

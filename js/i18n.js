@@ -69,7 +69,13 @@ const I18N = {
     startTagline: 'A dungeon-crawling card game',
     newGame: 'New Game',
     champions: 'Champions',
-    weapons: 'Weapons',
+    // The start screen's nav button that opens the Deckbuilder (see
+    // "Weapon Deckbuilder" in CLAUDE.md) — named "Weapon Deck" rather than
+    // just "Weapons" or "Deckbuilder", specifically so the label itself
+    // signals that the deck (not just a read-only weapon list) can be
+    // adjusted here, per explicit request ("Der user soll wissen dass er
+    // das Deck anpassen kann").
+    weapons: 'Weapon Deck',
     shields: 'Shields',
     monsters: 'Monsters',
     howToPlay: 'How to Play',
@@ -131,6 +137,15 @@ const I18N = {
     passiveAbilityLabel: 'Passive Ability',
     activeAbilityLabel: 'Active Ability',
     chooseChampionTitle: 'Choose your Champion',
+
+    // --- Deckbuilder (weapon loadout, replaces the old Weapons gallery —
+    // see js/deckbuilder.js and renderDeckbuilder() in js/ui.js) ---
+    deckbuilderTitle: 'Deckbuilder',
+    deckbuilderLoadoutHeading: 'Your Loadout',
+    deckbuilderAvailableHeading: 'Available Weapons',
+    deckbuilderSlotsLabel: '{n} / {max} slots',
+    deckbuilderBudgetLabel: '{n} / {max} points',
+    deckbuilderCostTitle: 'Deck cost: {n} points',
 
     // --- options overlay ---
     optionsTitle: 'Options',
@@ -302,7 +317,9 @@ const I18N = {
     startTagline: 'Ein Dungeon-Crawler-Kartenspiel',
     newGame: 'Neues Spiel',
     champions: 'Champions',
-    weapons: 'Waffen',
+    // See the English key's comment — "Waffendeck", not just "Waffen", so
+    // the label itself signals the deck can be adjusted here.
+    weapons: 'Waffendeck',
     shields: 'Schilde',
     monsters: 'Monster',
     howToPlay: 'Anleitung',
@@ -358,6 +375,15 @@ const I18N = {
     passiveAbilityLabel: 'Passive Fähigkeit',
     activeAbilityLabel: 'Aktive Fähigkeit',
     chooseChampionTitle: 'Wähle deinen Champion',
+
+    // --- Deckbuilder (Waffen-Loadout, ersetzt die alte Waffen-Galerie —
+    // siehe js/deckbuilder.js und renderDeckbuilder() in js/ui.js) ---
+    deckbuilderTitle: 'Deckbuilder',
+    deckbuilderLoadoutHeading: 'Deine Ausrüstung',
+    deckbuilderAvailableHeading: 'Verfügbare Waffen',
+    deckbuilderSlotsLabel: '{n} / {max} Plätze',
+    deckbuilderBudgetLabel: '{n} / {max} Punkte',
+    deckbuilderCostTitle: 'Deckwert: {n} Punkte',
 
     // --- options overlay ---
     optionsTitle: 'Optionen',

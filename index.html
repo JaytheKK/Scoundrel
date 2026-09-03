@@ -199,6 +199,30 @@
     </div>
   </div>
 
+  <!-- Deckbuilder (weapon loadout) — reuses #menu-overlay/#gallery-overlay's
+       exact chrome (see the shared selectors in style.css), replaces what
+       used to be the Weapons gallery (openGallery('weapons')) — the
+       weapons-btn on the start screen now opens this instead, see
+       openDeckbuilder() in js/main.js. #deckbuilder-slots always holds
+       exactly DECKBUILDER_MAX_SLOTS boxes (js/deckbuilder.js), filled or
+       empty; #deckbuilder-pool lists every weapon not currently selected,
+       split into Close Range/Ranged sections the same way the old Weapons
+       gallery was (see renderDeckbuilder() in js/ui.js). -->
+  <div id="deckbuilder-overlay" class="hidden">
+    <div id="deckbuilder-panel">
+      <button id="deckbuilder-close-btn" aria-label="Close" data-i18n-aria="close">✕</button>
+      <h2 id="deckbuilder-title" data-i18n="deckbuilderTitle">Deckbuilder</h2>
+      <div id="deckbuilder-stats">
+        <span id="deckbuilder-slot-count"></span>
+        <span id="deckbuilder-budget"></span>
+      </div>
+      <h3 class="deckbuilder-section-title" data-i18n="deckbuilderLoadoutHeading">Your Loadout</h3>
+      <div id="deckbuilder-slots"></div>
+      <h3 class="deckbuilder-section-title" data-i18n="deckbuilderAvailableHeading">Available Weapons</h3>
+      <div id="deckbuilder-pool"></div>
+    </div>
+  </div>
+
   <div id="champion-select-overlay" class="hidden">
     <div id="champion-select-panel">
       <button id="champion-select-close-btn" aria-label="Close" data-i18n-aria="close">✕</button>
@@ -245,6 +269,7 @@
 
   <script src="js/i18n.js"></script>
   <script src="js/cards.js"></script>
+  <script src="js/deckbuilder.js"></script>
   <script src="js/monster-icons.js"></script>
   <script src="js/monster-pool.js"></script>
   <script src="js/potion-icons.js"></script>

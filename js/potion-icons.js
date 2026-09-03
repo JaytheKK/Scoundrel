@@ -44,3 +44,38 @@ function potionNameFor(rank) {
   const table = POTION_NAMES[getLang()] || POTION_NAMES.en;
   return table[rank] || null;
 }
+
+// Short flavor blurb shown on a potion card's flipped-over back face (see
+// flipCard() in js/ui.js) — potions never had a gallery/detail popup of
+// their own (there's no "Potions" button on the start screen), so this
+// table didn't exist until the flip feature needed one. Same "keyed by
+// language first" pattern as POTION_NAMES above.
+const POTION_DESCRIPTIONS = {
+  en: {
+    10: 'A faint red tint, barely more than tinted water. Better than nothing.',
+    15: 'A thin, watery brew that dulls the sharpest edge of pain.',
+    20: 'A modest dose of restorative red liquid.',
+    25: 'A well-brewed potion, the standard remedy of any adventurer.',
+    30: 'A generous measure of thick, ruby-red elixir.',
+    35: 'A potent brew that mends flesh almost as fast as it closes.',
+    40: 'A rich, glowing tonic favored by seasoned healers.',
+    45: "A rare, near-miraculous draught, worth a small fortune.",
+    50: 'The finest healing draught known, said to knit bone as easily as skin.',
+  },
+  de: {
+    10: 'Ein schwacher roter Schimmer, kaum mehr als gefärbtes Wasser. Besser als nichts.',
+    15: 'Ein dünner, wässriger Sud, der die schlimmsten Schmerzen betäubt.',
+    20: 'Eine bescheidene Dosis roter Heilflüssigkeit.',
+    25: 'Ein gut gebrauter Trank, das übliche Mittel jedes Abenteurers.',
+    30: 'Eine großzügige Menge dickflüssigen, rubinroten Elixiers.',
+    35: 'Ein starker Sud, der Fleisch fast so schnell heilt wie er wirkt.',
+    40: 'Ein reichhaltiges, leuchtendes Tonikum, geschätzt von erfahrenen Heilern.',
+    45: 'Ein seltener, fast wundersamer Trank, ein kleines Vermögen wert.',
+    50: 'Der beste Heiltrank, den man kennt, heilt angeblich Knochen so leicht wie Haut.',
+  },
+};
+
+function potionDescriptionFor(rank) {
+  const table = POTION_DESCRIPTIONS[getLang()] || POTION_DESCRIPTIONS.en;
+  return table[rank] || null;
+}
