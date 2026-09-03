@@ -144,7 +144,7 @@ function cardDescriptionText(card) {
   if (card.type === 'potion') return potionDescriptionFor(card.baseRank);
   if (card.type === 'weapon') {
     if (card.suit === SUITS.RANGED) {
-      return `${rangedWeaponDescriptionFor(card.baseRank)} ${t('rangedAmmoSentence', { n: RANGED_AMMO_MAX })}`;
+      return `${rangedWeaponDescriptionFor(card.baseRank)} ${t('rangedAmmoSentence', { n: rangedAmmoMaxFor() })}`;
     }
     if (card.suit === SUITS.MAGE) {
       return `${mageWeaponDescriptionFor(card.baseRank)} ${t('mageManaSentence', { n: MAGE_MANA_COST })}`;
@@ -492,7 +492,8 @@ function renderAbilityActiveGlow() {
   const active =
     (state.champion === 'paladin' && state.paladinResistCharges > 0) ||
     (state.champion === 'berserker' && state.berserkerFrenzyCharges > 0) ||
-    (state.champion === 'swordmaster' && state.swordmasterMasteryCharges > 0);
+    (state.champion === 'swordmaster' && state.swordmasterMasteryCharges > 0) ||
+    (state.champion === 'ranger' && state.rangerHeadShotCharges > 0);
   document.getElementById('ability-wrap').classList.toggle('ability-wrap--active', active);
 }
 
@@ -744,7 +745,7 @@ function renderWeaponSlot() {
     // the ammo count, which the bar under the slot also shows visually.
     status.textContent = t('rangedWeaponStatus', {
       filled: Math.max(0, state.weaponAmmoRemaining),
-      total: RANGED_AMMO_MAX,
+      total: rangedAmmoMaxFor(),
     });
   } else if (state.equippedWeapon.suit === SUITS.MAGE) {
     // Mage Staffs also ignore the degrade rule and never carry a rolled
@@ -800,7 +801,7 @@ function renderWeaponUsesBar() {
     return;
   }
 
-  const total = isRanged ? RANGED_AMMO_MAX : FRAGILE_MAX_USES;
+  const total = isRanged ? rangedAmmoMaxFor() : FRAGILE_MAX_USES;
   const remaining = isRanged ? state.weaponAmmoRemaining : state.weaponFragileUsesRemaining;
   const filled = Math.max(0, remaining);
   bar.classList.remove('hidden');
@@ -1079,11 +1080,24 @@ function renderFleeButton() {
 }
 
 /** Shows/hides the full-screen Victory/Defeat banner based on state.gameOver
- * + state.outcome. Safe to call after every state change. */
+ * + state.outcome. Safe to call after every state change.
+ *
+ * Also requires #game-screen to actually be the visible screen. Leaving to
+ * the start screen (showStartScreen(), e.g. via the banner's own "Main Menu"
+ * button) doesn't reset state.gameOver, since screen-switching is a pure
+ * display toggle that never touches game state, see "Main/start screen" in
+ * CLAUDE.md. Without this check, any later renderAll() call while sitting on
+ * the start screen (e.g. applyLanguage() after switching the language in
+ * Options) would read that still-true state.gameOver and re-show the banner
+ * on top of the start screen, undoing whatever manual hide happened when the
+ * player first left the game-over screen. */
 function renderGameOverBanner() {
   const overlay = document.getElementById('gameover-overlay');
+  const gameScreenVisible = !document
+    .getElementById('game-screen')
+    .classList.contains('hidden');
 
-  if (!state.gameOver) {
+  if (!state.gameOver || !gameScreenVisible) {
     overlay.classList.add('hidden');
     overlay.classList.remove('gameover-won', 'gameover-lost');
     return;

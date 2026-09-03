@@ -444,6 +444,35 @@ document.getElementById('ability-btn').addEventListener('click', () => {
   if (result.targeting) {
     renderRogueTargeting();
   }
+
+  // Mage's Fire Surge: "-15" + shake on every monster it hit, while their
+  // card elements are still the ones actually in the DOM (same idea as the
+  // Electric weapon effect's weakenedIds feedback in applyResolve() above),
+  // then re-render the room once that's had time to play out. This is the
+  // first ability that can remove a room card, so — unlike every other
+  // ability click above, which is an instant, self-contained state change —
+  // it needs the same "let the fade play out before replacing the DOM"
+  // handling a normal fought-and-killed room card gets in handleCardClick().
+  if ((result.weakenedIds && result.weakenedIds.length) || (result.killedIds && result.killedIds.length)) {
+    (result.weakenedIds || []).forEach((id) => {
+      const el = document.querySelector(`.card[data-id="${id}"]`);
+      if (!el) return;
+      showCardDamage(el, -15);
+      el.classList.add('card--shake');
+    });
+    (result.killedIds || []).forEach((id) => {
+      const el = document.querySelector(`.card[data-id="${id}"]`);
+      if (!el) return;
+      showCardDamage(el, -15);
+      el.classList.add('card--resolved');
+    });
+    setTimeout(() => {
+      renderRoom();
+      renderDeckCount();
+      renderFleeButton();
+      renderGameOverBanner(); // Fire Surge can clear the last monster outright
+    }, CARD_ANIMATION_MS);
+  }
 });
 
 // The ✕ badge next to the ability button — the only way to back out of

@@ -222,8 +222,8 @@ const CARD_LIST = [
   makeCard(SUITS.DIAMONDS, 50),
 
   // --- Ranged weapons (custom addition, not part of the original Scoundrel
-  // rules — see "Ranged Weapons" in CLAUDE.md): 5 bows, damage
-  // 10/15/20/30/40. Unlike melee weapons, a ranged weapon's `rank` is
+  // rules — see "Ranged Weapons" in CLAUDE.md): 6 bows, damage
+  // 10/15/20/25/30/40. Unlike melee weapons, a ranged weapon's `rank` is
   // subtracted directly from the monster's own rank (see
   // fireRangedWeapon() in js/state.js) rather than reducing incoming
   // damage, and it only ever gets RANGED_AMMO_MAX (3) uses before it
@@ -240,6 +240,10 @@ const CARD_LIST = [
   makeCard(SUITS.RANGED, 10, { deckCost: 5 }),
   makeCard(SUITS.RANGED, 15, { deckCost: 8 }),
   makeCard(SUITS.RANGED, 20, { deckCost: 10 }),
+  // Thornbow: a 6th bow, filling the gap between the Hunting Bow (20) and
+  // War Bow (30) — unlike the Recurve Bow's insertion above, this one
+  // didn't need to shift any other rank, since 25 was already free.
+  makeCard(SUITS.RANGED, 25, { deckCost: 13 }),
   makeCard(SUITS.RANGED, 30, { deckCost: 15 }),
   makeCard(SUITS.RANGED, 40, { deckCost: 20 }),
 

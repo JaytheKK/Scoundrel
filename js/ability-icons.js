@@ -28,10 +28,14 @@ const ABILITY_ICONS = {
   herbalist: 'images/abilities/HerbalistAbilityTransparent.png',
   rogue: 'images/abilities/RogueAbilityTransparent.png',
   berserker: 'images/abilities/BerserkerAbilityTransparent.png',
-  // No artwork yet for Sword Master's ability — left unmapped, per the
-  // "leave a new champion's image null until its art exists" convention
-  // (see js/champion-icons.js); abilityIconFor() falls back to no icon
-  // shown (renderAbilityButton() in js/ui.js) until this gets an entry.
+  // A sword breaking free of a snapped chain, for Weapon Mastery ("ignores
+  // its degrade limit") — same already-transparent, user-supplied, no-extra
+  // -crop-needed pattern as the 4 above.
+  swordmaster: 'images/abilities/SwordMasterAbilityTransparent.png',
+  // A rising flame, for Fire Surge.
+  mage: 'images/abilities/MageAbilityTransparent.png',
+  // A crosshair/scope, for Head Shot.
+  ranger: 'images/abilities/RangerAbilityTransparent.png',
 };
 
 function abilityIconFor(championId) {
@@ -49,6 +53,9 @@ const ABILITY_MANA_COST = {
   rogue: 3,
   berserker: 4,
   swordmaster: 4,
+  mage: 3, // Fire Surge, deliberately cheap relative to Mage's 6-point pool
+  // (see MAX_MANA_OVERRIDES below) so a full bar can fire it twice.
+  ranger: 4, // Head Shot.
 };
 
 function abilityManaCostFor(championId) {
@@ -69,7 +76,9 @@ function abilityManaCostFor(championId) {
 // #mana-bar is the one that shows the champion's whole pool including any
 // overflow above that cost.
 const MAX_MANA_OVERRIDES = {
-  // e.g. mage: 6,
+  mage: 6, // Mage's second passive, see CHAMPION_DESCRIPTIONS.mage in
+  // js/champion-icons.js — banks up to 6 mana even though Fire Surge only
+  // costs 3, letting a full bar fire it twice before running dry.
 };
 
 function maxManaFor(championId) {
@@ -109,6 +118,14 @@ const ABILITY_DETAILS = {
       name: 'Weapon Mastery',
       description: 'For the next 3 weapon fights, the weapon ignores its degrade limit and can strike any monster.',
     },
+    mage: {
+      name: 'Fire Surge',
+      description: 'Every monster currently in the room takes 15 damage.',
+    },
+    ranger: {
+      name: 'Head Shot',
+      description: 'The next 2 shots fired with a bow deal double damage.',
+    },
   },
   de: {
     paladin: {
@@ -130,6 +147,14 @@ const ABILITY_DETAILS = {
     swordmaster: {
       name: 'Waffenmeisterschaft',
       description: 'Für die nächsten 3 Waffenkämpfe ignoriert die Waffe ihre Abnutzungsgrenze und kann jedes Monster treffen.',
+    },
+    mage: {
+      name: 'Feuersturm',
+      description: 'Jedes Monster, das sich gerade im Raum befindet, erleidet 15 Schaden.',
+    },
+    ranger: {
+      name: 'Kopfschuss',
+      description: 'Die nächsten 2 mit einem Bogen abgefeuerten Schüsse verursachen doppelten Schaden.',
     },
   },
 };

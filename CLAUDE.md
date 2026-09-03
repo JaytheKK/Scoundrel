@@ -1011,9 +1011,10 @@ already reflect the current, rescaled implementation.
 ## Ranged Weapons (custom addition, not part of the original Scoundrel rules)
 
 - A second weapon category alongside the original ("Close Range") weapons,
-  currently 5 bows (10/15/20/30/40 damage, named Kurzbogen/Reflexbogen/
-  Jagdbogen/Kriegsbogen/Langbogen — Short/Recurve/Hunting/War/Long Bow),
-  sharing the same weapon equip slot as melee weapons — equipping one
+  currently 6 bows (10/15/20/25/30/40 damage, named Kurzbogen/Reflexbogen/
+  Jagdbogen/Dornenbogen/Kriegsbogen/Langbogen — Short/Recurve/Hunting/
+  Thornbow/War/Long Bow), sharing the same weapon equip slot as melee
+  weapons — equipping one
   discards whatever was equipped before, exactly like swapping to a
   different melee weapon. Uses its own pseudo-suit, `SUITS.RANGED`
   (`js/cards.js`), alongside `SUITS.DIAMONDS` (melee) — both map to
@@ -1045,6 +1046,16 @@ already reflect the current, rescaled implementation.
     project (monsters aside) is a multiple of 5, and there was no reason
     for ranged weapons to be the one exception. The Long Bow (40) and Short
     Bow (10) were untouched, only sitting on either side of the shuffle.
+  - **The Thornbow was added later still**, as a 6th bow filling the gap
+    between the Hunting Bow (20) and War Bow (30) — same already-
+    transparentized-PNG-cropped-to-its-own-alpha-bbox pipeline as the
+    Recurve Bow above (`ThornBowTransparent.png` to `25.png`, ~12px pad).
+    Unlike the Recurve Bow's insertion, rank 25 was already free (melee's
+    own rank-25 Sword lives in a separate image folder, see the "own image
+    folder" paragraph above, so the two don't collide), so no other bow's
+    rank needed to shift. `deckCost: 13` (`js/cards.js`), the same
+    roughly-half-of-raw-damage rounding every other bow uses (25 / 2 = 12.5,
+    rounded up).
 - **Completely different damage model from melee.** A melee weapon reduces
   the damage *the player* takes (`monster rank − weapon rank`); a ranged
   weapon instead subtracts its own rank directly from the *monster's* rank
@@ -2572,12 +2583,18 @@ rules)
     the normal post-fight re-render and right after activating the ability
     (`js/main.js`'s ability-button handler), so the status text updates
     immediately on activation, not just after the next fight.
-  - No dedicated ability-icon artwork yet (`ABILITY_ICONS` in
-    `js/ability-icons.js` has no `swordmaster` entry) — `abilityIconFor()`
-    falls back to showing no icon on `#ability-btn` until one is supplied,
-    same "leave it unmapped until the art exists" convention as a new
-    champion's portrait (see "Portrait placeholder for missing artwork"
-    above).
+  - **Ability icon artwork**: a sword breaking free of a snapped chain
+    (`images/abilities/SwordMasterAbilityTransparent.png`), matching the
+    "ignores its degrade limit" mechanic directly rather than just showing
+    a generic sword (which would be redundant with the champion's own
+    already-sword-themed identity). Same already-transparent,
+    user-supplied, no-extra-crop-needed pattern as Paladin/Herbalist/Rogue/
+    Berserker's icons (see the `ABILITY_ICONS` comment in
+    `js/ability-icons.js`). This was left unmapped for a while after the
+    champion itself launched (`abilityIconFor()` falling back to no icon on
+    `#ability-btn`, same "leave it unmapped until the art exists"
+    convention as a new champion's portrait, see "Portrait placeholder for
+    missing artwork" above) until this artwork was supplied.
   - **Lesson for future champion abilities:** if a new ability ends up
     being "reduce/increase a number by X for N uses" in the same spot
     another champion's ability already occupies, prefer lifting/granting a

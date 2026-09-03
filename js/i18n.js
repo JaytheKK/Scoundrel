@@ -207,6 +207,10 @@ const I18N = {
       '{name} flies into a frenzy, bare-handed hits take 40 less damage for the next 2 fights.',
     abilitySwordmasterMastery:
       "{name} calls on years of training, the weapon ignores its degrade limit for the next 3 fights.",
+    abilityMageFireSurge: '{name} unleashes a Fire Surge, {count} monster(s) in the room take 15 damage.',
+    abilityRangerHeadShot: '{name} takes aim, the next 2 shots deal double damage.',
+    headShotActiveLeft: ' Head Shot is active ({n} left).',
+    headShotFaded: ' Head Shot has faded.',
     abilityNotImplemented: "{name}'s ability isn't implemented yet, mana spent.",
     backstabCancelled: 'Backstab cancelled.',
     backstabHit: '{name} backstabs {monster} for 30 damage!',
@@ -316,8 +320,18 @@ const I18N = {
           <br><strong>Passive:</strong> your weapon's degrade limit never drops by more than 15 per fight.
           <br><strong>Active, Weapon Mastery:</strong> for the next 3 weapon fights, the weapon ignores its degrade limit and can strike any monster.
         </li>
+        <li>
+          <strong>Ranger</strong>
+          <br><strong>Passive:</strong> every bow you equip carries 1 extra arrow.
+          <br><strong>Active, Head Shot:</strong> the next 2 shots fired with a bow deal double damage. If the bow breaks while this is still active, it's cancelled.
+        </li>
+        <li>
+          <strong>Mage</strong>
+          <br><strong>Passive:</strong> every 2nd time you gain mana you gain 2 instead of 1, and your max mana is 6 (your ability still only costs 3).
+          <br><strong>Active, Fire Surge:</strong> every monster currently in the room takes 15 damage.
+        </li>
       </ul>
-      <p>The ring around your ability button shows your banked mana. You gain 1 mana every time a room is cleared or fled, up to your champion's ability cost. Once the ring is full, the button lights up and you can click it to trigger your active ability, which spends all of it.</p>
+      <p>The ring around your ability button shows your banked mana. You gain 1 mana every time a room is cleared or fled (some champions gain more, or can bank more than their ability costs), up to your champion's ability cost. Once the ring is full, the button lights up and you can click it to trigger your active ability, which spends all of it.</p>
 
       <h3>Fleeing a Room</h3>
       <p>"Flee Room" sends the entire room to the bottom of the deck and deals a fresh one. You can only flee a full, untouched room of 4 cards, and never two rooms in a row.</p>
@@ -459,6 +473,10 @@ const I18N = {
       '{name} verfällt in Raserei, bloßhändige Treffer verursachen für die nächsten 2 Kämpfe 40 statt 10 weniger Schaden.',
     abilitySwordmasterMastery:
       '{name} ruft jahrelanges Training ab, die Waffe ignoriert für die nächsten 3 Kämpfe ihre Abnutzungsgrenze.',
+    abilityMageFireSurge: '{name} entfesselt einen Feuersturm, {count} Monster im Raum erleiden 15 Schaden.',
+    abilityRangerHeadShot: '{name} zielt sorgfältig, die nächsten 2 Schüsse verursachen doppelten Schaden.',
+    headShotActiveLeft: ' Kopfschuss ist aktiv ({n} übrig).',
+    headShotFaded: ' Kopfschuss ist verklungen.',
     abilityNotImplemented: '{name}s Fähigkeit ist noch nicht implementiert, Mana wurde verbraucht.',
     backstabCancelled: 'Hinterhalt abgebrochen.',
     backstabHit: '{name} greift {monster} hinterrücks an, 30 Schaden!',
@@ -562,8 +580,18 @@ const I18N = {
           <br><strong>Passiv:</strong> die Abnutzungsgrenze deiner Waffe sinkt pro Kampf nie um mehr als 15.
           <br><strong>Aktiv, Waffenmeisterschaft:</strong> für die nächsten 3 Waffenkämpfe ignoriert die Waffe ihre Abnutzungsgrenze und kann jedes Monster treffen.
         </li>
+        <li>
+          <strong>Waldläufer</strong>
+          <br><strong>Passiv:</strong> jeder Bogen, den du ausrüstest, trägt 1 zusätzlichen Pfeil.
+          <br><strong>Aktiv, Kopfschuss:</strong> die nächsten 2 mit einem Bogen abgefeuerten Schüsse verursachen doppelten Schaden. Geht der Bogen währenddessen kaputt, wird die Fähigkeit abgebrochen.
+        </li>
+        <li>
+          <strong>Magier</strong>
+          <br><strong>Passiv:</strong> jedes 2. Mal, wenn du Mana erhältst, bekommst du 2 statt 1, und dein maximales Mana beträgt 6 (deine Fähigkeit kostet weiterhin nur 3).
+          <br><strong>Aktiv, Feuersturm:</strong> jedes Monster, das sich gerade im Raum befindet, erleidet 15 Schaden.
+        </li>
       </ul>
-      <p>Der Ring um deinen Fähigkeiten-Button zeigt dein gesammeltes Mana. Du erhältst 1 Mana, jedes Mal wenn ein Raum geräumt oder verlassen wird, bis zu den Kosten deines Champions. Sobald der Ring voll ist, leuchtet der Button auf und du kannst ihn anklicken, um deine aktive Fähigkeit auszulösen, was das gesamte Mana verbraucht.</p>
+      <p>Der Ring um deinen Fähigkeiten-Button zeigt dein gesammeltes Mana. Du erhältst 1 Mana, jedes Mal wenn ein Raum geräumt oder verlassen wird (manche Champions erhalten mehr, oder können mehr Mana speichern als ihre Fähigkeit kostet), bis zu den Kosten deines Champions. Sobald der Ring voll ist, leuchtet der Button auf und du kannst ihn anklicken, um deine aktive Fähigkeit auszulösen, was das gesamte Mana verbraucht.</p>
 
       <h3>Einen Raum fliehen</h3>
       <p>"Raum fliehen" schickt den gesamten Raum ans Ende des Decks und teilt einen neuen aus. Du kannst nur einen vollen, unberührten Raum von 4 Karten fliehen, und nie zwei Räume hintereinander.</p>

@@ -39,6 +39,8 @@ const CHAMPION_BASE = [
   { id: 'rogue', image: 'images/champions/rogue.png' },
   { id: 'berserker', image: 'images/champions/berserker.png' },
   { id: 'swordmaster', image: 'images/champions/swordmaster.png' },
+  { id: 'ranger', image: 'images/champions/ranger.png' },
+  { id: 'mage', image: 'images/champions/mage.png' },
 ];
 
 const CHAMPION_NAMES = {
@@ -48,6 +50,8 @@ const CHAMPION_NAMES = {
     rogue: 'Rogue',
     berserker: 'Berserker',
     swordmaster: 'Sword Master',
+    ranger: 'Ranger',
+    mage: 'Mage',
   },
   de: {
     paladin: 'Paladin',
@@ -55,6 +59,8 @@ const CHAMPION_NAMES = {
     rogue: 'Schurke',
     berserker: 'Berserker',
     swordmaster: 'Schwert­meister',
+    ranger: 'Wald­läufer',
+    mage: 'Magier',
   },
 };
 
@@ -72,6 +78,8 @@ const CHAMPION_FLAVOR = {
     rogue: "A quick-fingered thief who slips past danger and strikes when it's least expected.",
     berserker: 'A battle-hardened warrior who shrugs off pain and hits hardest with bare fists.',
     swordmaster: 'A disciplined duelist who has spent a lifetime perfecting the care and use of a blade.',
+    ranger: 'A keen-eyed hunter of the wilds who never lets an arrow go to waste.',
+    mage: 'A learned spellcaster who channels arcane power through staff and rune.',
   },
   de: {
     paladin: 'Ein frommer Ritter, der heiligen Glauben in Klinge und Schild lenkt.',
@@ -79,6 +87,8 @@ const CHAMPION_FLAVOR = {
     rogue: 'Ein flinkfingriger Dieb, der der Gefahr ausweicht und zuschlägt, wenn man es am wenigsten erwartet.',
     berserker: 'Ein kampferprobter Krieger, der Schmerz ignoriert und am härtesten mit bloßen Fäusten zuschlägt.',
     swordmaster: 'Ein disziplinierter Duellant, der sein Leben der Pflege und dem Einsatz der Klinge gewidmet hat.',
+    ranger: 'Ein scharfäugiger Jäger der Wildnis, der nie einen Pfeil verschwendet.',
+    mage: 'Ein gelehrter Zauberer, der arkane Macht durch Stab und Rune lenkt.',
   },
 };
 
@@ -89,6 +99,16 @@ const CHAMPION_DESCRIPTIONS = {
     rogue: 'You are allowed to flee two rooms in a row instead of one',
     berserker: 'Fighting bare-handed, you take 10 less damage from monsters',
     swordmaster: "Your weapon's degrade limit can never drop by more than 15 per fight",
+    // Ranger: see "Ranger passive" in CLAUDE.md's Weapon/Champion notes once
+    // written up there — implemented as rangedAmmoMaxFor() in js/state.js
+    // (RANGED_AMMO_MAX + 1), read by equipWeapon() and every ammo-count
+    // display in js/ui.js instead of the bare constant.
+    ranger: 'Every bow you equip carries 1 extra arrow',
+    // Mage: two passives in one line, both implemented in js/state.js —
+    // gainMana() alternates +1/+2 per room change for this champion, and
+    // MAX_MANA_OVERRIDES.mage (js/ability-icons.js) raises the mana pool
+    // cap to 6 even though the active ability itself only costs 3.
+    mage: 'Every 2nd time you gain mana you gain 2 instead of 1, and your max mana is 6',
   },
   de: {
     paladin: 'Für alle 5 besiegten Monster heilst du 10 LP',
@@ -96,6 +116,8 @@ const CHAMPION_DESCRIPTIONS = {
     rogue: 'Du darfst zwei Räume hintereinander fliehen statt nur einen',
     berserker: 'Im bloßhändigen Kampf erleidest du 10 weniger Schaden von Monstern',
     swordmaster: 'Die Abnutzungsgrenze deiner Waffe kann pro Kampf nie um mehr als 15 sinken',
+    ranger: 'Jeder Bogen, den du ausrüstest, trägt 1 zusätzlichen Pfeil',
+    mage: 'Jedes 2. Mal, wenn du Mana erhältst, bekommst du 2 statt 1, und dein maximales Mana beträgt 6',
   },
 };
 

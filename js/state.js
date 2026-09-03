@@ -152,6 +152,30 @@ const state = {
                               // renderAbilityActiveGlow() (js/ui.js) reads
                               // this directly, same pattern as Paladin's/
                               // Berserker's own charge counters.
+  mageManaGainCount: 0,       // Mage's passive: counts every gainMana() call
+                              // this game (see gainMana() below), regardless
+                              // of champion — only actually read while
+                              // state.champion === 'mage', at which point
+                              // every 2nd call grants 2 mana instead of 1.
+                              // Reset by initGame() like every other
+                              // per-game counter.
+  rangerHeadShotCharges: 0,   // Ranger's active ability ("Head Shot"): set to
+                              // 2 by useAbility() below. While > 0, the next
+                              // shot fired with the equipped Ranged weapon
+                              // deals double damage (see fireRangedWeapon()
+                              // below) — counts down by 1 on every shot fired
+                              // while active, whether or not the shot was
+                              // actually the killing blow, same unconditional
+                              // -counter reasoning as every other charge
+                              // counter in this file (see the GOTCHA comment
+                              // on swordmasterMasteryCharges in
+                              // fightMonster()). If the bow breaks (its ammo
+                              // hits 0) while a charge is still banked, the
+                              // ability is cancelled outright rather than
+                              // carrying over to whatever's equipped next.
+                              // 0 = ability inactive — renderAbilityActiveGlow()
+                              // (js/ui.js) reads this directly, same pattern
+                              // as every other champion's charge counter.
 
   // Whether fighting a monster should use the equipped weapon (when legal)
   // or go bare-handed. Normally a plain UI preference controlled by the
@@ -192,6 +216,17 @@ const SAFE_ROOM_LIMIT = 2;
  * feature — see fireRangedWeapon() below for where they're actually used. */
 const RANGED_AMMO_MAX = 3;
 const RANGED_RETALIATE_CHANCE = 0.2;
+
+/** Custom addition, see the Ranger champion's passive in js/champion-icons.js
+ * ("every bow carries 1 extra arrow"). The actual ammo ceiling a Ranged
+ * weapon is equipped with (equipWeapon() below) and every display of that
+ * ceiling (js/ui.js's ammo bar/status text, the gallery's ammo-count
+ * sentence) reads from this instead of the bare RANGED_AMMO_MAX constant, so
+ * the bonus applies everywhere consistently without hunting down every call
+ * site individually. Every other champion just gets the plain constant back. */
+function rangedAmmoMaxFor() {
+  return state.champion === 'ranger' ? RANGED_AMMO_MAX + 1 : RANGED_AMMO_MAX;
+}
 
 /** Custom addition, see "Mage Staffs" in CLAUDE.md and the SUITS.MAGE
  * comment in js/cards.js. How much of the SHARED state.mana pool (the same
@@ -315,6 +350,8 @@ function initGame(championId = null, options = {}) {
   state.champion = championId;
   state.monstersDefeated = 0;
   state.mana = 0;
+  state.mageManaGainCount = 0;
+  state.rangerHeadShotCharges = 0;
   state.paladinResistCharges = 0;
   state.rogueTargeting = false;
   state.berserkerFrenzyCharges = 0;
@@ -335,7 +372,15 @@ function initGame(championId = null, options = {}) {
 function gainMana() {
   if (!state.champion) return;
   const cap = maxManaFor(state.champion);
-  state.mana = Math.min(state.mana + 1, cap);
+  // Mage's passive: every 2nd room change grants 2 mana instead of 1 (see
+  // CHAMPION_DESCRIPTIONS.mage in js/champion-icons.js). Every other
+  // champion just gets the plain +1.
+  let amount = 1;
+  if (state.champion === 'mage') {
+    state.mageManaGainCount += 1;
+    amount = state.mageManaGainCount % 2 === 0 ? 2 : 1;
+  }
+  state.mana = Math.min(state.mana + amount, cap);
 }
 
 /** Spends all collected mana to activate the current champion's active
@@ -415,6 +460,61 @@ function useAbility() {
     // isWeaponUsableOn()/fightMonster() below.
     state.swordmasterMasteryCharges = 3;
     return { message: t('abilitySwordmasterMastery', { name: champ.name }) };
+  }
+
+  if (state.champion === 'ranger') {
+    // See rangerHeadShotCharges in the state object above and
+    // fireRangedWeapon() below.
+    state.rangerHeadShotCharges = 2;
+    return { message: t('abilityRangerHeadShot', { name: champ.name }) };
+  }
+
+  if (state.champion === 'mage') {
+    // Fire Surge: every monster currently in the room takes 15 damage, the
+    // same "subtract, kill outright at 0 or below" model a Ranged/Mage Staff
+    // shot uses (fireRangedWeapon()/fireMageWeapon() above), not
+    // weakenMonster()'s floor-at-5 — this is meant to actually finish off
+    // weak stragglers, per the champion's own design intent ("good when
+    // small enemies remain"). No retaliation risk on any of these hits,
+    // unlike an equipped Ranged/Mage weapon shot; this is a clean AoE nuke,
+    // not a fight.
+    const roomMonsters = state.room.filter((c) => c.type === 'monster');
+    const killedIds = [];
+    const weakenedIds = [];
+    roomMonsters.forEach((card) => {
+      card.rank = Math.max(0, card.rank - 15);
+      if (card.rank <= 0) killedIds.push(card.id);
+      else weakenedIds.push(card.id);
+    });
+    if (killedIds.length > 0) {
+      state.room = state.room.filter((c) => !killedIds.includes(c.id));
+      state.monstersDefeated += killedIds.length;
+    }
+
+    let message = t('abilityMageFireSurge', { name: champ.name, count: roomMonsters.length });
+
+    // Same win-check / room-refill semantics resolveCard() applies after a
+    // normal card resolution (see there for the full reasoning) — needed
+    // here too, since this is the only other place a card can leave
+    // state.room, and it can remove more than one at once, which is why
+    // this can't just reuse resolveCard()'s own "exactly 1 card left"
+    // refill trigger.
+    const monstersRemain =
+      state.deck.some((c) => c.type === 'monster') || state.room.some((c) => c.type === 'monster');
+    if (!monstersRemain) {
+      state.gameOver = true;
+      state.outcome = 'won';
+      message += t('winAllMonstersSuffix');
+    } else if (state.room.length < 4 && state.deck.length > 0) {
+      const drawn = drawForRoom(state.room, 4 - state.room.length);
+      state.room.push(...drawn);
+      state.roomsDealt += 1; // see the "safe start" rule in drawForRoom() above
+      state.potionsDrunkThisRoom = 0; // new room = potion(s) can heal again
+      state.fleeStreak = 0; // completing a room normally resets the flee streak
+      gainMana(); // room changed — same trigger resolveCard()'s refill uses
+    }
+
+    return { message, killedIds, weakenedIds };
   }
 
   return { message: t('abilityNotImplemented', { name: champ.name }) };
@@ -816,7 +916,21 @@ function fireRangedWeapon(card) {
   state.weaponAmmoRemaining -= 1;
   const weaponBroke = state.weaponAmmoRemaining <= 0;
 
-  const shotDamage = weapon.rank;
+  // Ranger's active ability ("Head Shot"): the next 2 shots deal double
+  // damage. Ticks down on every shot fired while active (see
+  // rangerHeadShotCharges in the state object above for why it's
+  // unconditional), and is cancelled outright if this same shot also broke
+  // the bow, rather than carrying a leftover charge over to whatever's
+  // equipped next.
+  const headShotActive = state.champion === 'ranger' && state.rangerHeadShotCharges > 0;
+  if (headShotActive) {
+    state.rangerHeadShotCharges -= 1;
+  }
+  if (weaponBroke && state.rangerHeadShotCharges > 0) {
+    state.rangerHeadShotCharges = 0;
+  }
+
+  const shotDamage = headShotActive ? weapon.rank * 2 : weapon.rank;
   const monsterDied = card.rank - shotDamage <= 0;
 
   let retaliated = false;
@@ -894,6 +1008,13 @@ function fireRangedWeapon(card) {
         damage: shotDamage,
         remaining: card.rank,
       });
+  if (headShotActive) {
+    const left = state.rangerHeadShotCharges;
+    // Cancelled outright (see above) reads the same as naturally fading —
+    // either way there's nothing left, so one shared "faded" message covers
+    // both without the player needing to know which one happened.
+    message += left > 0 ? t('headShotActiveLeft', { n: left }) : t('headShotFaded');
+  }
   if (retaliated) {
     // `damage` has already been through the Paladin/shield reduction below
     // by the time this runs (same ordering as fightMonster()'s message,
@@ -1129,7 +1250,7 @@ function equipWeapon(card) {
   // function, break at 0" pattern, just a different counter for a different
   // weapon kind (never both at once, see rollWeaponEffects() in
   // js/weapon-effects.js).
-  state.weaponAmmoRemaining = card.suit === SUITS.RANGED ? RANGED_AMMO_MAX : null;
+  state.weaponAmmoRemaining = card.suit === SUITS.RANGED ? rangedAmmoMaxFor() : null;
   const weaponLabel =
     card.suit === SUITS.RANGED
       ? rangedWeaponNameFor(card.baseRank)

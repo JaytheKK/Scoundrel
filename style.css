@@ -343,7 +343,7 @@ button:disabled::before {
   align-items: center;
   justify-content: center;
   gap: 0.75rem 1rem;
-  margin-left: 8px;
+  margin-left: 36px;
 }
 
 #deck-count {
@@ -1658,7 +1658,8 @@ button:disabled::before {
   display: block;
   color: var(--accent);
   font-family: var(--font-ui);
-  font-size: 0.8rem;
+  font-size: 0.95rem; /* ~2px larger than the previous 0.8rem, by request */
+  font-weight: bold;
   margin-bottom: 0.15rem;
 }
 
