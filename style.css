@@ -1125,17 +1125,19 @@ button:disabled::before {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* var(--accent), the same gold used by "Deine Ausrüstung"
-     (.deckbuilder-section-title) and every other accent-colored heading in
-     this project — swapped in from a near-black per a follow-up request,
-     after an even earlier version tried plain white. */
-  color: var(--accent);
+  /* A darkened version of var(--accent) (#d9a441, the gold "Deine
+     Ausrüstung"/.deckbuilder-section-title and every other accent-colored
+     heading in this project uses) — the plain, undarkened accent gold was
+     reported as hard to make out against this badge's own dark translucent
+     fill, so this is #d9a441 scaled to ~75% brightness rather than a
+     separate, unrelated color, keeping the same gold hue/family. */
+  color: #a37b31;
   font-family: var(--font-ui);
   font-weight: 700;
-  /* Original size was 0.62rem; now 130% of that (0.62 * 1.3 = 0.806,
-     rounded), reached via two follow-up "bigger" requests (a 10% bump to
-     0.68rem, then another 20% on top of the ORIGINAL 0.62rem value). */
-  font-size: 0.81rem;
+  /* Original size was 0.62rem; now 150% of that (0.62 * 1.5 = 0.93),
+     reached via three follow-up "bigger" requests, each measured against
+     the ORIGINAL 0.62rem value, not the previous request's own result. */
+  font-size: 0.93rem;
   line-height: 1;
   pointer-events: none;
 }

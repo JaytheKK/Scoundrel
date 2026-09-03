@@ -1385,13 +1385,17 @@ rules)
   (`top: 5%; left: 5%`) with a light border ring, matching
   `.card-effect-badge`'s fill/shape but not its actual position or its
   borderless-once-corrected look — moved to the position above and had its
-  border removed on a direct follow-up request. Its number went through two
-  more follow-up requests after that: white → `var(--card-text)`
-  (near-black) at 10% bigger (`0.62rem` → `0.68rem`), then finally
-  → `var(--accent)` (the same gold used by "Deine Ausrüstung",
-  `.deckbuilder-section-title`, and every other accent-colored heading in
-  this project) at 130% of the *original* size (`0.62rem` → `0.81rem`, not
-  a further 20% on top of `0.68rem`). Deliberately separate from the
+  border removed on a direct follow-up request. Its number went through
+  several more follow-up requests after that, each sizing change measured
+  against the *original* `0.62rem`, never against the size the previous
+  request had just landed on: white → `var(--card-text)` (near-black) at
+  10% bigger (`0.68rem`) → `var(--accent)` (the same gold "Deine
+  Ausrüstung"/`.deckbuilder-section-title` and every other accent-colored
+  heading in this project uses) at 130% (`0.81rem`) → finally `#a37b31`
+  (`var(--accent)` darkened to ~75% brightness, kept in the same gold hue
+  rather than switched to an unrelated color, since plain `var(--accent)`
+  was reported as still hard to make out against the badge's own dark
+  translucent fill) at 150% (`0.93rem`). Deliberately separate from the
   strength number already shown in the
   frame's hexagon lower down (`.gallery-item-rank`, bottom-center) — for a
   ranged weapon the two numbers differ (e.g. the Long Bow shows strength
