@@ -47,13 +47,25 @@
     <div id="hp-bar-wrapper">
       <div id="champion-badge"></div>
       <div id="hp-bar-column">
-        <div id="hp-bar-container">
-          <div id="hp-bar"><div id="hp-fill"></div></div>
-          <div id="hp-float-container"></div>
+        <!-- HP and mana each get their own bar+text row, both children of
+             this same column, so the two bars line up exactly under each
+             other for free (same width, same left edge) instead of needing
+             separate centering math — see the .stat-row rule in style.css. -->
+        <div class="stat-row">
+          <div id="hp-bar-container">
+            <div id="hp-bar"><div id="hp-fill"></div></div>
+            <div id="hp-float-container"></div>
+          </div>
+          <span id="hp-text">20 / 20 HP</span>
+        </div>
+        <div class="stat-row">
+          <div id="mana-bar-container">
+            <div id="mana-bar"><div id="mana-fill"></div></div>
+          </div>
+          <span id="mana-text">0 / 0 Mana</span>
         </div>
         <div id="champion-ability-bar" class="hidden"></div>
       </div>
-      <span id="hp-text">20 / 20 HP</span>
     </div>
 
     <div id="room"></div>

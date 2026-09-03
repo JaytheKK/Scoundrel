@@ -76,11 +76,18 @@ const state = {
                               // CLAUDE.md) — gained via gainMana() below
                               // whenever a room changes (cleared or fled),
                               // spent (reset to 0) via useAbility(). Always
-                              // clamped to the current champion's
-                              // ABILITY_MANA_COST (js/ability-icons.js), so
-                              // it can be read directly as "progress toward
+                              // clamped to the current champion's own
+                              // maxManaFor() (js/ability-icons.js, normally
+                              // equal to ABILITY_MANA_COST, unless the
+                              // champion has a bigger-pool passive), so it
+                              // can be read directly as "progress toward
                               // the ability being usable" without a caller
-                              // having to clamp it themselves.
+                              // having to clamp it themselves — a champion
+                              // whose max exceeds their ability cost can
+                              // still bank mana past that point, which
+                              // #mana-bar (js/ui.js) reflects but #mana-ring
+                              // doesn't (it only shows progress up to the
+                              // ability cost).
   paladinResistCharges: 0,    // Paladin's active ability: set to 3 by
                               // useAbility() below, then counts down by 1
                               // each of the next 3 times he'd take damage
@@ -318,16 +325,17 @@ function initGame(championId = null, options = {}) {
 /** Called whenever the room changes — a room clearing (refilling back up to
  * 4 cards) or a successful flee, see the call sites in resolveCard()/
  * fleeRoom() below — to grow the champion's active-ability mana by 1.
- * Clamped to the champion's ABILITY_MANA_COST (js/ability-icons.js) since
- * nothing reads mana past that point anyway (the ability just becomes
- * usable and stays usable until spent — see useAbility() below), which also
- * means callers can treat state.mana directly as "progress toward ready"
- * without re-clamping it themselves (see abilityManaProgress() in
- * js/ui.js). No-ops before a champion is picked. */
+ * Clamped to the champion's own maxManaFor() (js/ability-icons.js) — for
+ * most champions that's the same number as ABILITY_MANA_COST, so mana stops
+ * growing exactly where the ability becomes usable (and callers can treat
+ * state.mana directly as "progress toward ready" without re-clamping it
+ * themselves, see abilityManaProgress() in js/ui.js), but a champion with a
+ * bigger-pool passive can keep banking mana past that point. No-ops before
+ * a champion is picked. */
 function gainMana() {
   if (!state.champion) return;
-  const cost = abilityManaCostFor(state.champion);
-  state.mana = Math.min(state.mana + 1, cost);
+  const cap = maxManaFor(state.champion);
+  state.mana = Math.min(state.mana + 1, cap);
 }
 
 /** Spends all collected mana to activate the current champion's active

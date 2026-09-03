@@ -136,8 +136,24 @@ html {
    min-height to a fixed 2-line height (see #message further down): a real
    2-line message now needs ~689px at this tier, not the ~640px above, so
    the gate below was raised from 665px to keep the same kind of safety
-   margin over the new true requirement. */
-@media (min-width: 640px) and (min-height: 715px) {
+   margin over the new true requirement.
+   Re-measured a third time after #mana-bar-wrapper was added (a new row
+   directly under the HP bar, see it further down) — measured overflow of
+   10px right at the old 715px gate (true content height ~725px there), so
+   the gate was raised again, to 740px, keeping a similar safety margin
+   over the new true requirement. Re-checked a fourth time after the mana
+   row was restructured into a .stat-row inside #hp-bar-column (so it
+   lines up exactly under the HP bar) and #mana-text's font-size was
+   bumped to match #hp-text's own 0.9rem — still fit with margin to spare
+   at this tier and both desktop tiers below, only the phone 2x2-grid tier
+   (further down) needed another bump for that font change. Any future
+   change that adds vertical space to this shared header block must
+   re-measure this gate (and the other 3 below) the same way — force
+   #message to a real 2-line string, check
+   document.documentElement.scrollHeight at the gate's own exact
+   width/height, and just below it to confirm the fallback tier still
+   fits. */
+@media (min-width: 640px) and (min-height: 740px) {
   html {
     font-size: 18px;
   }
@@ -149,8 +165,14 @@ html {
 
 /* Small/mid desktop. Content at this tier needs ~909px with a real 2-line
    #message (re-measured for the same reason as the tablet tier's own
-   comment above), so require some margin above that. */
-@media (min-width: 1024px) and (min-height: 935px) {
+   comment above), so require some margin above that.
+   Re-measured again after #mana-bar-wrapper was added (see the tablet
+   tier's own comment above for the full story) — measured overflow of
+   22px right at the old 935px gate (true content height ~957px there,
+   bigger than the tablet tier's own 10px delta since this tier's root
+   font-size, 22px, scales every rem-sized part of the new mana row up
+   further), so the gate was raised to 975px. */
+@media (min-width: 1024px) and (min-height: 975px) {
   html {
     font-size: 22px;
   }
@@ -164,8 +186,12 @@ html {
    ~1077px (re-measured after #message switched from a variable min-height
    to a fixed 2-line height, and after #room's own small margin-top was
    added, see both of those changes' own comments), so the gate is set well
-   above that, not just the ~1010px an older measurement had found. */
-@media (min-width: 1280px) and (min-height: 1110px) {
+   above that, not just the ~1010px an older measurement had found.
+   Re-measured again after #mana-bar-wrapper was added (see the tablet
+   tier's own comment above) — measured overflow of 24px right at the old
+   1110px gate (true content height ~1134px there), so the gate was raised
+   to 1150px. */
+@media (min-width: 1280px) and (min-height: 1150px) {
   html {
     font-size: 24px; /* desktop — 1.5x the original 16px */
   }
@@ -317,6 +343,7 @@ button:disabled::before {
   align-items: center;
   justify-content: center;
   gap: 0.75rem 1rem;
+  margin-left: 8px;
 }
 
 #deck-count {
@@ -1847,10 +1874,12 @@ button:disabled::before {
   position: relative;
   /* Reserves the horizontal space #champion-badge used to occupy as a
      normal flex item (its own width plus one gap) now that it's pulled
-     out of flow below, so hp-bar-column/#hp-text don't slide left into
-     where the badge visually still sits. 5.15rem = the badge's enlarged
-     4.4rem width plus a 0.75rem gap before the HP bar, matching the old
-     spacing (badge-width + gap) at the new, bigger size. */
+     out of flow below, so #hp-bar-column (which now holds the HP row, the
+     mana row, and the champion-ability bar, see #hp-bar-column further
+     down) doesn't slide left into where the badge visually still sits.
+     5.15rem = the badge's enlarged 4.4rem width plus a 0.75rem gap before
+     the HP bar, matching the old spacing (badge-width + gap) at the new,
+     bigger size. */
   padding-left: 5.15rem;
 }
 
@@ -1865,13 +1894,13 @@ button:disabled::before {
    comment above for how its old flex-item space is preserved instead. */
 #champion-badge {
   position: absolute;
-  left: 0;
+  left: -4px;
   /* -(#controls's own height, ~1.95rem, plus the gap between #controls
      and #hp-bar-wrapper) lines this badge's top up with #menu-btn's own
      top, regardless of --stack-gap's per-breakpoint value. */
   top: calc(-1.95rem - var(--stack-gap));
-  width: 4.4rem;
-  height: 4.4rem;
+  width: 4.8rem;
+  height: 4.8rem;
   flex-shrink: 0;
   border-radius: 50%;
   overflow: hidden;
@@ -1895,30 +1924,54 @@ button:disabled::before {
   font-size: 2.2rem;
 }
 
-/* Stacks the HP bar and the champion-ability bar directly beneath it in a
-   column, both the same width (11.25rem, matching #hp-bar) — kept as its
-   own wrapper rather than putting the ability bar inside #hp-bar-container
-   so that container's 50%/50% floating-number anchor (see
-   #hp-float-container below) stays centered on the HP bar alone, not on
-   the taller combined column. */
+/* Stacks the HP row, the mana row, and the champion-ability bar directly
+   beneath each other in a column, all the same width (10rem, matching
+   #hp-bar/#mana-bar) — kept as its own wrapper rather than putting
+   everything inside #hp-bar-container so that container's 50%/50%
+   floating-number anchor (see #hp-float-container below) stays centered on
+   the HP bar alone, not on the taller combined column. HP and mana are each
+   a .stat-row (bar + text) so the two bars share the exact same left edge
+   for free, instead of needing separate centering math per row — see
+   .stat-row below. */
 #hp-bar-column {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  /* Tightened from 0.25rem by request, so the HP row, the mana row, and
+     #champion-ability-bar read as one compact stacked group instead of 3
+     loosely-spaced rows. */
+  gap: 0.1rem;
+}
+
+/* One bar + its text label, side by side — shared by the HP row and the
+   mana row (see #hp-bar-column above) so both align identically under
+   #champion-badge/#hp-bar-wrapper's own centering, with no separate
+   padding-left/justify-content math needed per row. */
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 /* Positioning anchor for the floating +N / -N numbers (#hp-float-container),
    which need to sit centered above the bar regardless of its own size. */
 #hp-bar-container {
   position: relative;
+  flex-shrink: 0;
 }
 
 /* Carved-stone recessed look: dark inset well with a thin gold hairline
    ring, so the bar reads as part of the dungeon UI rather than a plain web
    progress bar. Width shortened to make room for #champion-badge — see the
-   comment there. */
+   comment there. Trimmed further, from 11.25rem to 10rem, so the whole HP
+   row (badge space + bar + text) reliably fits on one line on narrow phone
+   widths instead of #hp-text wrapping onto its own second line — see
+   #hp-text's own white-space: nowrap below, which is what actually
+   forbids that wrap; this width trim is the accompanying "make the bar a
+   little shorter" half of that fix, freeing up the horizontal room
+   nowrap needs to have somewhere to go. #mana-bar-container matches this
+   width exactly, so the two bars stay the same length. */
 #hp-bar {
-  width: 11.25rem;
+  width: 10rem;
   height: 0.875rem;
   background: linear-gradient(180deg, #0c0c0f, #1c1c21);
   border: 1px solid var(--border);
@@ -1957,10 +2010,59 @@ button:disabled::before {
   min-width: 4.375rem;
   text-align: left;
   font-family: var(--font-ui);
+  /* Never break onto a 2nd line (was seen wrapping to "100 / 100" then a
+     lone "HP" underneath on a narrow phone) — flex-shrink: 0 so it keeps
+     its full natural width even if the row is tight, rather than being
+     squeezed down first and then wrapping once too narrow to fit on one
+     line. #hp-bar's own width was trimmed to make room for this, see its
+     comment above. */
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-/* Thin per-champion progress bar directly under the HP bar, same width
-   (11.25rem, via #hp-bar-column above) — shows progress toward whichever
+/* Mana bar, in its own .stat-row between the HP row and #champion-ability-bar
+   (see #hp-bar-column above) — same carved-stone recessed look and same
+   text size/color as #hp-bar/#hp-text just above (see renderManaBar() in
+   js/ui.js), colored with --mana-rgb instead of the HP bar's red. Being a
+   .stat-row child of #hp-bar-column, same as the HP row, is what keeps it
+   pixel-aligned under #hp-bar with no separate centering math of its own. */
+#mana-bar-container {
+  width: 10rem; /* matches #hp-bar's own trimmed width, see its comment */
+  flex-shrink: 0;
+}
+
+#mana-bar {
+  width: 100%;
+  height: 0.5rem;
+  background: linear-gradient(180deg, #0c0c0f, #1c1c21);
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(217, 164, 65, 0.18);
+}
+
+#mana-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(180deg, #6ea8f5, rgb(var(--mana-rgb)));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 0 8px rgba(var(--mana-rgb), 0.55);
+  transition: width 0.4s ease;
+}
+
+#mana-text {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  min-width: 4.375rem;
+  text-align: left;
+  font-family: var(--font-ui);
+  /* See #hp-text's own identical rule above for why. */
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Thin per-champion progress bar directly under the HP/mana rows, same
+   width (10rem, matching #hp-bar/#mana-bar — see #hp-bar's own comment for
+   why that's 10rem and not 11.25rem) — shows progress toward whichever
    champion's passive triggers repeatedly during a run (Paladin's every-5th-
    kill heal, Rogue's flee streak, Herbalist's potions-per-room). Segment
    count varies by champion (buildChampionAbilitySegments() in js/ui.js);
@@ -1970,7 +2072,7 @@ button:disabled::before {
 #champion-ability-bar {
   display: flex;
   gap: 2px;
-  width: 11.25rem;
+  width: 10rem;
   height: 0.25rem;
 }
 
@@ -2325,7 +2427,22 @@ button:disabled::before {
    same #room id selector (identical specificity), so with both wrapped
    in @media blocks of otherwise-equal specificity, only source order
    decides the winner, so this one needs to come after the base rule to
-   actually override it. */
+   actually override it.
+   Re-measured again after the mana row was added directly under the HP
+   bar (see #hp-bar-column/.stat-row further up) — measured overflow of
+   29px right at the old 650px gate (true content height ~679px there, at
+   375px width), so the gate was temporarily raised to 695px, then to
+   720px after #mana-text's font-size was also bumped up to match
+   #hp-text's own 0.9rem (was 0.65rem, +10px more overflow at 695px).
+   Re-measured a fourth time after #hp-bar-column's row gap was tightened
+   from 0.25rem to 0.1rem (a separate request, to pull the 3 rows closer
+   together) — this alone brought true content height at 375px width back
+   down to fit comfortably at 650px again, so the gate was restored to its
+   original 650px, same value and same safety margin as before the mana
+   row ever existed. Any future change to this shared header block must
+   re-measure this the same way (and the tablet/mid-desktop/full-desktop
+   gates further up, which went through the identical raise-then-partially
+   -restore story) before assuming the current gate values still hold. */
 @media (max-width: 639px) and (min-height: 650px) {
   :root {
     --card-scale: 0.9;

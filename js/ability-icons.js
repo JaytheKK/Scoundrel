@@ -55,6 +55,27 @@ function abilityManaCostFor(championId) {
   return ABILITY_MANA_COST[championId] || 0;
 }
 
+// How much mana a champion can bank at once (drives both gainMana()'s clamp
+// in js/state.js and #mana-bar's width in js/ui.js's renderManaBar()).
+// Normally identical to that same champion's own ABILITY_MANA_COST above,
+// since mana simply stops mattering once the ability is usable, that's the
+// default maxManaFor() falls back to when a champion has no entry here. A
+// champion can instead be given a bigger pool than their ability actually
+// costs (a "banks extra mana" passive) by adding an override below, e.g. a
+// champion whose ability costs 3 but who can hold up to 6, letting them
+// bank a second use in advance rather than sitting at a wasted full bar
+// the instant they hit 3. #mana-ring (js/ui.js) is unaffected either way,
+// it only ever shows progress toward "ready" (capped at the ability cost),
+// #mana-bar is the one that shows the champion's whole pool including any
+// overflow above that cost.
+const MAX_MANA_OVERRIDES = {
+  // e.g. mage: 6,
+};
+
+function maxManaFor(championId) {
+  return MAX_MANA_OVERRIDES[championId] || abilityManaCostFor(championId);
+}
+
 // Plain-language name + description of each champion's active ability
 // (mirrors the mechanics implemented in useAbility()/fightMonster()/
 // resolveBackstab() in js/state.js — see "Champion Active Abilities" in

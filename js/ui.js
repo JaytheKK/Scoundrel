@@ -413,6 +413,7 @@ function renderManaRing() {
   const ring = document.getElementById('mana-ring');
   const btn = document.getElementById('ability-btn');
   const progress = abilityManaProgress();
+  renderManaBar();
 
   if (!progress || progress.total <= 0) {
     ring.style.background = 'none';
@@ -449,6 +450,24 @@ function renderManaRing() {
   const disabled = filled < total;
   btn.classList.toggle('ability-btn--disabled', disabled);
   wrap.classList.toggle('ability-wrap--disabled', disabled);
+}
+
+/** Fills #mana-bar (the rectangular gauge directly under the HP bar, same
+ * carved-stone-plus-gradient-fill look as #hp-bar/renderHp() above, just
+ * blue) with a plain width percentage against the current champion's own
+ * maxManaFor() (js/ability-icons.js) — not the ability cost. Normally the
+ * two are the same number, but a champion whose max mana exceeds their
+ * ability cost can keep banking mana past "ready", which only shows up
+ * here: #mana-ring (renderManaRing() above) only ever fills up to the
+ * ability cost, since that's the only threshold it cares about. Called
+ * from renderManaRing() itself rather than duplicating a call at every one
+ * of its own call sites (new game, room clear, flee, ability use), since
+ * both bars always need to update together. */
+function renderManaBar() {
+  const max = state.champion ? maxManaFor(state.champion) : 0;
+  const pct = max > 0 ? Math.max(0, Math.min(100, (state.mana / max) * 100)) : 0;
+  document.getElementById('mana-fill').style.width = `${pct}%`;
+  document.getElementById('mana-text').textContent = t('manaText', { mana: state.mana, maxMana: max });
 }
 
 /** Toggles #ability-wrap's pulsing golden .ability-wrap--active glow (see
