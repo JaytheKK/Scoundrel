@@ -1373,36 +1373,33 @@ rules)
   a plain rank number alone can't distinguish a melee card from a
   same-rank ranged one the way the real card id can.
 - **The deckCost badge** (`buildGalleryItem()`'s new `cost` param,
-  rendered by `.gallery-item-cost` in `style.css`) is a small circular
-  badge positioned like `.card-effect-badge` (a rolled weapon effect's own
-  corner badge on a real in-game card, see "Weapon Effects" above) — same
-  dark translucent fill, same top/left position (converted from
-  `.card-effect-badge`'s own 18px/22px-of-a-140x100-card pixel numbers into
-  the equivalent 12.9%/22% of this portrait box) — per explicit request
-  ("Mache den Wert der Karte im Deckbuilder gleich wie die Eigenschaft, du
-  musst die Position noch anpassen und ich möchte den weißen Ring nicht").
-  A first version placed it flush in the tile's very top-left corner
-  (`top: 5%; left: 5%`) with a light border ring, matching
-  `.card-effect-badge`'s fill/shape but not its actual position or its
-  borderless-once-corrected look — moved to the position above and had its
-  border removed on a direct follow-up request. Its number went through
-  several more follow-up requests after that, each sizing change measured
-  against the *original* `0.62rem`, never against the size the previous
-  request had just landed on: white → `var(--card-text)` (near-black) at
-  10% bigger (`0.68rem`) → `var(--accent)` (the same gold "Deine
-  Ausrüstung"/`.deckbuilder-section-title` and every other accent-colored
-  heading in this project uses) at 130% (`0.81rem`) → finally `#a37b31`
-  (`var(--accent)` darkened to ~75% brightness, kept in the same gold hue
-  rather than switched to an unrelated color, since plain `var(--accent)`
-  was reported as still hard to make out against the badge's own dark
-  translucent fill) at 150% (`0.93rem`). Deliberately separate from the
-  strength number already shown in the
-  frame's hexagon lower down (`.gallery-item-rank`, bottom-center) — for a
-  ranged weapon the two numbers differ (e.g. the Long Bow shows strength
-  40 in the hexagon, cost 20 in the badge), so they need to read as two
-  distinct things in two distinct corners, not the same number shown
-  twice in one spot. Only ever passed for Deckbuilder tiles — the badge
-  stays entirely unused everywhere else `buildGalleryItem()` is called
+  rendered by `.gallery-item-cost` in `style.css`) went through several
+  full redesigns before landing on its current, deliberately shapeless
+  look: a plain gold number (`var(--accent)`), centered horizontally at
+  the very top of the tile (`top: 3%; left: 50%` + `translateX(-50%)`),
+  outlined with a hard 4-direction black `text-shadow` (plus a soft drop
+  shadow behind that) for legibility against whatever art is behind it —
+  no circle, hexagon, or fill of any kind. Two earlier, fully shaped
+  versions were tried and explicitly rejected in turn: first a small
+  circular badge styled after `.card-effect-badge` (a rolled weapon
+  effect's own corner badge on a real in-game card, see "Weapon Effects"
+  above) — same dark translucent fill, same corner position — which never
+  read well no matter how its color/size/border were tuned ("ich finde die
+  Werte Zahl oben links sieht nicht schön aus, auch mit dem Kreis als
+  Hintergrund sieht es nicht gut aus"); then a small gold hexagon echoing
+  the frame's own strength hexagon further down, rejected outright too
+  ("das passt nicht dazu"). Landed on the current plain-text-with-outline
+  look after being asked directly for design alternatives, then moved from
+  its first position (near the top-left corner icon, chosen to avoid
+  overlapping it) to dead-center at the very top on a direct follow-up
+  ("Platziere die Zahl bitte genau mittig oben"). Deliberately separate
+  from the strength number already shown in the frame's hexagon lower down
+  (`.gallery-item-rank`, bottom-center) — for a ranged weapon the two
+  numbers differ (e.g. the Long Bow shows strength 40 in the hexagon, cost
+  20 up top), so they need to read as two distinct things in two distinct
+  spots, not the same number shown twice in one place. Only ever passed
+  for Deckbuilder tiles — the badge stays entirely unused everywhere else
+  `buildGalleryItem()` is called
   (Monsters/Shields/Champions galleries), since `cost` there is just
   `undefined`.
 - **Wiggle feedback when a pick is blocked.** `triggerDeckbuilderWiggle(el)`

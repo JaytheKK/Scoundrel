@@ -1092,53 +1092,43 @@ button:disabled::before {
 }
 
 /* Deck-point cost badge (Deckbuilder tiles only, via buildGalleryItem()'s
-   `cost` param in js/ui.js) — a small circular badge on a weapon tile's
-   portrait, styled to match .card-effect-badge (a rolled weapon effect's
-   own corner badge on a real in-game card, see .card-effect-badge above)
-   as closely as a percentage-based box can, per request ("Mache den Wert
-   der Karte im Deckbuilder gleich wie die Eigenschaft... ich möchte den
-   weißen Ring nicht") — same dark translucent fill and position (top/left
-   converted from .card-effect-badge's own 18px/22px-of-a-140x100-card
-   pixel numbers into the equivalent 12.9%/22% of this portrait box),
-   deliberately WITHOUT .card-effect-badge's light border ring. Deliberately
-   separate from the strength number already shown in the frame's hexagon
-   further down (.gallery-item-rank, bottom-center): that number is combat
-   strength, this one is how much of the loadout's deckCost budget the card
-   spends, and for a ranged weapon the two differ (see CARD_LIST's deckCost
-   overrides in js/cards.js), so they need to read as two distinct things
-   in two distinct places, not the same number shown twice in one spot. */
+   `cost` param in js/ui.js) — no background shape at all: the number sits
+   directly on the artwork, a bold dark outline (the stacked text-shadows
+   below) doing all the work of keeping it legible against whatever's
+   behind it. Went through two shaped versions first — a plain gray circle
+   (styled after .card-effect-badge, a rolled weapon effect's own corner
+   badge on a real in-game card) and then a small gold hexagon echoing the
+   frame's own strength hexagon further down — both rejected outright
+   ("das passt nicht dazu... kein Hintergrund, nur Text"), so this drops
+   the badge idea entirely rather than attempting a fourth shape. Kept
+   apart from the strength number already shown in the frame's own hexagon
+   purely by position (top-left vs. bottom-center): that number is combat
+   strength, this one is how much of the loadout's deckCost budget the
+   card spends, and for a ranged weapon the two differ (see CARD_LIST's
+   deckCost overrides in js/cards.js), so they still need to read as two
+   distinct things in two distinct places, not the same number twice. */
 .gallery-item-cost {
   position: absolute;
-  top: 12.9%;
-  left: 22%;
-  /* width alone (height comes from aspect-ratio), on purpose: the portrait
-     box this badge sits on isn't square (weapon tiles are taller than
-     wide, aspect-ratio: 100 / 140), so a plain "width: 20%; height: 20%"
-     of that same non-square box computed two different pixel sizes and
-     rendered an oval instead of a circle — width + aspect-ratio: 1 / 1
-     guarantees a true circle regardless of the parent's own ratio. */
-  width: 20%;
-  aspect-ratio: 1 / 1;
-  min-width: 1.05rem;
-  border-radius: 50%;
-  background: rgba(69, 69, 69, 0.382);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* A darkened version of var(--accent) (#d9a441, the gold "Deine
-     Ausrüstung"/.deckbuilder-section-title and every other accent-colored
-     heading in this project uses) — the plain, undarkened accent gold was
-     reported as hard to make out against this badge's own dark translucent
-     fill, so this is #d9a441 scaled to ~75% brightness rather than a
-     separate, unrelated color, keeping the same gold hue/family. */
-  color: #a37b31;
+  top: 3%;
+  /* Centered on the tile's own horizontal midpoint, not tucked to one
+     side — left: 50% + translateX(-50%) keeps it centered regardless of
+     how wide the number itself renders (1 vs. 2 digits). */
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--accent);
   font-family: var(--font-ui);
   font-weight: 700;
-  /* Original size was 0.62rem; now 150% of that (0.62 * 1.5 = 0.93),
-     reached via three follow-up "bigger" requests, each measured against
-     the ORIGINAL 0.62rem value, not the previous request's own result. */
-  font-size: 0.93rem;
+  font-size: 0.90rem;
   line-height: 1;
+  /* A hard dark outline (four 1px offsets) plus a soft drop shadow behind
+     it — keeps the gold number readable whether it lands on light
+     parchment or dark card artwork, with no background box of its own. */
+  text-shadow:
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000,
+    0 2px 3px rgba(0, 0, 0, 0.6);
   pointer-events: none;
 }
 
