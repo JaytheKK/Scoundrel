@@ -1133,7 +1133,8 @@ button:disabled::before {
 }
 
 .gallery-item[data-kind='weapons'],
-.gallery-item[data-kind='rangedWeapons'] {
+.gallery-item[data-kind='rangedWeapons'],
+.gallery-item[data-kind='mageWeapons'] {
   /* Overrides .gallery-item's own cream background: unlike the champions
      tile (whose frame background covers this same element), the weapon
      frame sits on the smaller nested .gallery-item-portrait, so without
@@ -1154,7 +1155,8 @@ button:disabled::before {
 }
 
 .gallery-item[data-kind='weapons'] .gallery-item-portrait,
-.gallery-item[data-kind='rangedWeapons'] .gallery-item-portrait {
+.gallery-item[data-kind='rangedWeapons'] .gallery-item-portrait,
+.gallery-item[data-kind='mageWeapons'] .gallery-item-portrait {
   position: relative;
   width: 100%;
   max-width: none;
@@ -1179,7 +1181,8 @@ button:disabled::before {
    fill the space between the insets) fixes this, with the <img> inside it
    sized by plain max-width/max-height instead. */
 .gallery-item[data-kind='weapons'] .gallery-item-art,
-.gallery-item[data-kind='rangedWeapons'] .gallery-item-art {
+.gallery-item[data-kind='rangedWeapons'] .gallery-item-art,
+.gallery-item[data-kind='mageWeapons'] .gallery-item-art {
   position: absolute;
   left: 15%;
   top: 14%;
@@ -1192,7 +1195,8 @@ button:disabled::before {
 }
 
 .gallery-item[data-kind='weapons'] .gallery-item-art img,
-.gallery-item[data-kind='rangedWeapons'] .gallery-item-art img {
+.gallery-item[data-kind='rangedWeapons'] .gallery-item-art img,
+.gallery-item[data-kind='mageWeapons'] .gallery-item-art img {
   width: auto;
   height: auto;
   /* 85% rather than 100%, a deliberate 15% shrink of just the weapon
@@ -1214,7 +1218,8 @@ button:disabled::before {
    patch of empty space below the card: the name text was still there and
    correctly laid out, just unreadable against the dark background. */
 .gallery-item[data-kind='weapons'] .gallery-item-name,
-.gallery-item[data-kind='rangedWeapons'] .gallery-item-name {
+.gallery-item[data-kind='rangedWeapons'] .gallery-item-name,
+.gallery-item[data-kind='mageWeapons'] .gallery-item-name {
   color: var(--text);
   /* Same display font as .champion-select-name/.champion-select-desc and
      the champions gallery's own .gallery-item-name override, for the same
@@ -1230,7 +1235,8 @@ button:disabled::before {
    be centered in the frame's hexagon via the same --hex-* box
    .card-value-label uses (40.3% / 75.5% / 59.7% / 89.3%). */
 .gallery-item[data-kind='weapons'] .gallery-item-rank,
-.gallery-item[data-kind='rangedWeapons'] .gallery-item-rank {
+.gallery-item[data-kind='rangedWeapons'] .gallery-item-rank,
+.gallery-item[data-kind='mageWeapons'] .gallery-item-rank {
   position: absolute;
   left: 40.3%;
   top: 75.5%;
@@ -1460,6 +1466,7 @@ button:disabled::before {
    value number. */
 .gallery-item[data-kind='weapons'] .gallery-item-portrait::after,
 .gallery-item[data-kind='rangedWeapons'] .gallery-item-portrait::after,
+.gallery-item[data-kind='mageWeapons'] .gallery-item-portrait::after,
 .gallery-item[data-kind='shields'] .gallery-item-portrait::after,
 .gallery-item[data-kind='monsters'] .gallery-item-portrait::after {
   content: '';
@@ -1482,7 +1489,8 @@ button:disabled::before {
 }
 
 .gallery-item[data-kind='weapons'] .gallery-item-portrait::after,
-.gallery-item[data-kind='rangedWeapons'] .gallery-item-portrait::after {
+.gallery-item[data-kind='rangedWeapons'] .gallery-item-portrait::after,
+.gallery-item[data-kind='mageWeapons'] .gallery-item-portrait::after {
   mask-image: url('images/frames/weapon.png');
   -webkit-mask-image: url('images/frames/weapon.png');
 }
@@ -1499,6 +1507,7 @@ button:disabled::before {
 
 .gallery-item[data-kind='weapons'] .gallery-item-portrait::after,
 .gallery-item[data-kind='rangedWeapons'] .gallery-item-portrait::after,
+.gallery-item[data-kind='mageWeapons'] .gallery-item-portrait::after,
 .gallery-item[data-kind='shields'] .gallery-item-portrait::after,
 .gallery-item[data-kind='monsters'] .gallery-item-portrait::after {
   mask-size: 100% 100%;
@@ -2113,6 +2122,104 @@ button:disabled::before {
 }
 
 @keyframes ability-heal-particle-float {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% - 0.9rem)) scale(0.9);
+  }
+}
+
+/* Mage Staff attack animation (custom addition, see "Mage Staffs" in
+   CLAUDE.md and animateMageAttack()/animateMageCastImpact() in js/ui.js).
+   Unlike melee/ranged, a Mage Staff never leaves the weapon slot to swing —
+   it casts in place, so the slot just pulses briefly while the spell
+   "charges", colored with --mana-rgb (the same blue the mana ring itself
+   uses, tying the visual back to the shared resource a cast actually
+   spends) rather than inventing a separate color. */
+@keyframes weapon-slot-casting-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--mana-rgb), 0);
+  }
+  50% {
+    box-shadow: 0 0 14px 4px rgba(var(--mana-rgb), 0.85);
+  }
+}
+
+.weapon-slot-casting {
+  animation: weapon-slot-casting-pulse 0.35s ease-in-out;
+}
+
+/* The spell landing on its target: a rune-glow ring sized/positioned to
+   exactly cover the target card (set inline from getBoundingClientRect() in
+   animateMageCastImpact(), js/ui.js) and a scatter of small spark particles
+   bursting outward from its center. Both are `position: fixed` and appended
+   to <body> rather than anchored to the card element itself — same
+   reasoning as .card-float above: a mage shot that survives has
+   resolveAndAnimate() (js/main.js) replace every room card's DOM element via
+   renderRoom() almost immediately after impact, well before these finish
+   playing, so anchoring to the card itself would cut them short. Also blue
+   (--mana-rgb), same reasoning as .weapon-slot-casting above — the ring is
+   the visual "this was a spell", not a "this was damage" cue (the particles
+   below carry that half instead). */
+.mage-cast-glow {
+  position: fixed;
+  border-radius: var(--radius);
+  border: 2px solid rgba(var(--mana-rgb), 0.9);
+  box-shadow:
+    0 0 12px 4px rgba(var(--mana-rgb), 0.7),
+    inset 0 0 10px 2px rgba(var(--mana-rgb), 0.5);
+  pointer-events: none;
+  z-index: 50;
+  animation: mage-cast-glow-fade 0.5s ease-out forwards;
+}
+
+@keyframes mage-cast-glow-fade {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+}
+
+/* The particle half of the impact: reuses .ability-heal-particle's exact
+   pattern (scattered "+" marks fading up and out, see above) just recolored
+   to var(--danger) with a "-" mark instead of "+" — the damage-colored
+   counterpart to that heal-colored burst, per request ("Partikel-Burst mit
+   einem '-N'-Farbton statt '+'"). A separate class rather than reusing
+   .ability-heal-particle directly, since these are `position: fixed` +
+   viewport-pixel left/top (set from getBoundingClientRect() in
+   animateMageCastImpact()) rather than `position: absolute` + percentage
+   left/top of a relatively-positioned parent the way the ability button's
+   own particles are. */
+.mage-cast-particle {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  color: var(--danger);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  z-index: 51;
+  animation: mage-cast-particle-float 0.65s ease-out forwards;
+}
+
+@keyframes mage-cast-particle-float {
   0% {
     opacity: 0;
     transform: translate(-50%, -50%) scale(0.5);
@@ -3146,6 +3253,19 @@ button:disabled::before {
 .weapon-slot-inactive {
   filter: grayscale(1);
   opacity: 0.45;
+}
+
+/* Custom addition, see "Mage Staffs" in CLAUDE.md — applied whenever a Mage
+   Staff is equipped but there isn't enough of the shared mana pool banked
+   to fire it right now (see mageOutOfMana in renderWeaponSlot(), js/ui.js).
+   Deliberately a separate, LIGHTER effect from .weapon-slot-inactive above
+   ("leicht ausgegraut", per request) rather than reusing it — that class
+   means "toggled off entirely", this one means "this specific weapon can't
+   be used this instant", and the two can independently apply at once (a
+   Mage Staff equipped with the toggle off AND no mana would show both). */
+.weapon-slot-no-mana {
+  filter: grayscale(0.6);
+  opacity: 0.75;
 }
 
 /* A fixed height (not min-height), reserving exactly the 3 lines the

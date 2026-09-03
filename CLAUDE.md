@@ -1011,26 +1011,40 @@ already reflect the current, rescaled implementation.
 ## Ranged Weapons (custom addition, not part of the original Scoundrel rules)
 
 - A second weapon category alongside the original ("Close Range") weapons,
-  currently 4 bows (10/15/25/40 damage, named Kurzbogen/Jagdbogen/
-  Kriegsbogen/Langbogen — Short/Hunting/War/Long Bow), sharing the same
-  weapon equip slot as melee weapons — equipping one discards whatever was
-  equipped before, exactly like swapping to a different melee weapon. Uses
-  its own pseudo-suit, `SUITS.RANGED` (`js/cards.js`), alongside `SUITS.
-  DIAMONDS` (melee) — both map to `type: 'weapon'` via `suitToType()`, which
-  is what lets a ranged weapon flow through the exact same `resolveCard()`
-  dispatch, weapon equip slot, and weapon-attack swing animation as a melee
-  weapon, while still being tellable apart by `card.suit` everywhere the two
-  need different treatment (`fightMonster()`/`isWeaponUsableOn()`/
-  `equipWeapon()` in `js/state.js`, `flavorNameFor()` in `js/ui.js`).
-  Ranged and melee ranks currently overlap (both use some of the same
-  10/15/25/40 values), which is why ranged weapons need their own image
-  folder (`images/weapons/RangedWeapons/<rank>.png`, vs. melee's
+  currently 5 bows (10/15/20/30/40 damage, named Kurzbogen/Reflexbogen/
+  Jagdbogen/Kriegsbogen/Langbogen — Short/Recurve/Hunting/War/Long Bow),
+  sharing the same weapon equip slot as melee weapons — equipping one
+  discards whatever was equipped before, exactly like swapping to a
+  different melee weapon. Uses its own pseudo-suit, `SUITS.RANGED`
+  (`js/cards.js`), alongside `SUITS.DIAMONDS` (melee) — both map to
+  `type: 'weapon'` via `suitToType()`, which is what lets a ranged weapon
+  flow through the exact same `resolveCard()` dispatch, weapon equip slot,
+  and weapon-attack swing animation as a melee weapon, while still being
+  tellable apart by `card.suit` everywhere the two need different treatment
+  (`fightMonster()`/`isWeaponUsableOn()`/`equipWeapon()` in `js/state.js`,
+  `flavorNameFor()` in `js/ui.js`). Ranged and melee ranks currently
+  overlap (both use some of the same 10/15/20/30/40 values), which is why
+  ranged weapons need their own image folder
+  (`images/weapons/RangedWeapons/<rank>.png`, vs. melee's
   `images/weapons/MeleeWeapons/<rank>.png` — both moved out of the old flat
   `images/weapons/<rank>.png` when this was added) and their own name/
   description table (`js/ranged-weapon-icons.js`, mirroring
   `js/weapon-icons.js`'s shape exactly) — a single table keyed only by rank
   could not have told a "10 melee" (Wooden Club) from a "10 ranged" (Short
   Bow) apart.
+  - **The Recurve Bow was added later**, as a 5th bow filling the gap
+    between the Short Bow and what was then the Hunting Bow — user-supplied
+    artwork (`RecurveBowTransparent.png`, already background-removed,
+    cropped to its own alpha bounding box with a small pad, same "already-
+    transparentized PNG on an oversized canvas" step as every other weapon
+    added since the checkerboard-crop pipeline was retired, see "Weapon
+    artwork" below). It took over rank 15, the Hunting Bow's own value at
+    the time, which is why the Hunting Bow and War Bow both moved up
+    (15→20 and 25→30) rather than the new bow being squeezed in at some
+    in-between, non-multiple-of-5 rank — every other rank value in this
+    project (monsters aside) is a multiple of 5, and there was no reason
+    for ranged weapons to be the one exception. The Long Bow (40) and Short
+    Bow (10) were untouched, only sitting on either side of the shuffle.
 - **Completely different damage model from melee.** A melee weapon reduces
   the damage *the player* takes (`monster rank − weapon rank`); a ranged
   weapon instead subtracts its own rank directly from the *monster's* rank
@@ -1149,14 +1163,14 @@ already reflect the current, rescaled implementation.
   surviving monster's card isn't going anywhere. `renderGameOverBanner()`
   is still called on that path too, a retaliation hit can be lethal on its
   own.
-- **Not a rarer/random deck inclusion — the 4 bows are meant to be picked
+- **Not a rarer/random deck inclusion — the 5 bows are meant to be picked
   by the player.** This is why every card already carries a `deckCost`
   field (`js/cards.js`) — see "Weapon Deckbuilder" below for the screen
   that actually reads it now (up to 10 weapon cards, out of the full
-  melee+ranged catalog, capped by a total value budget of 300). It
+  melee+ranged catalog, capped by a total value budget of 270). It
   defaults to `rank` (a melee weapon's budget cost is just its combat
   strength, 1:1), but Ranged weapons override it to roughly half their
-  face-value damage (10→5, 15→8, 25→13, 40→20) — a melee weapon keeps
+  face-value damage (10→5, 15→8, 20→10, 30→15, 40→20) — a melee weapon keeps
   delivering value across many fights until it degrades past usefulness,
   while a Ranged weapon only ever gets `RANGED_AMMO_MAX` (3) total uses, so
   its face-value damage number alone would overstate how much of the
@@ -1282,6 +1296,140 @@ already reflect the current, rescaled implementation.
   "Strength N" — a shield's number is a block/durability value, not an
   attack or heal amount, so labeling it "Strength" would be misleading.
   Keep that distinction if shields ever get more display surfaces.
+
+## Mage Staffs (custom addition, not part of the original Scoundrel rules)
+
+- A third weapon category, alongside melee (`SUITS.DIAMONDS`) and Ranged
+  (`SUITS.RANGED`, see "Ranged Weapons" above): 8 staffs/scepters, damage
+  30-60, its own pseudo-suit `SUITS.MAGE`. Shares the exact same "subtract
+  the weapon's rank directly from the monster's rank, kill outright at 0 or
+  below, otherwise survive weakened and stay in the room, with a
+  `MAGE_RETALIATE_CHANCE` (20%, `js/state.js`) chance of a non-lethal shot
+  getting struck back at for whatever rank the monster has left" damage
+  model as Ranged (`fireMageWeapon()` mirrors `fireRangedWeapon()` almost
+  line for line), and also ignores the weapon degrade rule entirely
+  (`isWeaponUsableOn()`). The one real mechanical difference: instead of a
+  hard `RANGED_AMMO_MAX` (3) shot cap that eventually breaks the weapon,
+  every shot costs `MAGE_MANA_COST` (1) mana from the exact SAME
+  `state.mana` pool the champion's active ability spends from
+  (`js/ability-icons.js`'s `ABILITY_MANA_COST`) — and a Mage Staff never
+  breaks, no matter how many times it's fired. `isWeaponUsableOn()` reflects
+  this by returning `state.mana >= MAGE_MANA_COST` for an equipped Mage
+  Staff (rather than the usual degrade check), which is also the ONE case
+  in the whole game where whether an already-equipped weapon counts as
+  "usable" can change without it ever being re-equipped, broken, or
+  swapped — simply from mana ticking up or down.
+- **This makes a Mage Staff strictly more reusable than a bow (no ammo
+  ceiling, never breaks) but self-limiting through a real opportunity cost
+  instead**: every shot delays the champion's own active ability, since
+  both draw from the same banked mana. `renderWeaponSlot()` (`js/ui.js`)
+  reflects this with its own status line (`mageWeaponStatus`/
+  `mageWeaponStatusNoMana` in `js/i18n.js`) and, whenever there currently
+  isn't enough mana banked to fire, a light, separate grayscale
+  (`.weapon-slot-no-mana` in `style.css`, deliberately NOT the same class
+  `.weapon-slot-inactive` uses for the "Using weapon" toggle being off —
+  the two mean different things and can both apply at once). With no mana
+  available, `isWeaponUsableOn()` returning false makes `fightMonster()`
+  fall through to a normal bare-handed fight automatically, exactly the
+  way a degraded melee weapon or an empty-handed player already would —
+  no special-case needed there.
+- **deckCost is priced as an ascending fraction of raw damage** (0.70x for
+  the weakest staff up to 0.90x for the strongest, rounded — see the
+  `CARD_LIST` entries in `js/cards.js` for the exact per-rank numbers),
+  deliberately different from both melee's flat 1:1 and Ranged's flat
+  ~0.5x. A Mage Staff is closer to melee in how much value it delivers
+  over a full run (no hard ammo ceiling), so it's priced closer to melee,
+  but the opportunity cost against the champion's ability keeps it a
+  little under 1:1 even at the top end. `DECKBUILDER_BUDGET` (270, see
+  "Weapon Deckbuilder" below) was deliberately left unchanged when Mage
+  Staffs were added — the default loadout is still all 9 melee weapons, so
+  the budget's own "sits exactly at cap" property is untouched; bringing a
+  Mage Staff into a loadout now genuinely requires swapping something else
+  out, same as a bow always has.
+- **Own image folder and name/description table**, same reasoning as
+  Ranged: `images/weapons/MageWeapons/<rank>.png` and
+  `js/mage-weapon-icons.js` (`MAGE_WEAPON_NAMES`/`MAGE_WEAPON_DESCRIPTIONS`/
+  `mageWeaponNameFor()`/`mageWeaponDescriptionFor()`/
+  `getMageWeaponRankPool()`, mirroring `js/ranged-weapon-icons.js`'s shape
+  exactly) — Mage Staff ranks (30-60) overlap some melee ranks (30/45), so
+  a shared table keyed only by rank couldn't tell a "30 melee" (Battle Axe)
+  from a "30 mage" (Apprentice Wand) apart. The 8, in order: Apprentice
+  Wand, Old Mage Staff, Hex Wand, Battle Staff, Crystal Staff, Dark
+  Scepter, Arch Mage Scepter, Arcane Staff (Lehrlingsstab, Alter
+  Magierstab, Hexenstab, Kampfstab, Kristallstab, Dunkles Zepter,
+  Erzmagier-Zepter, Arkanstab in German). Never rolls a Vampiric/Electric/
+  Sturdy/Fragile effect — `rollWeaponEffects()` (`js/weapon-effects.js`) is
+  gated on `card.suit === SUITS.DIAMONDS`, same exclusion Ranged already
+  relied on.
+  - **Artwork source note:** the 8 renders arrived already user-background-
+    -removed (transparent PNGs, no checkerboard reconstruction needed) but
+    each consistently pointed toward roughly 2 o'clock instead of the
+    project's usual "tip upper-right, handle lower-left" ~45° convention
+    other weapon art uses. Rather than re-generating the source art, each
+    was rotated in place: the true current angle of each staff was
+    measured (not eyeballed) via PCA on the image's own alpha-channel
+    pixel mass (`numpy`/`scipy`, largest eigenvector of the pixel
+    coordinate covariance = the staff's long axis), then rotated by the
+    exact delta to the target angle and re-cropped to the new alpha
+    bounding box. Landed on a final ~60° angle (steeper than the usual
+    ~45°, i.e. more upright/vertical) after two rounds of feedback — first
+    a plain 45°-equivalent target, reported as "still not enough,
+    rotate further left", then explicitly requested as "halfway between
+    the current angle and 12 o'clock" (a measured ~30° average at the
+    time, so target = (30 + 90) / 2 = 60°) — measuring the actual starting
+    angle first, rather than assuming a nominal 45°, is what made hitting
+    that "halfway to 12 o'clock" instruction exact rather than a guess.
+- **The Deckbuilder pool gets a third headed section**, "Mage Staffs"
+  (`galleryHeadingMageWeapons` in `js/i18n.js`), right after "Ranged" —
+  `renderDeckbuilder()` (`js/ui.js`) filters `getAllWeaponCards()` a third
+  time on `card.suit === SUITS.MAGE`, same `buildGallerySectionHeading()`
+  pattern as the other two categories. Tiles reuse the exact same
+  `.card--weapon` frame/box percentages as melee and Ranged (all three are
+  `type: 'weapon'`) under their own `'mageWeapons'` gallery-item kind
+  (`buildGalleryItem()`'s `usesCardFrame` flag, and the matching
+  `.gallery-item[data-kind='mageWeapons']` CSS block mirroring every
+  `[data-kind='rangedWeapons']` rule in `style.css`, including the bottom-
+  edge halo-fix mask), so a Mage Staff tile looks identical in style to a
+  melee/ranged one, just with its own frame/description text.
+- **Attack animation — "Static Cast".** Unlike melee (`animateWeaponAttack()`)
+  or Ranged (`animateRangedAttack()`), a Mage Staff never leaves the weapon
+  slot to swing — the weapon "casts from where it stands", so
+  `animateMageAttack()` (`js/ui.js`) never touches the slot's position at
+  all, only a brief glow pulse (`.weapon-slot-casting`, colored with the
+  same `--mana-rgb` blue the mana ring itself uses, tying the visual back
+  to the resource actually being spent) plays on it while the spell
+  "charges" (`MAGE_ATTACK_CHARGE_MS`, 350ms). The actual impact
+  (`animateMageCastImpact()`) plays entirely on the TARGET instead: a
+  rune-glow ring (also `--mana-rgb` blue — "this was a spell") flashes
+  over the monster's card, a scatter of 6-8 small `-` spark particles
+  bursts outward from its center (`.mage-cast-particle`, colored
+  `var(--danger)` red — "and it hurt", the damage-colored counterpart to
+  `showAbilityHealBurst()`'s heal-colored `+` marks, same scattered-timing-
+  and-fade pattern reused wholesale), and the card gets the usual
+  `.card--shake` wobble. This was chosen over two other considered
+  directions (a bolt/projectile flying from the staff to the monster, or a
+  beam element stretched between the two) specifically because it needed
+  no new travel-distance/flight-path math at all, reusing the project's
+  established `{ onImpact, onDone }` / `{ speedUp }` controller contract
+  (see "Interaction design decisions" below) with the simplest possible
+  internal shape: a charge pause, the impact, a short settle pause.
+  - **Positioned via `getBoundingClientRect()` + `position: fixed` on
+    `<body>`, not as children of the target card element** — same
+    reasoning as `showCardDamage()`'s existing card-float numbers: a Mage
+    Staff shot that survives has `resolveAndAnimate()` (`js/main.js`) call
+    `renderRoom()` almost immediately after impact, replacing every room
+    card's DOM element well before these effects finish playing, so
+    anchoring to the card itself would cut them short. The shake, by
+    contrast, IS applied directly to the target element — safe for the
+    same short window `applyResolve()`'s own generic `shotDamage`-driven
+    shake already relies on for Ranged weapons, and harmless to double up
+    with it on a surviving hit.
+  - `main.js`'s `attackAnimator` selection now branches three ways
+    (melee / `SUITS.RANGED` / `SUITS.MAGE`) instead of the old binary
+    ranged-or-not check — any future fourth weapon category needing its
+    own attack animation should extend that same branch rather than
+    reusing an existing one "temporarily", the way Mage Staffs briefly did
+    with `animateRangedAttack()` before this animation was built.
 
 ## Weapon Deckbuilder (custom addition, not part of the original Scoundrel
 rules)

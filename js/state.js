@@ -186,6 +186,16 @@ const SAFE_ROOM_LIMIT = 2;
 const RANGED_AMMO_MAX = 3;
 const RANGED_RETALIATE_CHANCE = 0.2;
 
+/** Custom addition, see "Mage Staffs" in CLAUDE.md and the SUITS.MAGE
+ * comment in js/cards.js. How much of the SHARED state.mana pool (the same
+ * one the champion's active ability spends from) one shot from a Mage Staff
+ * costs, and the chance a shot that doesn't kill its target gets struck back
+ * at — identical value to RANGED_RETALIATE_CHANCE above, but kept as its own
+ * constant so the two can be tuned independently later. See
+ * fireMageWeapon() below for where both are actually used. */
+const MAGE_MANA_COST = 1;
+const MAGE_RETALIATE_CHANCE = 0.2;
+
 /** True unless every card in a room is the same type — the specific
  * "unfair instant death" shape drawForRoom() below exists to rule out: 4
  * fresh monsters with no weapon or potion to fall back on (and if it
@@ -450,6 +460,15 @@ function isWeaponUsableOn(card) {
   // of what it was last used on. Only its ammo (weaponAmmoRemaining, checked
   // in fireRangedWeapon()) limits how many times it can be used.
   if (state.equippedWeapon.suit === SUITS.RANGED) return true;
+  // Mage Staffs (SUITS.MAGE, see "Mage Staffs" in CLAUDE.md) also ignore the
+  // degrade rule entirely, same as Ranged — but instead of a hard ammo cap,
+  // every shot costs mana from the shared state.mana pool (also spent by the
+  // champion's active ability), so a Mage Staff is only "usable" right now
+  // if there's enough of it banked. This is the ONE thing that can make an
+  // equipped weapon come and go as legal to use without ever being
+  // re-equipped or broken — renderWeaponSlot() (js/ui.js) reflects this by
+  // lightly graying out the slot whenever it's false.
+  if (state.equippedWeapon.suit === SUITS.MAGE) return state.mana >= MAGE_MANA_COST;
   const mastered = state.champion === 'swordmaster' && state.swordmasterMasteryCharges > 0;
   return mastered || state.weaponMaxMonster === null || card.rank < state.weaponMaxMonster;
 }
@@ -477,10 +496,14 @@ function weakenMonster(card, amount = 5) {
  * model, degrade rule, and "does the monster actually leave the room"
  * outcome are all different enough from melee/bare-handed combat to warrant
  * a fully separate function rather than forking deep inside this one (see
- * "Ranged Weapons" in CLAUDE.md). */
+ * "Ranged Weapons" in CLAUDE.md). Mage Staffs (SUITS.MAGE, "Mage Staffs" in
+ * CLAUDE.md) share that exact same damage model and are dispatched to
+ * fireMageWeapon() the same way, just with mana instead of ammo as the
+ * limiting resource. */
 function fightMonster(card, useWeapon = true) {
-  if (useWeapon && state.equippedWeapon && state.equippedWeapon.suit === SUITS.RANGED && isWeaponUsableOn(card)) {
-    return fireRangedWeapon(card);
+  if (useWeapon && state.equippedWeapon && isWeaponUsableOn(card)) {
+    if (state.equippedWeapon.suit === SUITS.RANGED) return fireRangedWeapon(card);
+    if (state.equippedWeapon.suit === SUITS.MAGE) return fireMageWeapon(card);
   }
 
   const weaponUsable = useWeapon && isWeaponUsableOn(card);
@@ -906,6 +929,125 @@ function fireRangedWeapon(card) {
   };
 }
 
+/** Custom addition, see "Mage Staffs" in CLAUDE.md. Fires the equipped Mage
+ * Staff (SUITS.MAGE) at `card` — called by fightMonster() above instead of
+ * the melee/bare-handed logic whenever a Mage Staff is equipped, legal to
+ * use (isWeaponUsableOn() already checked there's enough mana), and the
+ * player chose to use it. Almost identical to fireRangedWeapon() above (same
+ * "subtract the weapon's rank directly from the monster's rank, kill
+ * outright at 0 or below, otherwise survive weakened and stay in the room"
+ * damage model, same MAGE_RETALIATE_CHANCE-odds counterattack on a
+ * non-lethal shot), with two deliberate differences: the resource spent is
+ * mana (state.mana -= MAGE_MANA_COST) from the SAME shared pool the
+ * champion's active ability draws from, not a separate ammo counter, and a
+ * Mage Staff never breaks — weaponBroke is always false here, so the caller
+ * (resolveAndAnimate() in js/main.js) never unequips or shatters it,
+ * regardless of how many times it's fired. */
+function fireMageWeapon(card) {
+  const weapon = state.equippedWeapon;
+
+  state.mana -= MAGE_MANA_COST;
+
+  const shotDamage = weapon.rank;
+  const monsterDied = card.rank - shotDamage <= 0;
+
+  let retaliated = false;
+  let damage = 0;
+
+  if (monsterDied) {
+    state.monstersDefeated += 1;
+  } else {
+    // See the matching comment in fireRangedWeapon() above for why this is
+    // deliberately NOT weakenMonster() (no floor at 5 — by construction
+    // card.rank - shotDamage is always > 0 here, the <= 0 case is already
+    // handled as monsterDied above).
+    card.rank -= shotDamage;
+    card.label = rankLabel(card.rank);
+    card.name = `${card.label} of ${capitalize(card.suit)}`;
+
+    if (Math.random() < MAGE_RETALIATE_CHANCE) {
+      retaliated = true;
+      damage = card.rank;
+    }
+  }
+
+  // Paladin's Blessing and the shield block apply exactly like any other hit
+  // (see the matching comments in fightMonster()/fireRangedWeapon() above).
+  let paladinResisted = false;
+  if (state.champion === 'paladin' && state.paladinResistCharges > 0 && damage > 0) {
+    damage = Math.max(damage - 10, 0);
+    state.paladinResistCharges -= 1;
+    paladinResisted = true;
+  }
+
+  const shieldBefore = state.equippedShield;
+  let blocked = 0;
+  let shieldBroke = false;
+  if (shieldBefore) {
+    blocked = Math.min(damage, shieldBefore.rank);
+    damage -= blocked;
+    shieldBefore.rank -= blocked;
+    shieldBefore.label = rankLabel(shieldBefore.rank);
+    shieldBefore.name = `${shieldBefore.label} of ${capitalize(shieldBefore.suit)}`;
+    if (shieldBefore.rank <= 0) {
+      shieldBroke = true;
+      state.equippedShield = null;
+    }
+  }
+
+  state.hp = Math.max(state.hp - damage, 0);
+
+  let paladinHeal = 0;
+  let paladinCycleComplete = false;
+  if (monsterDied && state.champion === 'paladin' && state.monstersDefeated % 5 === 0) {
+    paladinCycleComplete = true;
+    const hpBefore = state.hp;
+    state.hp = Math.min(state.hp + 10, state.maxHp);
+    paladinHeal = state.hp - hpBefore;
+  }
+
+  const monsterLabel = monsterNameFor(card.baseRank) || card.name;
+  const weaponLabel = mageWeaponNameFor(weapon.baseRank) || weapon.name;
+
+  let message = monsterDied
+    ? t('mageKillMessage', { monster: monsterLabel, weapon: weaponLabel, damage: shotDamage })
+    : t('mageHitMessage', {
+        monster: monsterLabel,
+        weapon: weaponLabel,
+        damage: shotDamage,
+        remaining: card.rank,
+      });
+  if (retaliated) {
+    message += t('mageRetaliateSuffix', { n: damage });
+  }
+  if (paladinHeal > 0) {
+    message += t('paladinHealSuffix', { n: paladinHeal });
+  }
+  if (paladinResisted) {
+    message +=
+      state.paladinResistCharges > 0
+        ? t('blessingAbsorbedLeft', { n: state.paladinResistCharges })
+        : t('blessingAbsorbedFaded');
+  }
+  if (blocked > 0) {
+    const shieldLabel = shieldNameFor(shieldBefore.baseRank) || shieldBefore.name;
+    message += shieldBroke
+      ? t('shieldBlockedShattered', { shield: shieldLabel, n: blocked })
+      : t('shieldBlocked', { shield: shieldLabel, n: blocked });
+  }
+
+  return {
+    message,
+    weakenedIds: [],
+    paladinCycleComplete,
+    shieldBlocked: blocked > 0,
+    shieldBroke,
+    weaponBroke: false, // a Mage Staff never breaks, see the doc comment above
+    monsterDied,
+    shotDamage: monsterDied ? undefined : shotDamage,
+  };
+}
+
 /** Pure, read-only preview of the damage a monster card would deal if
  * fought right now, mirroring fightMonster()'s damage math exactly (weapon/
  * bare-handed choice via useWeaponPreference, Berserker's flat reduction,
@@ -923,18 +1065,18 @@ function fireRangedWeapon(card) {
  *   equipped weapon's Vampiric effect would heal 1 HP on this swing.
  *
  * Deliberately returns "nothing to show" (all zero/false) whenever a Ranged
- * weapon would be used — its outcome isn't a single deterministic damage
- * number the way melee/bare-handed combat is (80% chance of 0 damage taken,
- * 20% chance of taking the monster's post-shot value, see fireRangedWeapon()
- * above), so a single preview number would misrepresent the real risk
- * either way. buildDamagePreviewEl() (js/ui.js) already treats an all-zero
- * result as "show nothing", so this needs no special handling on the caller
- * side. */
+ * or Mage weapon would be used — its outcome isn't a single deterministic
+ * damage number the way melee/bare-handed combat is (80% chance of 0 damage
+ * taken, 20% chance of taking the monster's post-shot value, see
+ * fireRangedWeapon()/fireMageWeapon() above), so a single preview number
+ * would misrepresent the real risk either way. buildDamagePreviewEl()
+ * (js/ui.js) already treats an all-zero result as "show nothing", so this
+ * needs no special handling on the caller side. */
 function previewMonsterDamage(card) {
   const weaponUsable = state.useWeaponPreference && isWeaponUsableOn(card);
   const weapon = state.equippedWeapon;
 
-  if (weaponUsable && weapon.suit === SUITS.RANGED) {
+  if (weaponUsable && (weapon.suit === SUITS.RANGED || weapon.suit === SUITS.MAGE)) {
     return { rawDamage: 0, blocked: 0, finalDamage: 0, vampiric: false };
   }
 
@@ -981,7 +1123,11 @@ function equipWeapon(card) {
   // js/weapon-effects.js).
   state.weaponAmmoRemaining = card.suit === SUITS.RANGED ? RANGED_AMMO_MAX : null;
   const weaponLabel =
-    card.suit === SUITS.RANGED ? rangedWeaponNameFor(card.baseRank) : weaponNameFor(card.baseRank);
+    card.suit === SUITS.RANGED
+      ? rangedWeaponNameFor(card.baseRank)
+      : card.suit === SUITS.MAGE
+        ? mageWeaponNameFor(card.baseRank)
+        : weaponNameFor(card.baseRank);
   return { message: t('equippedWeapon', { weapon: weaponLabel || card.name }) };
 }
 

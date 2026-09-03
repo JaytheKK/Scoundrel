@@ -13,11 +13,12 @@
 //   id:       unique string, e.g. "diamonds-30", or "monster-45-1"/"-2" for
 //             the two instances of one monster rank (see "Monster Pool"
 //             below — the instance suffix is what keeps the two unique).
-//   suit:     'monsters' | 'diamonds' | 'hearts' | 'shields' (neither
-//             'monsters' nor 'shields' is a real playing-card suit — both
-//             are pseudo-suits that just reuse the same makeCard()/
-//             renderCard() plumbing every other card uses; see "Monster
-//             Pool" and "Shields" below.)
+//   suit:     'monsters' | 'diamonds' | 'hearts' | 'shields' | 'ranged' |
+//             'mage' ('monsters', 'shields', 'ranged', and 'mage' are not
+//             real playing-card suits — all four are pseudo-suits that
+//             just reuse the same makeCard()/renderCard() plumbing every
+//             other card uses; see "Monster Pool", "Shields", and the
+//             SUITS.RANGED/SUITS.MAGE comments below.)
 //   rank:     current strength value (monsters 10-70, weapons/potions 10-50,
 //             shields 15-25 — all a ×5 rescale of the original 2-14/2-10/3-5
 //             ranges, see the "Value rescale (×5)" note below). This is the
@@ -89,6 +90,25 @@ const SUITS = {
   // same 10/15/25/40 values), so a single shared WEAPON_NAMES table keyed
   // only by rank could not tell the two apart.
   RANGED: 'ranged',
+  // Custom addition, a third weapon pseudo-suit: Mage Staffs. Same damage
+  // model as RANGED (its own rank is subtracted directly from the
+  // monster's rank instead of reducing incoming damage, with the same 20%
+  // chance — MAGE_RETALIATE_CHANCE in js/state.js — of the monster
+  // striking back on a shot that doesn't kill) and the same "ignores the
+  // weapon degrade rule entirely" behavior (isWeaponUsableOn() in
+  // js/state.js) — but instead of a hard 3-shot ammo cap that eventually
+  // breaks the weapon, every shot costs 1 mana (MAGE_MANA_COST) from the
+  // SAME shared state.mana pool the champion's active ability spends from,
+  // and a Mage Staff never breaks. This makes it strictly reusable (no
+  // ammo ceiling) but self-limiting through a real opportunity cost
+  // instead (every shot delays the champion's own ability), which is also
+  // why its ranks are priced noticeably higher than a bow's in deckCost
+  // (see the CARD_LIST entries below) despite dealing more raw damage.
+  // Own image folder (images/weapons/MageWeapons/) and name/description
+  // table (js/mage-weapon-icons.js), same "own suit, own table" pattern as
+  // RANGED, since a Mage Staff's ranks (30-60) also overlap some melee
+  // ranks (30/45).
+  MAGE: 'mage',
 };
 
 const SUIT_SYMBOLS = {
@@ -97,6 +117,7 @@ const SUIT_SYMBOLS = {
   hearts: '♥',
   shields: '⛨',
   ranged: '↗',
+  mage: '✶',
 };
 
 // Plain numeric labels only — no J/Q/K/A anywhere, per project convention:
@@ -111,10 +132,11 @@ function rankLabel(rank) {
 
 function suitToType(suit) {
   if (suit === SUITS.MONSTERS) return 'monster';
-  // RANGED shares type 'weapon' with DIAMONDS on purpose — see the SUITS.RANGED
-  // comment above: it's what lets a ranged weapon flow through the exact same
-  // weapon equip slot / resolveCard() dispatch (js/state.js) as a melee one.
-  if (suit === SUITS.DIAMONDS || suit === SUITS.RANGED) return 'weapon';
+  // RANGED and MAGE both share type 'weapon' with DIAMONDS on purpose — see
+  // the SUITS.RANGED/SUITS.MAGE comments above: it's what lets either flow
+  // through the exact same weapon equip slot / resolveCard() dispatch
+  // (js/state.js) as a melee weapon.
+  if (suit === SUITS.DIAMONDS || suit === SUITS.RANGED || suit === SUITS.MAGE) return 'weapon';
   if (suit === SUITS.SHIELDS) return 'shield';
   return 'potion'; // hearts
 }
@@ -156,7 +178,9 @@ function makeCard(suit, rank, overrides = {}) {
         ? `images/weapons/MeleeWeapons/${rank}.png`
         : suit === SUITS.RANGED
           ? `images/weapons/RangedWeapons/${rank}.png`
-          : `images/${type}s/${rank}.png`,
+          : suit === SUITS.MAGE
+            ? `images/weapons/MageWeapons/${rank}.png`
+            : `images/${type}s/${rank}.png`,
     // The card border/glow color (see .card--tier-N in style.css), as
     // "R, G, B" for use inside rgba(). Weapons default to white; monsters,
     // potions, and shields get their color from the type-based CSS classes
@@ -198,19 +222,50 @@ const CARD_LIST = [
   makeCard(SUITS.DIAMONDS, 50),
 
   // --- Ranged weapons (custom addition, not part of the original Scoundrel
-  // rules — see "Ranged Weapons" in CLAUDE.md): 4 bows, damage 10/15/25/40.
-  // Unlike melee weapons, a ranged weapon's `rank` is subtracted directly
-  // from the monster's own rank (see fireRangedWeapon() in js/state.js)
-  // rather than reducing incoming damage, and it only ever gets
-  // RANGED_AMMO_MAX (3) uses before it breaks — so `deckCost` here is
-  // deliberately lower than the raw damage value (roughly half, rounded),
-  // reflecting that a ranged weapon delivers far less total value over a
-  // full run than a melee weapon of the same face-value rank. Names in
-  // js/ranged-weapon-icons.js.
+  // rules — see "Ranged Weapons" in CLAUDE.md): 5 bows, damage
+  // 10/15/20/30/40. Unlike melee weapons, a ranged weapon's `rank` is
+  // subtracted directly from the monster's own rank (see
+  // fireRangedWeapon() in js/state.js) rather than reducing incoming
+  // damage, and it only ever gets RANGED_AMMO_MAX (3) uses before it
+  // breaks — so `deckCost` here is deliberately lower than the raw damage
+  // value (roughly half, rounded), reflecting that a ranged weapon
+  // delivers far less total value over a full run than a melee weapon of
+  // the same face-value rank. Names in js/ranged-weapon-icons.js.
+  //
+  // Rank 15 was the Hunting Bow's own value until a Recurve Bow (a new
+  // 5th bow, filling the gap between the Short and Hunting Bow) was
+  // inserted here and took it over, which is why Hunting Bow moved up to
+  // 20 and War Bow up to 30 (from 15/25) rather than either staying put —
+  // see the "Ranged Weapons" section of CLAUDE.md.
   makeCard(SUITS.RANGED, 10, { deckCost: 5 }),
   makeCard(SUITS.RANGED, 15, { deckCost: 8 }),
-  makeCard(SUITS.RANGED, 25, { deckCost: 13 }),
+  makeCard(SUITS.RANGED, 20, { deckCost: 10 }),
+  makeCard(SUITS.RANGED, 30, { deckCost: 15 }),
   makeCard(SUITS.RANGED, 40, { deckCost: 20 }),
+
+  // --- Mage Staffs (custom addition, not part of the original Scoundrel
+  // rules — see the SUITS.MAGE comment above and "Mage Staffs" in
+  // CLAUDE.md): 8 staffs/scepters, damage 30-60, noticeably higher than any
+  // bow. Same subtract-from-monster-rank damage model and degrade-rule
+  // immunity as SUITS.RANGED, but each shot costs 1 mana (MAGE_MANA_COST in
+  // js/state.js, drawn from the same pool the champion's active ability
+  // spends from) instead of consuming one of a hard 3-shot ammo cap, and
+  // the weapon never breaks. deckCost is priced as an ascending fraction of
+  // raw damage (0.70x for the weakest staff up to 0.90x for the strongest,
+  // rounded) rather than melee's flat 1:1 or ranged's flat ~0.5x — a Mage
+  // Staff is strictly more reusable than a bow (no ammo ceiling) and only
+  // self-limits through the shared mana pool's real opportunity cost
+  // against the champion's own ability, so it's priced closer to melee,
+  // rising toward melee's full 1:1 as damage (and therefore power relative
+  // to that opportunity cost) climbs. Names in js/mage-weapon-icons.js.
+  makeCard(SUITS.MAGE, 30, { deckCost: 21 }), // Apprentice Wand, 30 * 0.700
+  makeCard(SUITS.MAGE, 34, { deckCost: 25 }), // Old Mage Staff, 34 * 0.729
+  makeCard(SUITS.MAGE, 38, { deckCost: 29 }), // Hex Wand, 38 * 0.757
+  makeCard(SUITS.MAGE, 42, { deckCost: 33 }), // Battle Staff, 42 * 0.786
+  makeCard(SUITS.MAGE, 45, { deckCost: 37 }), // Crystal Staff, 45 * 0.814
+  makeCard(SUITS.MAGE, 49, { deckCost: 41 }), // Dark Scepter, 49 * 0.843
+  makeCard(SUITS.MAGE, 55, { deckCost: 48 }), // Arch Mage Scepter, 55 * 0.871
+  makeCard(SUITS.MAGE, 60, { deckCost: 54 }), // Arcane Staff, 60 * 0.900
 
   // --- Hearts (potions, 10-50) ---
   makeCard(SUITS.HEARTS, 10),

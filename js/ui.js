@@ -88,12 +88,15 @@ function cardTier(rank) {
 function flavorNameFor(card) {
   if (card.type === 'monster') return monsterNameFor(card.baseRank);
   if (card.type === 'potion') return potionNameFor(card.baseRank);
-  // Ranged weapons (SUITS.RANGED) share type 'weapon' with melee (DIAMONDS),
-  // but ranged and melee ranks overlap — checked first, via card.suit, or a
-  // ranged card (e.g. a rank-10 Short Bow) would show the melee name for
-  // that same rank (Wooden Club) instead. See "Ranged Weapons" in CLAUDE.md.
+  // Ranged/Mage weapons (SUITS.RANGED/SUITS.MAGE) share type 'weapon' with
+  // melee (DIAMONDS), but their ranks overlap melee's — checked first, via
+  // card.suit, or e.g. a rank-30 Mage Staff (Apprentice Wand) would show the
+  // melee name for that same rank (Battle Axe) instead. See "Ranged
+  // Weapons"/"Mage Staffs" in CLAUDE.md.
   if (card.type === 'weapon') {
-    return card.suit === SUITS.RANGED ? rangedWeaponNameFor(card.baseRank) : weaponNameFor(card.baseRank);
+    if (card.suit === SUITS.RANGED) return rangedWeaponNameFor(card.baseRank);
+    if (card.suit === SUITS.MAGE) return mageWeaponNameFor(card.baseRank);
+    return weaponNameFor(card.baseRank);
   }
   if (card.type === 'shield') return shieldNameFor(card.baseRank);
   return null;
@@ -142,6 +145,9 @@ function cardDescriptionText(card) {
   if (card.type === 'weapon') {
     if (card.suit === SUITS.RANGED) {
       return `${rangedWeaponDescriptionFor(card.baseRank)} ${t('rangedAmmoSentence', { n: RANGED_AMMO_MAX })}`;
+    }
+    if (card.suit === SUITS.MAGE) {
+      return `${mageWeaponDescriptionFor(card.baseRank)} ${t('mageManaSentence', { n: MAGE_MANA_COST })}`;
     }
     return weaponDescriptionFor(card.baseRank);
   }
@@ -695,6 +701,17 @@ function renderWeaponSlot() {
   // Grayed out whenever the toggle is off, so it's visually obvious you're
   // fighting bare-handed right now regardless of what's equipped.
   slot.classList.toggle('weapon-slot-inactive', !state.useWeaponPreference);
+  // A lighter, separate grayscale for a Mage Staff specifically when there
+  // isn't enough banked mana to fire it right now (see MAGE_MANA_COST/
+  // isWeaponUsableOn() in js/state.js) — deliberately its own class rather
+  // than reusing weapon-slot-inactive above, since the two convey different
+  // things (toggled off entirely, vs. this weapon just can't be used THIS
+  // moment) and can independently apply at once.
+  const mageOutOfMana =
+    state.equippedWeapon &&
+    state.equippedWeapon.suit === SUITS.MAGE &&
+    state.mana < MAGE_MANA_COST;
+  slot.classList.toggle('weapon-slot-no-mana', !!mageOutOfMana);
 
   if (!state.useWeaponPreference) {
     status.textContent = t('fightingBareHanded');
@@ -710,6 +727,14 @@ function renderWeaponSlot() {
       filled: Math.max(0, state.weaponAmmoRemaining),
       total: RANGED_AMMO_MAX,
     });
+  } else if (state.equippedWeapon.suit === SUITS.MAGE) {
+    // Mage Staffs also ignore the degrade rule and never carry a rolled
+    // weapon effect (same reasoning as Ranged above) — instead of an ammo
+    // count, this shows whether there's currently enough of the SHARED mana
+    // pool banked to fire it (see mageOutOfMana above).
+    status.textContent = mageOutOfMana
+      ? t('mageWeaponStatusNoMana', { n: MAGE_MANA_COST })
+      : t('mageWeaponStatus', { n: MAGE_MANA_COST });
   } else {
     // Sword Master's Weapon Mastery (see fightMonster()/isWeaponUsableOn()
     // in js/state.js) lifts the degrade restriction entirely while active —
@@ -1105,18 +1130,24 @@ function buildGalleryItem(kind, image, name, key, rankLabel, cost) {
   item.dataset.kind = kind;
   item.dataset.key = key;
 
-  // Weapons (melee and ranged), Shields, and Monsters all get the real
-  // in-game card frame (see .gallery-item[data-kind='weapons']/
-  // [data-kind='rangedWeapons']/[data-kind='shields']/[data-kind='monsters']
-  // in style.css) instead of the plain flat icon tile — this needs two
-  // structural differences from the plain-tile layout below, so all four
-  // are gated on the same flag. Ranged weapons reuse the exact same
-  // '.card--weapon' frame/box percentages as melee (both are type 'weapon',
-  // see "Ranged Weapons" in CLAUDE.md), just under their own 'rangedWeapons'
-  // kind so the detail popup (renderGalleryDetail() below) can tell a ranged
-  // rank apart from a melee one at the same rank value.
+  // Weapons (melee, ranged, and mage), Shields, and Monsters all get the
+  // real in-game card frame (see .gallery-item[data-kind='weapons']/
+  // [data-kind='rangedWeapons']/[data-kind='mageWeapons']/
+  // [data-kind='shields']/[data-kind='monsters'] in style.css) instead of
+  // the plain flat icon tile — this needs two structural differences from
+  // the plain-tile layout below, so all five are gated on the same flag.
+  // Ranged and Mage weapons both reuse the exact same '.card--weapon'
+  // frame/box percentages as melee (all three are type 'weapon', see
+  // "Ranged Weapons"/"Mage Staffs" in CLAUDE.md), just under their own
+  // 'rangedWeapons'/'mageWeapons' kind so the detail popup
+  // (renderGalleryDetail() below) can tell them apart from a melee card at
+  // the same rank value.
   const usesCardFrame =
-    kind === 'weapons' || kind === 'rangedWeapons' || kind === 'shields' || kind === 'monsters';
+    kind === 'weapons' ||
+    kind === 'rangedWeapons' ||
+    kind === 'mageWeapons' ||
+    kind === 'shields' ||
+    kind === 'monsters';
 
   const portrait = document.createElement('div');
   portrait.className = 'gallery-item-portrait';
@@ -1318,8 +1349,13 @@ function renderGalleryDetail(kind, key) {
  * deselect it directly rather than reconstructing an id from kind+rank. */
 function buildDeckbuilderWeaponTile(card) {
   const isRanged = card.suit === SUITS.RANGED;
-  const kind = isRanged ? 'rangedWeapons' : 'weapons';
-  const name = isRanged ? rangedWeaponNameFor(card.rank) : weaponNameFor(card.rank);
+  const isMage = card.suit === SUITS.MAGE;
+  const kind = isRanged ? 'rangedWeapons' : isMage ? 'mageWeapons' : 'weapons';
+  const name = isRanged
+    ? rangedWeaponNameFor(card.rank)
+    : isMage
+      ? mageWeaponNameFor(card.rank)
+      : weaponNameFor(card.rank);
   const item = buildGalleryItem(kind, card.image, name, card.rank, undefined, card.deckCost);
   item.dataset.cardId = card.id;
   // Right-click / long-press flip target (see flipCard() in this file) —
@@ -1331,7 +1367,9 @@ function buildDeckbuilderWeaponTile(card) {
   item.dataset.flipName = name;
   item.dataset.flipDesc = isRanged
     ? `${rangedWeaponDescriptionFor(card.rank)} ${t('rangedAmmoSentence', { n: RANGED_AMMO_MAX })}`
-    : weaponDescriptionFor(card.rank);
+    : isMage
+      ? `${mageWeaponDescriptionFor(card.rank)} ${t('mageManaSentence', { n: MAGE_MANA_COST })}`
+      : weaponDescriptionFor(card.rank);
   return item;
 }
 
@@ -1390,6 +1428,13 @@ function renderDeckbuilder() {
   const rangedCards = getAllWeaponCards().filter(
     (card) => card.suit === SUITS.RANGED && !selectedSet.has(card.id)
   );
+  // Mage Staffs (custom addition, see "Mage Staffs" in CLAUDE.md) get a
+  // third pool section, right after Ranged — same split mechanism
+  // (buildGallerySectionHeading()) as Close Range/Ranged above, just one
+  // more category.
+  const mageCards = getAllWeaponCards().filter(
+    (card) => card.suit === SUITS.MAGE && !selectedSet.has(card.id)
+  );
   if (meleeCards.length > 0) {
     pool.appendChild(buildGallerySectionHeading(t('galleryHeadingMeleeWeapons')));
     meleeCards.forEach((card) => pool.appendChild(buildDeckbuilderWeaponTile(card)));
@@ -1397,6 +1442,10 @@ function renderDeckbuilder() {
   if (rangedCards.length > 0) {
     pool.appendChild(buildGallerySectionHeading(t('galleryHeadingRangedWeapons')));
     rangedCards.forEach((card) => pool.appendChild(buildDeckbuilderWeaponTile(card)));
+  }
+  if (mageCards.length > 0) {
+    pool.appendChild(buildGallerySectionHeading(t('galleryHeadingMageWeapons')));
+    mageCards.forEach((card) => pool.appendChild(buildDeckbuilderWeaponTile(card)));
   }
 }
 
@@ -1955,6 +2004,128 @@ function animateRangedAttack(monsterEl, onImpact, onDone = () => {}) {
       if (speedRequested) current.speedUp();
     }
   );
+
+  return {
+    speedUp() {
+      speedRequested = true;
+      if (current) current.speedUp();
+    },
+  };
+}
+
+// --- mage-staff attack animation ---------------------------------------------
+// Custom addition, see "Mage Staffs" in CLAUDE.md. Deliberately NOT a swing
+// like melee/ranged above — a Mage Staff casts from where it stands, so the
+// weapon slot itself never moves (per request, "Option 2: Static Cast" — the
+// simplest of three animation directions considered, precisely because it
+// needs no flight/travel-distance math at all). Instead: a brief "channeling"
+// glow pulses on the weapon slot, then the spell lands on the target — a
+// rune-glow ring flashes over the monster's own card, a small scatter of
+// spark particles bursts outward from it (the damage-colored counterpart to
+// showAbilityHealBurst()'s heal-colored "+" marks), and the card gets a quick
+// shake, all via animateMageCastImpact() below.
+
+// Keep in sync with the animation-duration on .weapon-slot-casting in
+// style.css. A single short glow pulse reads as "gathering power" without
+// needing the weapon to actually leave the slot.
+const MAGE_ATTACK_CHARGE_MS = 350;
+// A brief settle beat after the spell lands, before the action is considered
+// fully done (mirrors the small pause every other attack animation has
+// between its own impact and onDone(), e.g. WEAPON_ATTACK_IMPACT_MS above).
+const MAGE_ATTACK_SETTLE_MS = 150;
+
+// Keep both in sync with the animation-durations on .mage-cast-glow /
+// .mage-cast-particle in style.css.
+const MAGE_CAST_GLOW_MS = 500;
+const MAGE_CAST_PARTICLE_MS = 650;
+
+/** Plays the "spell strikes home" impact feedback for a Mage Staff attack —
+ * called once, right as the cast lands, by animateMageAttack() below. A
+ * rune-glow ring and a burst of spark particles are positioned via
+ * getBoundingClientRect() and appended to <body> as `position: fixed` (same
+ * reasoning as showCardDamage() above) rather than as children of
+ * `monsterEl` or reliant on it staying in the DOM — a mage shot that
+ * survives has resolveAndAnimate() (js/main.js) call renderRoom() almost
+ * immediately after impact, replacing every room card's element well before
+ * these effects finish playing; a fixed-position overlay snapshotted at the
+ * card's CURRENT position keeps playing regardless. The shake, by contrast,
+ * is applied directly to `monsterEl` — safe for the same short window
+ * main.js's own generic shotDamage-shake already relies on for Ranged
+ * weapons (see applyResolve() in js/main.js), and harmless to double up with
+ * it on a surviving hit. */
+function animateMageCastImpact(monsterEl) {
+  const rect = monsterEl.getBoundingClientRect();
+
+  const ring = document.createElement('div');
+  ring.className = 'mage-cast-glow';
+  ring.style.left = `${rect.left}px`;
+  ring.style.top = `${rect.top}px`;
+  ring.style.width = `${rect.width}px`;
+  ring.style.height = `${rect.height}px`;
+  document.body.appendChild(ring);
+  setTimeout(() => ring.remove(), MAGE_CAST_GLOW_MS);
+
+  // Scattered in a ring around the card's own center, at a random angle/
+  // distance (as a fraction of the card's own size, so it scales with
+  // --card-scale automatically) — same "never look identical twice" idea as
+  // showAbilityHealBurst()'s particle scatter.
+  const count = 6 + Math.floor(Math.random() * 3); // 6-8 sparks
+  for (let i = 0; i < count; i++) {
+    const mark = document.createElement('span');
+    mark.className = 'mage-cast-particle';
+    mark.textContent = '-';
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 0.3 + Math.random() * 0.35;
+    mark.style.left = `${rect.left + rect.width / 2 + Math.cos(angle) * rect.width * distance}px`;
+    mark.style.top = `${rect.top + rect.height / 2 + Math.sin(angle) * rect.height * distance}px`;
+    mark.style.animationDelay = `${Math.random() * 100}ms`;
+    document.body.appendChild(mark);
+    setTimeout(() => mark.remove(), MAGE_CAST_PARTICLE_MS + 150);
+  }
+
+  // Same remove-then-re-add-with-a-forced-reflow gotcha as
+  // animateShieldShake() elsewhere in this file, so back-to-back mage hits on
+  // the same still-surviving card each restart the shake instead of silently
+  // no-op-ing on an already-present class.
+  monsterEl.classList.remove('card--shake');
+  void monsterEl.offsetWidth;
+  monsterEl.classList.add('card--shake');
+}
+
+/** Same onImpact/onDone contract and `{ speedUp }` controller shape as
+ * animateWeaponAttack()/animateRangedAttack() above, so resolveAndAnimate()
+ * (js/main.js) doesn't need to know which one is playing — but structurally
+ * much simpler, since nothing here actually moves: a charge pause, the
+ * impact (animateMageCastImpact() above, right where onImpact() fires so its
+ * getBoundingClientRect() snapshot is always still accurate), then a short
+ * settle pause before onDone(). */
+function animateMageAttack(monsterEl, onImpact, onDone = () => {}) {
+  const slot = document.getElementById('weapon-slot-card');
+
+  let current = null;
+  let speedRequested = false;
+
+  // Leg 1: a brief glow pulse on the slot itself while the spell "charges".
+  // Same remove-then-re-add-with-a-forced-reflow gotcha as
+  // animateMageCastImpact()'s own shake above, so back-to-back casts each
+  // restart the pulse.
+  slot.classList.remove('weapon-slot-casting');
+  void slot.offsetWidth;
+  slot.classList.add('weapon-slot-casting');
+
+  current = speedableTimeout(() => {
+    // Leg 2: the spell lands.
+    animateMageCastImpact(monsterEl);
+    onImpact();
+
+    // Leg 3: a short settle beat before the action counts as fully done.
+    current = speedableTimeout(() => {
+      current = null;
+      onDone();
+    }, MAGE_ATTACK_SETTLE_MS);
+    if (speedRequested) current.speedUp();
+  }, MAGE_ATTACK_CHARGE_MS);
+  if (speedRequested) current.speedUp();
 
   return {
     speedUp() {

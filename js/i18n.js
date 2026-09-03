@@ -97,6 +97,13 @@ const I18N = {
     // Weapons" in CLAUDE.md) — shown in #weapon-status instead of
     // canOnlyDefeatWeaker/canDefeatAny whenever a ranged weapon is equipped.
     rangedWeaponStatus: 'No degrade limit, {filled} / {total} arrows left',
+    // Mage Staffs ignore the degrade limit entirely too (see "Mage Staffs"
+    // in CLAUDE.md), shown in #weapon-status instead of the melee/ranged
+    // lines whenever one is equipped — mageWeaponStatusNoMana is shown
+    // instead of mageWeaponStatus whenever there isn't currently enough of
+    // the shared mana pool banked to fire it.
+    mageWeaponStatus: 'No degrade limit, costs {n} mana per shot',
+    mageWeaponStatusNoMana: 'No degrade limit, not enough mana to fire (needs {n})',
     weaponToggleLabel: 'Using weapon',
     fleeCantTwice: "Can't flee two rooms in a row",
     fleeCantThrice: "Can't flee three rooms in a row",
@@ -131,9 +138,11 @@ const I18N = {
     // buttons/titles, just headings inside the one Weapons grid.
     galleryHeadingMeleeWeapons: 'Close Range',
     galleryHeadingRangedWeapons: 'Ranged',
+    galleryHeadingMageWeapons: 'Mage Staffs',
     strengthLabel: 'Strength {n}',
     blockLabel: 'Block {n}',
     rangedAmmoSentence: 'Carries {n} arrows.',
+    mageManaSentence: 'Costs {n} mana per shot, never breaks.',
     passiveAbilityLabel: 'Passive Ability',
     activeAbilityLabel: 'Active Ability',
     chooseChampionTitle: 'Choose your Champion',
@@ -211,6 +220,11 @@ const I18N = {
     rangedKillMessage: 'Shot {monster} with your {weapon} for {damage} damage, defeating it.',
     rangedHitMessage: 'Shot {monster} with your {weapon} for {damage} damage, it has {remaining} strength left.',
     rangedRetaliateSuffix: ' It struck back for {n} damage!',
+    // Mage Staffs (see "Mage Staffs" in CLAUDE.md): same shape as the ranged
+    // messages above, just cast rather than shot.
+    mageKillMessage: 'Blasted {monster} with your {weapon} for {damage} damage, defeating it.',
+    mageHitMessage: 'Blasted {monster} with your {weapon} for {damage} damage, it has {remaining} strength left.',
+    mageRetaliateSuffix: ' It struck back for {n} damage!',
     fightFragileShattered: ' Your fragile {weapon} shatters!',
     fightFragileCrackingSingular: ' Your fragile {weapon} is cracking (1 use left).',
     fightFragileCrackingPlural: ' Your fragile {weapon} is cracking ({n} uses left).',
@@ -257,6 +271,9 @@ const I18N = {
 
       <h3>Ranged Weapons</h3>
       <p>Bows work differently from melee weapons: a bow's strength is subtracted directly from the monster's strength instead of reducing the damage you take. If that doesn't kill the monster, it stays in the room weaker than before, and there's a 20% chance it strikes back before you can finish it off. A bow ignores the weapon degrade rule, but only carries 3 arrows (shown as a bar under the weapon slot) — once they're spent, it shatters.</p>
+
+      <h3>Mage Staffs</h3>
+      <p>Staffs and scepters work like bows (strength subtracted directly from the monster's, same 20% chance it strikes back), hit noticeably harder, and never break, but instead of arrows each shot costs mana from the same pool your champion's active ability uses. If you're out of mana, the weapon slot grays out and you'll fight bare-handed instead until you've collected more.</p>
 
       <h3>Shields</h3>
       <p>Click a shield to equip it, it replaces whatever you had equipped. A shield blocks damage that would otherwise get through, after your weapon (or bare hands) has already done its part, the shield absorbs as much of the remaining damage as its block value allows. Blocking costs the shield durability equal to the damage it absorbed; once its durability reaches 0, it shatters and is gone.</p>
@@ -338,6 +355,8 @@ const I18N = {
     canOnlyDefeatWeaker: 'Kann nur Monster schwächer als {n} besiegen',
     masteryOverrides: 'Waffenmeisterschaft hebt die Abnutzungsgrenze auf ({n} übrig)',
     rangedWeaponStatus: 'Keine Abnutzungsgrenze, {filled} / {total} Pfeile übrig',
+    mageWeaponStatus: 'Keine Abnutzungsgrenze, kostet {n} Mana pro Schuss',
+    mageWeaponStatusNoMana: 'Keine Abnutzungsgrenze, nicht genug Mana zum Schießen (benötigt {n})',
     weaponToggleLabel: 'Waffe benutzen',
     fleeCantTwice: 'Kann nicht zwei Räume hintereinander fliehen',
     fleeCantThrice: 'Kann nicht drei Räume hintereinander fliehen',
@@ -369,9 +388,11 @@ const I18N = {
     galleryTitleChampions: 'Champions',
     galleryHeadingMeleeWeapons: 'Nahkampf',
     galleryHeadingRangedWeapons: 'Fernkampf',
+    galleryHeadingMageWeapons: 'Magierstäbe',
     strengthLabel: 'Stärke {n}',
     blockLabel: 'Blockwert {n}',
     rangedAmmoSentence: 'Trägt {n} Pfeile.',
+    mageManaSentence: 'Kostet {n} Mana pro Schuss, zerbricht nie.',
     passiveAbilityLabel: 'Passive Fähigkeit',
     activeAbilityLabel: 'Aktive Fähigkeit',
     chooseChampionTitle: 'Wähle deinen Champion',
@@ -446,6 +467,9 @@ const I18N = {
     rangedKillMessage: '{monster} mit deiner {weapon} für {damage} Schaden beschossen und besiegt.',
     rangedHitMessage: '{monster} mit deiner {weapon} für {damage} Schaden beschossen, es hat noch {remaining} Stärke.',
     rangedRetaliateSuffix: ' Es hat für {n} Schaden zurückgeschlagen!',
+    mageKillMessage: '{monster} mit deiner {weapon} für {damage} Schaden beschossen und besiegt.',
+    mageHitMessage: '{monster} mit deiner {weapon} für {damage} Schaden beschossen, es hat noch {remaining} Stärke.',
+    mageRetaliateSuffix: ' Es hat für {n} Schaden zurückgeschlagen!',
     fightFragileShattered: ' Deine zerbrechliche {weapon} zerbricht!',
     fightFragileCrackingSingular: ' Deine zerbrechliche {weapon} bekommt Risse (noch 1 Anwendung übrig).',
     fightFragileCrackingPlural: ' Deine zerbrechliche {weapon} bekommt Risse (noch {n} Anwendungen übrig).',
@@ -492,6 +516,9 @@ const I18N = {
 
       <h3>Fernkampfwaffen</h3>
       <p>Bögen funktionieren anders als Nahkampfwaffen: die Stärke des Bogens wird direkt von der Stärke des Monsters abgezogen, statt den erlittenen Schaden zu verringern. Überlebt das Monster den Schuss, bleibt es geschwächt im Raum liegen, und es besteht eine Chance von 20%, dass es zurückschlägt, bevor du es endgültig besiegst. Ein Bogen ignoriert die Abnutzungsgrenze, trägt aber nur 3 Pfeile (angezeigt als Leiste unter dem Waffenslot), sind sie aufgebraucht, zerbricht er.</p>
+
+      <h3>Magierstäbe</h3>
+      <p>Stäbe und Zepter funktionieren wie Bögen (Stärke wird direkt von der des Monsters abgezogen, dieselbe Chance von 20%, dass es zurückschlägt), schlagen aber spürbar härter zu und zerbrechen nie. Statt Pfeilen kostet jeder Schuss Mana aus demselben Vorrat, den auch die aktive Fähigkeit deines Champions nutzt. Ist kein Mana übrig, wird der Waffenslot grau und du kämpfst stattdessen bloßhändig, bis du wieder genug gesammelt hast.</p>
 
       <h3>Schilde</h3>
       <p>Klicke einen Schild an, um ihn auszurüsten, er ersetzt deine bisherige Ausrüstung. Ein Schild blockt Schaden, der sonst durchkommen würde, nachdem deine Waffe (oder bloße Hände) bereits ihren Teil erledigt hat, absorbiert der Schild so viel vom verbleibenden Schaden, wie sein Blockwert erlaubt. Das Blocken kostet den Schild Haltbarkeit in Höhe des absorbierten Schadens, sobald seine Haltbarkeit 0 erreicht, zerbricht er und ist verloren.</p>

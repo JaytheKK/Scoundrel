@@ -18,14 +18,16 @@
 const RANGED_WEAPON_NAMES = {
   en: {
     10: 'Short Bow',
-    15: 'Hunting Bow',
-    25: 'War Bow',
+    15: 'Recurve Bow',
+    20: 'Hunting Bow',
+    30: 'War Bow',
     40: 'Long Bow',
   },
   de: {
     10: 'Kurzbogen',
-    15: 'Jagdbogen',
-    25: 'Kriegsbogen',
+    15: 'Reflexbogen',
+    20: 'Jagdbogen',
+    30: 'Kriegsbogen',
     40: 'Langbogen',
   },
 };
@@ -40,14 +42,16 @@ function rangedWeaponNameFor(rank) {
 const RANGED_WEAPON_DESCRIPTIONS = {
   en: {
     10: 'A simple hunting bow, light and quick to loose.',
-    15: 'A sturdier bow favored by hunters tracking larger game.',
-    25: 'A heavy military bow, drawn only by practiced arms.',
+    15: 'A curved bow that stores extra power in its recurved limbs.',
+    20: 'A sturdier bow favored by hunters tracking larger game.',
+    30: 'A heavy military bow, drawn only by practiced arms.',
     40: 'A masterwork longbow, said to loose an arrow clean through plate.',
   },
   de: {
     10: 'Ein einfacher Jagdbogen, leicht und schnell gespannt.',
-    15: 'Ein robusterer Bogen, bevorzugt von Jägern größerer Beute.',
-    25: 'Ein schwerer Kriegsbogen, nur von geübten Armen zu spannen.',
+    15: 'Ein gebogener Bogen, der zusätzliche Kraft in seinen zurückgebogenen Wurfarmen speichert.',
+    20: 'Ein robusterer Bogen, bevorzugt von Jägern größerer Beute.',
+    30: 'Ein schwerer Kriegsbogen, nur von geübten Armen zu spannen.',
     40: 'Ein meisterhafter Langbogen, der angeblich Plattenrüstung glatt durchschlägt.',
   },
 };

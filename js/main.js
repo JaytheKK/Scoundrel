@@ -245,12 +245,18 @@ function resolveAndAnimate(cardId, options, registerSpeedUp, onFinished) {
 
     // A Ranged weapon gets its own draw-back/loose-shot swing shape (see
     // animateRangedAttack() in js/ui.js, "Ranged Weapons" in CLAUDE.md)
-    // instead of melee's plain out-and-back — same onImpact/onDone contract
-    // either way, so nothing below this needs to know which one is playing.
-    const attackAnimator =
-      state.equippedWeapon && state.equippedWeapon.suit === SUITS.RANGED
+    // instead of melee's plain out-and-back, and a Mage Staff gets its own
+    // "static cast" animation (animateMageAttack() in js/ui.js, "Mage
+    // Staffs" in CLAUDE.md) that never leaves the weapon slot at all — same
+    // onImpact/onDone contract in all three cases, so nothing below this
+    // needs to know which one is playing.
+    const attackAnimator = !state.equippedWeapon
+      ? animateWeaponAttack
+      : state.equippedWeapon.suit === SUITS.RANGED
         ? animateRangedAttack
-        : animateWeaponAttack;
+        : state.equippedWeapon.suit === SUITS.MAGE
+          ? animateMageAttack
+          : animateWeaponAttack;
 
     const ctl = attackAnimator(
       cardEl,
